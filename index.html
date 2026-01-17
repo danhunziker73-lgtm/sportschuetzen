@@ -3,10 +3,78 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Mannschaft 2026</title>
+  <title>Schiessbetrieb 2026</title>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f6f8;
+      margin: 0;
+      padding: 20px;
+      text-align: center;
+    }
+
+    h1 {
+      margin-bottom: 10px;
+    }
+
+    .subtitle {
+      color: #666;
+      margin-bottom: 30px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 20px;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    .card {
+      background: white;
+      border-radius: 14px;
+      padding: 25px 20px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      text-decoration: none;
+      color: #000;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 8px 18px rgba(0,0,0,0.15);
+    }
+
+    .card h2 {
+      margin: 0 0 8px;
+      font-size: 20px;
+    }
+
+    .card p {
+      margin: 0;
+      color: #555;
+      font-size: 14px;
+    }
+  </style>
 </head>
+
 <body>
-  <h1>Mannschaftsübersicht 2026</h1>
-  <p>Willkommen – die Tabelle kommt hierhin.</p>
+
+  <h1>Schiessbetrieb 2026</h1>
+  <div class="subtitle">Bitte auswählen</div>
+
+  <div class="grid">
+    <a class="card" href="2026_gruppe.html">
+      <h2>Gruppe 2026</h2>
+      <p>Gruppenphase · Runden · Einzelergebnisse</p>
+    </a>
+
+    <a class="card" href="2026_mannschaft.html">
+      <h2>Mannschaft 2026</h2>
+      <p>Mannschaftswertung · Übersicht · Details</p>
+    </a>
+  </div>
+
 </body>
 </html>
