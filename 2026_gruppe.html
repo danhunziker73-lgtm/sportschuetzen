@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Mannschaft 2026 – Gruppenphase</title>
+<title>Gruppenmeisterschaft 2026</title>
 
 <script src="https://www.gstatic.com/charts/loader.js"></script>
 
@@ -72,11 +72,12 @@ td.cell:hover {
 
 .player {
   display: grid;
-  grid-template-columns: 1fr auto auto;
+  grid-template-columns: 1fr auto;
   gap: 10px;
   padding: 6px 0;
   border-bottom: 1px solid #eee;
 }
+
 
 .player span {
   white-space: nowrap;
@@ -168,9 +169,8 @@ function showDetail(team, round) {
     total += pts;
     html += `
       <div class="player">
-        <span>${p.name}</span>
-        <span>${p.stellung}</span>
-        <span>${pts}</span>
+      <span>${p.name} (${p.stellung})</span>
+      <span>${pts}</span>
       </div>`;
   });
 
@@ -185,7 +185,7 @@ function showDetail(team, round) {
 <body>
 
 <h1>Mannschaft 2026</h1>
-<div class="subtitle">Gruppenphase – klicken für Details</div>
+<div class="subtitle">Uebersicht – klicken auf Punkte für Details</div>
 
 <div id="overview"></div>
 <div id="detail" class="detail"></div>
