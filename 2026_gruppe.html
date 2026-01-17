@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mannschaft 2026 – Gruppenphase</title>
+
+<script src="https://www.gstatic.com/charts/loader.js"></script>
+
+<style>
+body {
+  font-family: Arial, sans-serif;
+  background: #f4f6f8;
+  margin: 0;
+  padding: 15px;
+}
+
+h1 {
+  margin-bottom: 5px;
+}
+
+.subtitle {
+  color: #666;
+  margin-bottom: 15px;
+}
+
+.table-wrapper {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  min-width: 500px;
+  border-collapse: collapse;
+  background: white;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+}
+
+th, td {
+  padding: 10px;
+  text-align: center;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+th {
+  background: #0f3c5c;
+  color: white;
+}
+
+td.team {
+  font-weight: bold;
+  text-align: left;
+  white-space: nowrap;
+}
+
+td.cell {
+  cursor: pointer;
+  background: #fafafa;
+}
+
+td.cell:hover {
+  background: #e6eef5;
+}
+
+.detail {
+  margin-top: 20px;
+  background: white;
+  padding: 15px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+  display: none;
+}
+
+.player {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 10px;
+  padding: 6px 0;
+  border-bottom: 1px solid #eee;
+}
+
+.player span {
+  white-space: nowrap;
+}
+
+.total {
+  font-weight: bold;
+  text-align: right;
+  margin-top: 10px;
+  font-size: 18px;
+}
+
+/* Mobile */
+@media (max-width: 768px) {
+  th, td { padding: 8px; font-size: 14px; }
+  h1 { font-size: 20px; }
+}
+</style>
+
+<script>
+google.charts.load('current');
+google.charts.setOnLoadCallback(loadData);
+
+const SHEET_ID = "1VuOv6b8r5m1g_9ZidPR3OPZ7YIwLUm6dYLC9nKmC2mE";
+const SHEET_NAME = "2026_Gruppe";
+
+let raw = [];
+let teams = [];
+
+function loadData() {
+  const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?sheet=${SHEET_NAME}`;
+  const query = new google.visualization.Query(url);
+  query.send(res => {
+    const data = res.getDataTable();
+    for (let r = 0; r < data.getNumberOfRows(); r++) {
+      let row = {
+        name: data.getValue(r,0),
+        stellung: data.getValue(r,1)
+      };
+      for (let i = 1; i <= 3; i++) {
+        row[`r${i}Team`] = data.getValue(r,(i-1)*2+2);
+        row[`r${i}Pkt`]  = data.getValue(r,(i-1)*2+3);
+      }
+      raw.push(row);
+    }
+    teams = [...new Set(raw.flatMap(r =>
+      Object.keys(r)
+        .filter(k => k.includes("Team"))
+        .map(k => r[k])
+        .filter(Boolean)
+    ))];
+    buildTable();
+  });
+}
+
+function buildTable() {
+  let html = `
+  <div class="table-wrapper">
+  <table>
+    <tr>
+      <th>Mannschaft</th>
+      <th>R1</th>
+      <th>R2</th>
+      <th>R3</th>
+    </tr>`;
+
+  teams.forEach(team => {
+    html += `<tr><td class="team">${team}</td>`;
+    for (let r=1;r<=3;r++) {
+      const sum = raw
+        .filter(p => p[`r${r}Team`] === team)
+        .reduce((a,b)=>a+(b[`r${r}Pkt`]||0),0);
+      html += `<td class="cell" onclick="showDetail('${team}',${r})">${sum||"–"}</td>`;
+    }
+    html += `</tr>`;
+  });
+
+  html += `</table></div>`;
+  document.getElementById("overview").innerHTML = html;
+}
+
+function showDetail(team, round) {
+  const list = raw.filter(p => p[`r${round}Team`] === team);
+  let total = 0;
+  let html = `<h2>${team} – Runde ${round}</h2>`;
+
+  list.forEach(p => {
+    const pts = p[`r${round}Pkt`]||0;
+    total += pts;
+    html += `
+      <div class="player">
+        <span>${p.name}</span>
+        <span>${p.stellung}</span>
+        <span>${pts}</span>
+      </div>`;
+  });
+
+  html += `<div class="total">Total: ${total}</div>`;
+  const d = document.getElementById("detail");
+  d.innerHTML = html;
+  d.style.display = "block";
+}
+</script>
+</head>
+
+<body>
+
+<h1>Mannschaft 2026</h1>
+<div class="subtitle">Gruppenphase – klicken für Details</div>
+
+<div id="overview"></div>
+<div id="detail" class="detail"></div>
+
+</body>
+</html>
