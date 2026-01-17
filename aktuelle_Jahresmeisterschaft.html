@@ -2,202 +2,92 @@
 <html lang="de">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Jahresmeisterschaft 2025</title>
-
-<script src="https://www.gstatic.com/charts/loader.js"></script>
 
 <style>
 body {
-  font-family: Arial, sans-serif;
-  background: #f4f6f8;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  background: #f6f7f8;
   margin: 0;
-  padding: 15px;
+  padding: 30px;
 }
 
 h1 {
   margin-bottom: 5px;
 }
 
-h2 {
-  margin-top: 30px;
-}
-
 .subtitle {
   color: #666;
-  margin-bottom: 15px;
+  margin-bottom: 30px;
 }
 
-.table-wrapper {
-  overflow-x: auto;
+.liga {
+  margin-bottom: 50px;
 }
 
 table {
   width: 100%;
   border-collapse: collapse;
   background: white;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.08);
-  margin-bottom: 20px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
 }
 
-th, td {
-  padding: 8px;
-  text-align: center;
-  border-bottom: 1px solid #e0e0e0;
-}
-
-th {
-  background: #0f3c5c;
+thead {
+  background: #0f3a5d;
   color: white;
 }
 
+th, td {
+  padding: 10px 12px;
+  text-align: left;
+  border-bottom: 1px solid #e6e6e6;
+}
+
+th {
+  font-weight: 600;
+}
+
 tr.clickable:hover {
-  background: #e6eef5;
+  background: #f0f6fb;
   cursor: pointer;
 }
 
-.detail {
-  background: white;
-  padding: 15px;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+.details {
   display: none;
+  background: #fafafa;
 }
 
-.score-grid {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 6px 15px;
+.details td {
+  padding: 15px 20px;
 }
 
-.score-grid div {
-  padding: 4px 0;
-  border-bottom: 1px dotted #ddd;
+.details ul {
+  margin: 0;
+  padding-left: 20px;
 }
 
-.total {
-  font-weight: bold;
-  margin-top: 10px;
-  font-size: 18px;
+.details li {
+  margin-bottom: 4px;
 }
 
-/* Mobile */
-@media (max-width: 768px) {
-  th, td { font-size: 13px; padding: 6px; }
-  h1 { font-size: 20px; }
+.badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  margin-left: 6px;
+}
+
+.liegend {
+  background: #d8ecff;
+  color: #004a80;
+}
+
+.kniend {
+  background: #ffe4cc;
+  color: #8a3b00;
 }
 </style>
-
-<script>
-google.charts.load('current');
-google.charts.setOnLoadCallback(loadData);
-
-const SHEET_ID = "1ye7nbT1lLLYzilwNhw6NnslwvUrtxFuT-ZZJRrG2sT0";
-const SHEET_NAME = "Jahresmeisterschaft";
-
-// Spalten-Definition (0-basiert)
-const COL = {
-  rang: 0,
-  name: 1,
-  vorname: 2,
-  jahrgang: 3,
-  lizenz: 4,
-  total: 14,
-  prozent: 15,
-  firstScore: 6,
-  lastScore: 31,   // inkl. Mannschaft & Auswärtsschiessen
-  auswaertsStart: 41 // AP
-};
-
-let liga1 = [];
-let liga2 = [];
-
-function loadData() {
-  const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?sheet=${SHEET_NAME}`;
-  const query = new google.visualization.Query(url);
-  query.send(res => {
-    const data = res.getDataTable();
-
-    let currentLiga = liga1;
-
-    for (let r = 0; r < data.getNumberOfRows(); r++) {
-      const rang = data.getValue(r, COL.rang);
-      if (!rang || rang === 0) {
-        currentLiga = liga2;
-        continue;
-      }
-
-      currentLiga.push({
-        rang,
-        name: data.getValue(r, COL.name),
-        vorname: data.getValue(r, COL.vorname),
-        jahrgang: data.getValue(r, COL.jahrgang),
-        lizenz: data.getValue(r, COL.lizenz),
-        total: data.getValue(r, COL.total),
-        prozent: data.getValue(r, COL.prozent),
-        row: r,
-        data
-      });
-    }
-
-    buildLiga("liga1", "Liga 1", liga1);
-    buildLiga("liga2", "Liga 2", liga2);
-  });
-}
-
-function buildLiga(targetId, title, liga) {
-  let html = `
-  <h2>${title}</h2>
-  <div class="table-wrapper">
-  <table>
-    <tr>
-      <th>Rang</th>
-      <th>Name</th>
-      <th>Jg.</th>
-      <th>Total</th>
-      <th>%</th>
-    </tr>`;
-
-  liga.forEach(p => {
-    html += `
-      <tr class="clickable" onclick="showDetail(${p.row})">
-        <td>${p.rang}</td>
-        <td>${p.name} ${p.vorname}</td>
-        <td>${p.jahrgang}</td>
-        <td>${p.total ?? ""}</td>
-        <td>${p.prozent ?? ""}</td>
-      </tr>`;
-  });
-
-  html += "</table></div>";
-  document.getElementById(targetId).innerHTML = html;
-}
-
-function showDetail(row) {
-  const data = liga1.concat(liga2)[0].data;
-
-  let html = `<h2>Detailresultate</h2><div class="score-grid">`;
-
-  for (let c = COL.firstScore; c <= COL.lastScore; c++) {
-    const val = data.getValue(row, c);
-    const label = data.getColumnLabel(c);
-    if (val && val > 0) {
-      html += `<div>${label}</div><div>${val}</div>`;
-    }
-  }
-
-  for (let c = COL.auswaertsStart; c < data.getNumberOfColumns(); c++) {
-    const val = data.getValue(row, c);
-    const label = data.getColumnLabel(c);
-    if (val && val > 0) {
-      html += `<div>${label}</div><div>${val}</div>`;
-    }
-  }
-
-  html += "</div>";
-  document.getElementById("detail").innerHTML = html;
-  document.getElementById("detail").style.display = "block";
-}
-</script>
 </head>
 
 <body>
@@ -205,10 +95,102 @@ function showDetail(row) {
 <h1>Jahresmeisterschaft 2025</h1>
 <div class="subtitle">2 Ligen – Klick auf einen Namen für Details</div>
 
-<div id="liga1"></div>
-<div id="liga2"></div>
+<div id="content"></div>
 
-<div id="detail" class="detail"></div>
+<script>
+/*
+  ERWARTETES DATENFORMAT (kommt aus Apps Script!)
+  ------------------------------------------------
+  data = {
+    liga1: [ {...}, {...} ],
+    liga2: [ {...}, {...} ]
+  }
+*/
+
+function renderLiga(ligaNr, teilnehmer) {
+
+  let html = `
+    <div class="liga">
+      <h2>Liga ${ligaNr}</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Rang</th>
+            <th>Name</th>
+            <th>Jg.</th>
+            <th>Total</th>
+            <th>%</th>
+          </tr>
+        </thead>
+        <tbody>
+  `;
+
+  teilnehmer.forEach((t, i) => {
+
+    const detailId = `liga${ligaNr}_d${i}`;
+
+    html += `
+      <tr class="clickable" onclick="toggle('${detailId}')">
+        <td>${t.rang}</td>
+        <td>${t.name}</td>
+        <td>${t.jahrgang ?? ""}</td>
+        <td>${t.total ?? ""}</td>
+        <td>${t.prozent ?? ""}</td>
+      </tr>
+
+      <tr id="${detailId}" class="details">
+        <td colspan="5">
+          <ul>
+    `;
+
+    t.schiessen.forEach(s => {
+      html += `
+        <li>
+          ${s.name}: ${s.punkte}
+          ${s.prozent ? `(${s.prozent}%)` : ""}
+          ${s.stellung ? `<span class="badge ${s.stellung}">${s.stellung}</span>` : ""}
+        </li>
+      `;
+    });
+
+    html += `
+          </ul>
+        </td>
+      </tr>
+    `;
+  });
+
+  html += `
+        </tbody>
+      </table>
+    </div>
+  `;
+
+  return html;
+}
+
+function toggle(id) {
+  const el = document.getElementById(id);
+  el.style.display = el.style.display === "table-row" ? "none" : "table-row";
+}
+
+/* ============================================================
+   DATENÜBERGABE – HIER WIRD SPÄTER Apps Script ANGEBUNDEN
+   ============================================================ */
+
+// Platzhalter – wird ersetzt durch google.script.run
+const data = {
+  liga1: [],
+  liga2: []
+};
+
+// Rendering
+const container = document.getElementById("content");
+container.innerHTML =
+  renderLiga(1, data.liga1) +
+  renderLiga(2, data.liga2);
+
+</script>
 
 </body>
 </html>
