@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Jahresmeisterschaft – Standblatt hochladen</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --primary: #6d28d9;
+      --primary-dark: #5b21b6;
+      --bg: #0f172a;
+      --card: #1e293b;
+      --text: #e2e8f0;
+      --text-light: #94a3b8;
+      --border: #334155;
+      --error: #f87171;
+      --success: #34d399;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 2rem 1rem;
+      line-height: 1.5;
+    }
+
+    .container {
+      max-width: 560px;
+      margin: 0 auto;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 2.5rem;
+    }
+
+    h1 {
+      font-size: 2.25rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+      background: linear-gradient(90deg, #a78bfa, #c084fc);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .subtitle {
+      color: var(--text-light);
+      font-size: 1rem;
+    }
+
+    .card {
+      background: var(--card);
+      border-radius: 16px;
+      padding: 2rem;
+      border: 1px solid var(--border);
+      box-shadow: 0 10px 25px rgba(0,0,0,0.4);
+    }
+
+    .form-group {
+      margin-bottom: 1.75rem;
+      position: relative;
+    }
+
+    label {
+      position: absolute;
+      top: 1rem;
+      left: 1rem;
+      color: var(--text-light);
+      font-size: 0.95rem;
+      transition: all 0.25s ease;
+      pointer-events: none;
+    }
+
+    input, select {
+      width: 100%;
+      padding: 1.1rem 1rem 0.4rem;
+      background: #0f172a;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-size: 1rem;
+      transition: all 0.2s;
+    }
+
+    input:focus, select:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(109,40,217,0.15);
+    }
+
+    input:focus + label,
+    input:not(:placeholder-shown) + label,
+    select:focus + label,
+    select:not(:placeholder-shown) + label {
+      top: 0.5rem;
+      left: 0.9rem;
+      font-size: 0.75rem;
+      color: var(--primary);
+    }
+
+    .file-upload {
+      border: 2px dashed var(--border);
+      border-radius: 12px;
+      padding: 2rem;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.25s;
+      background: rgba(109,40,217,0.03);
+    }
+
+    .file-upload:hover {
+      border-color: var(--primary);
+      background: rgba(109,40,217,0.08);
+    }
+
+    .file-preview {
+      margin-top: 1rem;
+      max-width: 100%;
+      max-height: 180px;
+      border-radius: 8px;
+      object-fit: cover;
+      display: none;
+    }
+
+    .error {
+      color: var(--error);
+      font-size: 0.85rem;
+      margin-top: 0.35rem;
+      display: none;
+    }
+
+    button {
+      width: 100%;
+      padding: 1.1rem;
+      background: var(--primary);
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-size: 1.05rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      margin-top: 1.5rem;
+    }
+
+    button:hover {
+      background: var(--primary-dark);
+      transform: translateY(-1px);
+    }
+
+    button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .loading {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 3px solid rgba(255,255,255,0.3);
+      border-radius: 50%;
+      border-top-color: white;
+      animation: spin 1s linear infinite;
+      margin-right: 10px;
+      vertical-align: middle;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .info {
+      color: var(--text-light);
+      font-size: 0.85rem;
+      margin-top: 1.5rem;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <h1>Jahresmeisterschaft</h1>
+    <div class="subtitle">Standblatt hochladen</div>
+  </header>
+
+  <div class="card">
+    <form id="uploadForm">
+      <!-- Teilnehmer Dropdown -->
+      <div class="form-group">
+        <select id="name" required>
+          <option value="" disabled selected>Deinen Namen auswählen *</option>
+          <!-- Wird per JS gefüllt -->
+        </select>
+        <label for="name">Dein Name *</label>
+        <div class="error" id="nameError">Bitte Namen auswählen</div>
+      </div>
+
+      <!-- Foto Upload -->
+      <div class="form-group">
+        <div class="file-upload" id="dropZone">
+          <p>Foto Standblatt hochladen *</p>
+          <p style="font-size:0.85rem; color:var(--text-light);">(max. 10 MB, JPG/PNG)</p>
+          <input type="file" id="foto" accept="image/jpeg,image/png" hidden required>
+          <img id="preview" class="file-preview" alt="Vorschau">
+        </div>
+        <div class="error" id="fotoError">Bitte ein Foto auswählen</div>
+      </div>
+
+      <!-- Erzielte Punkte -->
+      <div class="form-group">
+        <input type="number" id="erzielt" min="0" step="0.1" placeholder=" " required>
+        <label for="erzielt">Erzielte Punkteanzahl *</label>
+        <div class="error" id="erzieltError">Bitte Punkte eingeben</div>
+      </div>
+
+      <!-- Maximale Punkte -->
+      <div class="form-group">
+        <input type="number" id="maximal" min="0" step="0.1" placeholder=" " required>
+        <label for="maximal">Maximal zu erzielende Punkteanzahl *</label>
+        <div class="error" id="maximalError">Bitte maximale Punkte eingeben</div>
+      </div>
+
+      <!-- Senden-Button -->
+      <button type="submit" id="submitBtn">
+        <span id="btnText">Senden</span>
+      </button>
+    </form>
+
+    <div class="info">
+      Deine Daten werden sicher verarbeitet. Nur der Vorstand hat Zugriff.
+    </div>
+  </div>
+</div>
+
+<script>
+// Teilnehmer-Liste (kann später von GitHub geladen werden)
+const teilnehmer = [
+  "Fischer Marco", "Luginbühl Jürg", "Lüscher Stefan", "Morgenthaler Lars",
+  "Rossi Andrea", "Rossi Olivia", "Verrillo Simone Luigi", "Zurbriggen Nicole",
+  // ... hier alle weiteren Namen einfügen oder per fetch laden
+];
+
+const nameSelect = document.getElementById('name');
+teilnehmer.forEach(name => {
+  const opt = document.createElement('option');
+  opt.value = name;
+  opt.textContent = name;
+  nameSelect.appendChild(opt);
+});
+
+// Datei-Vorschau
+const fileInput = document.getElementById('foto');
+const preview = document.getElementById('preview');
+const dropZone = document.getElementById('dropZone');
+
+fileInput.addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (file) {
+    const reader = new FileReader();
+    reader.onload = ev => {
+      preview.src = ev.target.result;
+      preview.style.display = 'block';
+    };
+    reader.readAsDataURL(file);
+  }
+});
+
+// Drag & Drop Support
+dropZone.addEventListener('click', () => fileInput.click());
+dropZone.addEventListener('dragover', e => {
+  e.preventDefault();
+  dropZone.style.borderColor = 'var(--primary)';
+});
+dropZone.addEventListener('dragleave', () => {
+  dropZone.style.borderColor = 'var(--border)';
+});
+dropZone.addEventListener('drop', e => {
+  e.preventDefault();
+  dropZone.style.borderColor = 'var(--border)';
+  fileInput.files = e.dataTransfer.files;
+  fileInput.dispatchEvent(new Event('change'));
+});
+
+// Formular absenden (Beispiel – später an Cloudflare Worker senden)
+document.getElementById('uploadForm').addEventListener('submit', async e => {
+  e.preventDefault();
+
+  const btn = document.getElementById('submitBtn');
+  const btnText = document.getElementById('btnText');
+  btn.disabled = true;
+  btnText.innerHTML = '<span class="loading"></span> Wird gesendet...';
+
+  // Hier später den echten Upload-Code einfügen
+  // await fetch('https://dein-worker.workers.dev', { method: 'POST', body: new FormData(e.target) });
+
+  // Simulierter Erfolg (entfernen!)
+  await new Promise(r => setTimeout(r, 1500));
+
+  alert('Standblatt erfolgreich hochgeladen!');
+  e.target.reset();
+  preview.style.display = 'none';
+  btn.disabled = false;
+  btnText.textContent = 'Senden';
+});
+</script>
+</body>
+</html>
