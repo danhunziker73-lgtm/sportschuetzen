@@ -178,11 +178,20 @@ function toggle(id) {
    DATENÜBERGABE – HIER WIRD SPÄTER Apps Script ANGEBUNDEN
    ============================================================ */
 
-// Platzhalter – wird ersetzt durch google.script.run
-const data = {
-  liga1: [],
-  liga2: []
-};
+google.script.run
+  .withSuccessHandler(data => {
+    const container = document.getElementById("content");
+    container.innerHTML =
+      renderLiga(1, data.liga1) +
+      renderLiga(2, data.liga2);
+  })
+  .withFailureHandler(err => {
+    console.error(err);
+    document.getElementById("content").innerText =
+      "Fehler beim Laden der Daten";
+  })
+  .getJahresmeisterschaft();
+
 
 // Rendering
 const container = document.getElementById("content");
