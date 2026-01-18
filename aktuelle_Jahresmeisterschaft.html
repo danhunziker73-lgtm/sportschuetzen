@@ -192,14 +192,16 @@ google.script.run
   })
   .getJahresmeisterschaft();
 
-
-// Rendering
-const container = document.getElementById("content");
-container.innerHTML =
-  renderLiga(1, data.liga1) +
-  renderLiga(2, data.liga2);
-
-</script>
-
-</body>
-</html>
+google.script.run
+  .withSuccessHandler(data => {
+    const container = document.getElementById("content");
+    container.innerHTML =
+      renderLiga(1, data.liga1) +
+      renderLiga(2, data.liga2);
+  })
+  .withFailureHandler(err => {
+    console.error(err);
+    document.getElementById("content").innerText =
+      "Fehler beim Laden der Daten";
+  })
+  .getJahresmeisterschaft();
