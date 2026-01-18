@@ -180,22 +180,20 @@ function toggle(id) {
    ============================================================ */
 
 const API_URL = "https://script.google.com/macros/s/AKfycbwG9W_DUWYu4Q7TPilkqeGCinnqTmWLbi1w0aSzoqbnpfOL09UTsPGql7tlZq1JIhtg/exec";
+const API_URL = "https://script.google.com/macros/s/AKFycbw.../exec";
 
-fetch(API_URL)
+fetch(`${API_URL}?id=123&antwort=Ja`)
   .then(res => {
     if (!res.ok) throw new Error("HTTP " + res.status);
-    return res.json();
+    return res.text();  // oder .json(), je nach return in doGet
   })
-  .then(data => {
-    const container = document.getElementById("content");
-    container.innerHTML =
-      renderLiga(1, data.liga1) +
-      renderLiga(2, data.liga2);
+  .then(text => {
+    console.log("Erfolg:", text);  // sollte "OK" sein
+    // Hier UI updaten
   })
   .catch(err => {
-    console.error(err);
-    document.getElementById("content").innerText =
-      "Daten konnten nicht geladen werden";
+    console.error("Fehler:", err);
+    document.getElementById("content").innerText = "Fehler beim Laden";
   });
 
 
