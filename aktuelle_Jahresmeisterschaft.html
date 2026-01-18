@@ -178,30 +178,23 @@ function toggle(id) {
    DATENÜBERGABE – HIER WIRD SPÄTER Apps Script ANGEBUNDEN
    ============================================================ */
 
-google.script.run
-  .withSuccessHandler(data => {
-    const container = document.getElementById("content");
-    container.innerHTML =
-      renderLiga(1, data.liga1) +
-      renderLiga(2, data.liga2);
-  })
-  .withFailureHandler(err => {
-    console.error(err);
-    document.getElementById("content").innerText =
-      "Fehler beim Laden der Daten";
-  })
-  .getJahresmeisterschaft();
+const API_URL = "https://script.google.com/macros/s/AKfycbwG9W_DUWYu4Q7TPilkqeGCinnqTmWLbi1w0aSzoqbnpfOL09UTsPGql7tlZq1JIhtg/exec";
 
-google.script.run
-  .withSuccessHandler(data => {
+fetch(API_URL)
+  .then(res => {
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    return res.json();
+  })
+  .then(data => {
     const container = document.getElementById("content");
     container.innerHTML =
       renderLiga(1, data.liga1) +
       renderLiga(2, data.liga2);
   })
-  .withFailureHandler(err => {
+  .catch(err => {
     console.error(err);
     document.getElementById("content").innerText =
-      "Fehler beim Laden der Daten";
-  })
-  .getJahresmeisterschaft();
+      "Daten konnten nicht geladen werden";
+  });
+
+
