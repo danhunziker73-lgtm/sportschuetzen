@@ -179,8 +179,30 @@ function toggle(id) {
    DATENÜBERGABE – HIER WIRD SPÄTER Apps Script ANGEBUNDEN
    ============================================================ */
 
-const API_URL = "https://script.google.com/macros/s/AKfycbwG9W_DUWYu4Q7TPilkqeGCinnqTmWLbi1w0aSzoqbnpfOL09UTsPGql7tlZq1JIhtg/exec";
-const API_URL = "https://script.google.com/macros/s/AKFycbw.../exec";
+
+const API_URL = "https://jahresmeisterschaft-muhen.dan-hunziker73.workers.dev";
+
+console.log("Frontend gestartet");
+
+fetch(API_URL)
+  .then(r => {
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    return r.json();
+  })
+  .then(data => {
+    console.log("Daten:", data);
+    document.getElementById("content").innerHTML =
+      renderLiga(1, data.liga1) +
+      renderLiga(2, data.liga2);
+  })
+  .catch(err => {
+    console.error(err);
+    document.getElementById("content").innerText =
+      "Daten konnten nicht geladen werden";
+  });
+</script>
+";
+
 
 fetch(`${API_URL}?id=123&antwort=Ja`)
   .then(res => {
