@@ -204,18 +204,4 @@ fetch(API_URL)
 ";
 
 
-fetch(`${API_URL}?id=123&antwort=Ja`)
-  .then(res => {
-    if (!res.ok) throw new Error("HTTP " + res.status);
-    return res.text();  // oder .json(), je nach return in doGet
-  })
-  .then(text => {
-    console.log("Erfolg:", text);  // sollte "OK" sein
-    // Hier UI updaten
-  })
-  .catch(err => {
-    console.error("Fehler:", err);
-    document.getElementById("content").innerText = "Fehler beim Laden";
-  });
-
 
