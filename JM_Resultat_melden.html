@@ -138,7 +138,7 @@
 
 <div class="container">
   <header>
-    <img src="https://raw.githubusercontent.com/dein-benutzername/dein-repo/main/logo.png" 
+    <img src="https://raw.githubusercontent.com/danhunziker73-lgtm/sportschuetzen/main/logo.png" 
          alt="Logo" class="logo" 
          onerror="this.src='https://via.placeholder.com/140/6d28d9/ffffff?text=Logo';">
     <h1>Jahresmeisterschaft</h1>
@@ -189,21 +189,25 @@
 </div>
 
 <script>
-// Teilnehmer laden (GitHub JSON)
-fetch('https://raw.githubusercontent.com/dein-benutzername/dein-repo/main/teilnehmer.json')
+let globalTeilnehmerListe = [];
+
+// 1. Teilnehmer laden (GitHub JSON)
+fetch('https://raw.githubusercontent.com/danhunziker73-lgtm/sportschuetzen/main/teilnehmer.json')
   .then(r => r.json())
   .then(list => {
+    globalTeilnehmerListe = list;
     const select = document.getElementById('name');
     list.forEach(p => {
       const opt = document.createElement('option');
-      opt.value = p.id || p.name;
+      // Wir speichern die ID (Lizenz) als Value
+      opt.value = p.id || p.lizenz; 
       opt.text = p.name;
       select.appendChild(opt);
     });
   })
   .catch(() => alert('Teilnehmerliste konnte nicht geladen werden'));
 
-// Foto-Vorschau
+// 2. Foto-Vorschau Logik
 const fileInput = document.getElementById('foto');
 const preview = document.getElementById('preview');
 const dropZone = document.getElementById('dropZone');
@@ -230,64 +234,74 @@ dropZone.addEventListener('drop', e => {
   fileInput.dispatchEvent(new Event('change'));
 });
 
-// Formular senden
+// 3. Formular senden (Wandelt alles in JSON um)
 document.getElementById('uploadForm').addEventListener('submit', async e => {
   e.preventDefault();
 
   const btn = document.getElementById('submitBtn');
   const btnText = document.getElementById('btnText');
-  btn.disabled = true;
-  btnText.innerHTML = '<span class="loading"></span> Wird gesendet...';
-
-  // Validierung
+  
+  // Validierung & UI Reset
   let valid = true;
   document.querySelectorAll('.error').forEach(el => el.style.display = 'none');
 
-  if (!document.getElementById('name').value) {
-    document.getElementById('nameError').style.display = 'block';
-    valid = false;
-  }
-  if (!fileInput.files.length) {
-    document.getElementById('fotoError').style.display = 'block';
-    valid = false;
-  }
-  if (!document.getElementById('erzielt').value) {
-    document.getElementById('erzieltError').style.display = 'block';
-    valid = false;
-  }
-  if (!document.getElementById('maximal').value) {
-    document.getElementById('maximalError').style.display = 'block';
-    valid = false;
-  }
+  const selectedId = document.getElementById('name').value;
+  const erz = document.getElementById('erzielt').value;
+  const max = document.getElementById('maximal').value;
 
-  if (!valid) {
-    btn.disabled = false;
-    btnText.textContent = 'Standblatt senden';
-    return;
-  }
+  if (!selectedId) { document.getElementById('nameError').style.display = 'block'; valid = false; }
+  if (!fileInput.files.length) { document.getElementById('fotoError').style.display = 'block'; valid = false; }
+  if (!erz) { document.getElementById('erzieltError').style.display = 'block'; valid = false; }
+  if (!max) { document.getElementById('maximalError').style.display = 'block'; valid = false; }
 
-  // Senden an Cloudflare Worker
-  const formData = new FormData(e.target);
-  try {
-    const res = await fetch('https://dein-worker-name.deinname.workers.dev', {
-      method: 'POST',
-      body: formData
-    });
+  if (!valid) return;
 
-    const result = await res.json();
-    if (result.success) {
-      alert('Standblatt erfolgreich hochgeladen!');
-      e.target.reset();
-      preview.style.display = 'none';
-    } else {
-      alert('Fehler: ' + (result.error || 'Unbekannter Fehler'));
+  // Lade-Animation starten
+  btn.disabled = true;
+  btnText.innerHTML = '<span class="loading"></span> Wird gesendet...';
+
+  // Den gewählten Teilnehmer in der Liste finden für Vor-/Nachname
+  const user = globalTeilnehmerListe.find(t => (t.id || t.lizenz) === selectedId);
+
+  // Bild in Base64 umwandeln
+  const file = fileInput.files[0];
+  const reader = new FileReader();
+  
+  reader.onload = async () => {
+    const payload = {
+      action: "upload_standblatt",
+      lizenz: selectedId,
+      vorname: user ? user.vorname : "",
+      nachname: user ? user.nachname : user.name,
+      erzielt: erz,
+      maximal: max,
+      foto: reader.result // Das ist der Base64 String
+    };
+
+    try {
+      const res = await fetch('https://github-dropdown-refresh.dan-hunziker73.workers.dev', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      const result = await res.json();
+      if (result.success) {
+        alert('Standblatt erfolgreich hochgeladen!');
+        document.getElementById('uploadForm').reset();
+        preview.style.display = 'none';
+      } else {
+        alert('Fehler: ' + (result.error || 'Unbekannter Fehler'));
+      }
+    } catch (err) {
+      alert('Verbindungsfehler: ' + err.message);
+    } finally {
+      btn.disabled = false;
+      btnText.textContent = 'Standblatt senden';
     }
-  } catch (err) {
-    alert('Verbindungsfehler: ' + err.message);
-  }
-
-  btn.disabled = false;
-  btnText.textContent = 'Standblatt senden';
+  };
+  
+  reader.readAsDataURL(file);
 });
 </script>
 </body>
