@@ -97,6 +97,20 @@
   .is-streich { color: var(--accent); text-decoration: line-through; opacity: 0.7; }
 
   .badge-auswaerts { background: #e8f5e9; color: #2e7d32; padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; }
+
+  /* --- Markierung für Auf- und Absteiger --- */
+  .aufsteiger { border-left: 5px solid #2ecc71 !important; background-color: #fafffa; }
+  .absteiger { border-left: 5px solid #e74c3c !important; background-color: #fffaf9; }
+
+  .status-label { 
+    font-size: 0.65rem; 
+    font-weight: bold; 
+    text-transform: uppercase; 
+    display: block; 
+    margin-top: 2px;
+  }
+  .text-auf { color: #27ae60; }
+  .text-ab { color: #c0392b; }
 </style>
 </head>
 <body>
@@ -135,12 +149,28 @@ function renderLiga(ligaNr, teilnehmer) {
     const detailId = `liga${ligaNr}_d${i}`;
     const auswaertsCount = t.auswaerts ? t.auswaerts.length : 0;
     const sPrz = t.streichresultat_prz ? Number(t.streichresultat_prz).toFixed(2) : null;
-    let hatBereitsGestrichen = false; // Flag für exakt ein Streichresultat
+    let hatBereitsGestrichen = false;
 
-    // 1. Die Hauptzeile (Sichtbar)
+    // --- LOGIK FÜR AUF- UND ABSTIEG ---
+    let statusClass = "";
+    let statusLabel = "";
+
+    if (ligaNr === 1 && i >= teilnehmer.length - 2) {
+      // Die letzten zwei in Liga 1 steigen ab
+      statusClass = "absteiger";
+      statusLabel = '<span class="status-label text-ab">Abstieg</span>';
+    } else if (ligaNr === 2 && i < 2) {
+      // Die ersten zwei in Liga 2 steigen auf
+      statusClass = "aufsteiger";
+      statusLabel = '<span class="status-label text-auf">Aufstieg</span>';
+    }
+
     html += `
-      <tr class="clickable" onclick="toggle('${detailId}')">
-        <td class="col-rang"><b>${t.rang}.</b></td>
+      <tr class="clickable ${statusClass}" onclick="toggle('${detailId}')">
+        <td class="col-rang">
+          <b>${t.rang}.</b>
+          ${statusLabel}
+        </td>
         <td class="col-name">${t.name}</td>
         <td class="col-jg">${t.jahrgang || "-"}</td>
         <td class="col-total"><b>${formatNum(t.total)}</b></td>
@@ -157,9 +187,7 @@ function renderLiga(ligaNr, teilnehmer) {
                 ${t.schiessen.map(s => {
                   const aktuellerWertPrz = Number(s.prozent).toFixed(2);
                   const isStreich = sPrz && aktuellerWertPrz === sPrz && !hatBereitsGestrichen;
-                  
                   if (isStreich) hatBereitsGestrichen = true;
-
                   return `
                   <li class="${isStreich ? 'is-streich' : ''}">
                     <span class="item-name">${s.name}</span>
@@ -168,7 +196,7 @@ function renderLiga(ligaNr, teilnehmer) {
                   </li>`;
                 }).join('')}
               </ul>
-              ${sPrz ? `<div class="streich-info">Streichresultat: ${sPrz}%</div>` : ''}
+              ${sPrz && Number(sPrz) > 0 ? `<div class="streich-info">Streichresultat: ${sPrz}%</div>` : ''}
             </div>
 
             <div class="detail-box">
@@ -205,6 +233,9 @@ function renderLiga(ligaNr, teilnehmer) {
     `;
   });
 
+  html += `</tbody></table></div>`;
+  return html;
+}
   html += `</tbody></table></div>`;
   return html;
 }
