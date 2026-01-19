@@ -25,13 +25,12 @@
     box-shadow: 0 4px 12px rgba(0,0,0,0.08);
     border-radius: 8px;
     overflow: hidden;
-    table-layout: fixed; /* Erzwingt gleiche Spaltenbreiten in beiden Ligen */
+    table-layout: fixed;
   }
 
   thead { background: var(--primary); color: white; }
   th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #eee; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-  /* Spaltenbreiten fixieren für Symmetrie */
   .col-rang { width: 60px; }
   .col-name { width: auto; }
   .col-jg   { width: 80px; }
@@ -42,7 +41,7 @@
   .clickable:hover { background: #f0f4f8; }
 
   .details { display: none; background: #fdfdfd; }
-  .details td { white-space: normal; } /* Erlaubt Zeilenumbruch in Details */
+  .details td { white-space: normal; }
 
   .detail-grid {
     display: grid;
@@ -63,23 +62,11 @@
 
   .detail-box ul { list-style: none; padding: 0; margin: 0; }
   
-  /* LEADER-LINE START - Hier kannst du die gepunktete Linie anpassen oder entfernen */
-  .detail-box li {
-    display: flex;
-    align-items: baseline;
-    padding: 4px 0;
-    font-size: 0.95rem;
-  }
+  /* LEADER-LINE */
+  .detail-box li { display: flex; align-items: baseline; padding: 4px 0; font-size: 0.95rem; }
   .item-name { flex-shrink: 0; }
-  .item-dots {
-    flex-grow: 1;
-    border-bottom: 1px dotted #ccc;
-    margin: 0 8px;
-    position: relative;
-    top: -4px;
-  }
+  .item-dots { flex-grow: 1; border-bottom: 1px dotted #ccc; margin: 0 8px; position: relative; top: -4px; }
   .item-value { flex-shrink: 0; font-weight: 600; font-variant-numeric: tabular-nums; }
-  /* LEADER-LINE END */
 
   .prz-small { color: #666; font-size: 0.85rem; font-weight: normal; margin-left: 4px; }
   
@@ -93,12 +80,10 @@
     font-weight: 600;
   }
 
-  /* Gestrichenes Resultat */
   .is-streich { color: var(--accent); text-decoration: line-through; opacity: 0.7; }
-
   .badge-auswaerts { background: #e8f5e9; color: #2e7d32; padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; }
 
-  /* --- Markierung für Auf- und Absteiger --- */
+  /* Markierung für Auf- und Absteiger */
   .aufsteiger { border-left: 5px solid #2ecc71 !important; background-color: #fafffa; }
   .absteiger { border-left: 5px solid #e74c3c !important; background-color: #fffaf9; }
 
@@ -151,45 +136,36 @@ function renderLiga(ligaNr, teilnehmer) {
     const sPrz = t.streichresultat_prz ? Number(t.streichresultat_prz).toFixed(2) : null;
     let hatBereitsGestrichen = false;
 
-    // --- LOGIK FÜR AUF- UND ABSTIEG ---
+    // Auf- und Abstieg Logik
     let statusClass = "";
     let statusLabel = "";
-
     if (ligaNr === 1 && i >= teilnehmer.length - 2) {
-      // Die letzten zwei in Liga 1 steigen ab
       statusClass = "absteiger";
       statusLabel = '<span class="status-label text-ab">Abstieg</span>';
     } else if (ligaNr === 2 && i < 2) {
-      // Die ersten zwei in Liga 2 steigen auf
       statusClass = "aufsteiger";
       statusLabel = '<span class="status-label text-auf">Aufstieg</span>';
     }
 
     html += `
       <tr class="clickable ${statusClass}" onclick="toggle('${detailId}')">
-        <td class="col-rang">
-          <b>${t.rang}.</b>
-          ${statusLabel}
-        </td>
+        <td class="col-rang"><b>${t.rang}.</b>${statusLabel}</td>
         <td class="col-name">${t.name}</td>
         <td class="col-jg">${t.jahrgang || "-"}</td>
         <td class="col-total"><b>${formatNum(t.total)}</b></td>
         <td class="col-zusatz">${auswaertsCount > 0 ? `<span class="badge-auswaerts">${auswaertsCount} Auswärts</span>` : ""}</td>
       </tr>
-
       <tr id="${detailId}" class="details">
         <td colspan="5">
           <div class="detail-grid">
-            
             <div class="detail-box">
               <h4>Meisterschaft <span>Pkt (%)</span></h4>
               <ul>
                 ${t.schiessen.map(s => {
                   const aktuellerWertPrz = Number(s.prozent).toFixed(2);
-                  const isStreich = sPrz && aktuellerWertPrz === sPrz && !hatBereitsGestrichen;
+                  const isStreich = sPrz && aktuellerWertPrz === sPrz && !hatBereitsGestrichen && Number(sPrz) > 0;
                   if (isStreich) hatBereitsGestrichen = true;
-                  return `
-                  <li class="${isStreich ? 'is-streich' : ''}">
+                  return `<li class="${isStreich ? 'is-streich' : ''}">
                     <span class="item-name">${s.name}</span>
                     <span class="item-dots"></span>
                     <span class="item-value">${s.punkte} <span class="prz-small">(${aktuellerWertPrz}%)</span></span>
@@ -198,35 +174,26 @@ function renderLiga(ligaNr, teilnehmer) {
               </ul>
               ${sPrz && Number(sPrz) > 0 ? `<div class="streich-info">Streichresultat: ${sPrz}%</div>` : ''}
             </div>
-
             <div class="detail-box">
               <h4>Mannschaft <span>Pkt</span></h4>
               <ul>
-                ${t.mannschaft.map(m => `
-                  <li>
-                    <span class="item-name">${m.runde}</span>
-                    <span class="item-dots"></span>
-                    <span class="item-value">${m.punkte > 0 ? m.punkte : '-'}</span>
-                  </li>
-                `).join('')}
+                ${t.mannschaft.map(m => `<li>
+                  <span class="item-name">${m.runde}</span>
+                  <span class="item-dots"></span>
+                  <span class="item-value">${m.punkte > 0 ? m.punkte : '-'}</span>
+                </li>`).join('')}
               </ul>
             </div>
-
             <div class="detail-box">
               <h4>Auswärtschiessen <span>Pkt</span></h4>
-              ${t.auswaerts && t.auswaerts.length > 0 ? `
-                <ul>
-                  ${t.auswaerts.map(a => `
-                    <li>
-                      <span class="item-name">${a.name}</span>
-                      <span class="item-dots"></span>
-                      <span class="item-value">${a.punkte} Pkt.</span>
-                    </li>
-                  `).join('')}
-                </ul>
-              ` : '<p style="color:#999; font-size:0.9rem">Keine Resultate vorhanden.</p>'}
+              ${t.auswaerts && t.auswaerts.length > 0 ? `<ul>
+                ${t.auswaerts.map(a => `<li>
+                  <span class="item-name">${a.name}</span>
+                  <span class="item-dots"></span>
+                  <span class="item-value">${a.punkte} Pkt.</span>
+                </li>`).join('')}
+              </ul>` : '<p style="color:#999; font-size:0.9rem">Keine Resultate vorhanden.</p>'}
             </div>
-
           </div>
         </td>
       </tr>
@@ -236,28 +203,6 @@ function renderLiga(ligaNr, teilnehmer) {
   html += `</tbody></table></div>`;
   return html;
 }
-  html += `</tbody></table></div>`;
-  return html;
-}
+
 function toggle(id) {
   const el = document.getElementById(id);
-  const isVisible = el.style.display === "table-row";
-  document.querySelectorAll('.details').forEach(d => d.style.display = 'none');
-  el.style.display = isVisible ? "none" : "table-row";
-}
-
-fetch(API_URL)
-  .then(r => r.json())
-  .then(data => {
-    document.getElementById("content").innerHTML = 
-      renderLiga(1, data.liga1) + 
-      renderLiga(2, data.liga2);
-  })
-  .catch(err => {
-    console.error(err);
-    document.getElementById("content").innerHTML = "Fehler beim Laden der Daten.";
-  });
-</script>
-
-</body>
-</html>
