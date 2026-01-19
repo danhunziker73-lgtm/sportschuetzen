@@ -134,34 +134,30 @@ function renderLiga(ligaNr, teilnehmer) {
   teilnehmer.forEach((t, i) => {
     const detailId = `liga${ligaNr}_d${i}`;
     const auswaertsCount = t.auswaerts ? t.auswaerts.length : 0;
-    const sPrz = t.streichresultat_prz ? Number(t.streichresultat_prz).toFixed(2) : null;
+// ... innerhalb von teilnehmer.forEach ...
+const sPrz = t.streichresultat_prz ? Number(t.streichresultat_prz).toFixed(2) : null;
+let hatBereitsGestrichen = false; // Neu: Flag um nur ein Resultat zu markieren
 
-    html += `
-      <tr class="clickable" onclick="toggle('${detailId}')">
-        <td class="col-rang"><b>${t.rang}.</b></td>
-        <td class="col-name">${t.name}</td>
-        <td class="col-jg">${t.jahrgang || "-"}</td>
-        <td class="col-total"><b>${formatNum(t.total)}</b></td>
-        <td class="col-zusatz">${auswaertsCount > 0 ? `<span class="badge-auswaerts">${auswaertsCount} Auswärts</span>` : ""}</td>
-      </tr>
+html += `
+  <ul>
+    ${t.schiessen.map(s => {
+      const aktuellerWertPrz = Number(s.prozent).toFixed(2);
+      // Nur streichen, wenn der Wert übereinstimmt UND noch nicht gestrichen wurde
+      const isStreich = sPrz && aktuellerWertPrz === sPrz && !hatBereitsGestrichen;
+      
+      if (isStreich) {
+        hatBereitsGestrichen = true; // Sperre setzen
+      }
 
-      <tr id="${detailId}" class="details">
-        <td colspan="5">
-          <div class="detail-grid">
-            
-            <div class="detail-box">
-              <h4>Meisterschaft <span>Pkt (%)</span></h4>
-              <ul>
-                ${t.schiessen.map(s => {
-                  const isStreich = sPrz && Number(s.prozent).toFixed(2) === sPrz;
-                  return `
-                  <li class="${isStreich ? 'is-streich' : ''}">
-                    <span class="item-name">${s.name}</span>
-                    <span class="item-dots"></span>
-                    <span class="item-value">${s.punkte} <span class="prz-small">(${formatNum(s.prozent)}%)</span></span>
-                  </li>`;
-                }).join('')}
-              </ul>
+      return `
+      <li class="${isStreich ? 'is-streich' : ''}">
+        <span class="item-name">${s.name}</span>
+        <span class="item-dots"></span>
+        <span class="item-value">${s.punkte} <span class="prz-small">(${aktuellerWertPrz}%)</span></span>
+      </li>`;
+    }).join('')}
+  </ul>
+  `;
               ${sPrz ? `<div class="streich-info">Streichresultat: ${sPrz}%</div>` : ''}
             </div>
 
