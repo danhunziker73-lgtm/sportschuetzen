@@ -3,163 +3,298 @@
 <head>
 <meta charset="UTF-8">
 <title>Jahresmeisterschaft 2025</title>
+
 <style>
-  :root { --primary: #0f3a5d; --bg: #f6f7f8; --text: #333; --accent: #e74c3c; }
-  body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 20px; color: var(--text); }
-  h1 { margin-bottom: 5px; }
-  .subtitle { color: #666; margin-bottom: 30px; }
-  .liga { margin-bottom: 40px; }
-  table { width: 100%; border-collapse: collapse; background: white; box-shadow: 0 4px 12px rgba(0,0,0,0.08); border-radius: 8px; overflow: hidden; table-layout: fixed; }
-  thead { background: var(--primary); color: white; }
-  th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #eee; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .col-rang { width: 70px; }
-  .col-name { width: auto; }
-  .col-jg   { width: 80px; }
-  .col-total { width: 100px; }
-  .col-zusatz { width: 120px; }
-  .clickable { cursor: pointer; transition: background 0.2s; }
-  .clickable:hover { background: #f0f4f8; }
-  .details { display: none; background: #fdfdfd; }
-  .details td { white-space: normal; }
-  .detail-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 25px; padding: 20px; border-top: 2px solid var(--primary); }
-  .detail-box h4 { margin: 0 0 10px 0; padding-bottom: 5px; border-bottom: 2px solid #ddd; color: var(--primary); display: flex; justify-content: space-between; }
-  .detail-box ul { list-style: none; padding: 0; margin: 0; }
-  .detail-box li { display: flex; align-items: baseline; padding: 4px 0; font-size: 0.95rem; }
-  .item-name { flex-shrink: 0; }
-  .item-dots { flex-grow: 1; border-bottom: 1px dotted #ccc; margin: 0 8px; position: relative; top: -4px; }
-  .item-value { flex-shrink: 0; font-weight: 600; font-variant-numeric: tabular-nums; }
-  .prz-small { color: #666; font-size: 0.85rem; font-weight: normal; margin-left: 4px; }
-  .streich-info { background: #fff0f0; padding: 8px; border-radius: 4px; border-left: 4px solid var(--accent); margin-top: 15px; font-size: 0.9rem; font-weight: 600; }
-  .is-streich { color: var(--accent); text-decoration: line-through; opacity: 0.7; }
-  .badge-auswaerts { background: #e8f5e9; color: #2e7d32; padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; }
-  .aufsteiger { border-left: 5px solid #2ecc71 !important; background-color: #fafffa; }
-  .absteiger { border-left: 5px solid #e74c3c !important; background-color: #fffaf9; }
-  .status-label { font-size: 0.65rem; font-weight: bold; text-transform: uppercase; display: block; margin-top: 2px; }
-  .text-auf { color: #27ae60; }
-  .text-ab { color: #c0392b; }
+:root {
+  --primary:#0f3a5d;
+  --bg:#f6f7f8;
+  --text:#333;
+  --accent:#e74c3c;
+}
+
+body {
+  font-family:system-ui,-apple-system,sans-serif;
+  background:var(--bg);
+  margin:0;
+  padding:20px;
+  color:var(--text);
+}
+
+h1 { margin-bottom:5px; }
+.subtitle { color:#666; margin-bottom:30px; }
+
+.liga { margin-bottom:40px; }
+
+table {
+  width:100%;
+  border-collapse:collapse;
+  background:#fff;
+  box-shadow:0 4px 12px rgba(0,0,0,.08);
+  border-radius:8px;
+  overflow:hidden;
+  table-layout:fixed;
+}
+
+thead { background:var(--primary); color:#fff; }
+
+th,td {
+  padding:12px 15px;
+  text-align:left;
+  border-bottom:1px solid #eee;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+.col-rang { width:60px; }
+.col-jg { width:80px; }
+.col-total { width:100px; }
+.col-zusatz { width:120px; }
+
+.clickable { cursor:pointer; }
+.clickable:hover { background:#f0f4f8; }
+
+.details { display:none; background:#fdfdfd; }
+.details td { white-space:normal; }
+
+.detail-grid {
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(280px,1fr));
+  gap:25px;
+  padding:20px;
+  border-top:2px solid var(--primary);
+}
+
+.detail-box h4 {
+  margin:0 0 10px;
+  padding-bottom:5px;
+  border-bottom:2px solid #ddd;
+  color:var(--primary);
+  display:flex;
+  justify-content:space-between;
+}
+
+.detail-box ul { list-style:none; padding:0; margin:0; }
+
+.detail-box li {
+  display:flex;
+  align-items:baseline;
+  padding:4px 0;
+  font-size:.95rem;
+}
+
+.item-name { flex-shrink:0; }
+.item-dots {
+  flex-grow:1;
+  border-bottom:1px dotted #ccc;
+  margin:0 8px;
+  position:relative;
+  top:-4px;
+}
+.item-value {
+  flex-shrink:0;
+  font-weight:600;
+  font-variant-numeric:tabular-nums;
+}
+
+.prz-small { color:#666; font-size:.85rem; margin-left:4px; }
+
+.streich-info {
+  background:#fff0f0;
+  padding:8px;
+  border-radius:4px;
+  border-left:4px solid var(--accent);
+  margin-top:15px;
+  font-size:.9rem;
+  font-weight:600;
+}
+
+.is-streich {
+  color:var(--accent);
+  text-decoration:line-through;
+  opacity:.7;
+}
+
+.badge-auswaerts {
+  background:#e8f5e9;
+  color:#2e7d32;
+  padding:2px 6px;
+  border-radius:4px;
+  font-size:.75rem;
+  font-weight:bold;
+}
+
+.aufsteiger { border-left:5px solid #2ecc71; background:#fafffa; }
+.absteiger { border-left:5px solid #e74c3c; background:#fffaf9; }
+
+.status-label {
+  font-size:.65rem;
+  font-weight:bold;
+  text-transform:uppercase;
+  display:block;
+  margin-top:2px;
+}
+.text-auf { color:#27ae60; }
+.text-ab { color:#c0392b; }
+
+.error-box {
+  background:#fff0f0;
+  border-left:5px solid #e74c3c;
+  padding:15px;
+  border-radius:6px;
+}
 </style>
 </head>
-<body>
 
+<body>
 <h1>Jahresmeisterschaft 2025</h1>
 <div class="subtitle">Klicken Sie auf einen Schützen für die detaillierte Auswertung</div>
-
-<div id="content">Daten werden geladen...</div>
+<div id="content">Lade Daten…</div>
 
 <script>
 const API_URL = "https://jahresmeisterschaft-muhen.dan-hunziker73.workers.dev";
 
-function formatNum(val) {
-  if (val === null || val === undefined || isNaN(val)) return "0.00";
-  return Number(val).toFixed(2);
+function formatNum(v) {
+  const n = Number(v);
+  return Number.isFinite(n) ? n.toFixed(2) : "0.00";
 }
 
-function renderLiga(ligaNr, teilnehmer) {
-  if (!teilnehmer || teilnehmer.length === 0) return `<div class="liga"><h2>Liga ${ligaNr}</h2><p>Keine Daten vorhanden.</p></div>`;
-
-  let html = `
-    <div class="liga">
-      <h2>Liga ${ligaNr}</h2>
-      <table>
-        <thead>
-          <tr>
-            <th class="col-rang">Rang</th>
-            <th class="col-name">Name</th>
-            <th class="col-jg">Jg.</th>
-            <th class="col-total">Total</th>
-            <th class="col-zusatz">Zusatz</th>
-          </tr>
-        </thead>
-        <tbody>
-  `;
-
-  teilnehmer.forEach((t, i) => {
-    const detailId = `liga${ligaNr}_d${i}`;
-    const auswaertsCount = t.auswaerts ? t.auswaerts.length : 0;
-    const sPrz = (t.streichresultat_prz && Number(t.streichresultat_prz) > 0) ? Number(t.streichresultat_prz).toFixed(2) : null;
-    let hatBereitsGestrichen = false;
-
-    let statusClass = "";
-    let statusLabel = "";
-    if (ligaNr === 1 && i >= teilnehmer.length - 2) {
-      statusClass = "absteiger";
-      statusLabel = '<span class="status-label text-ab">Abstieg</span>';
-    } else if (ligaNr === 2 && i < 2) {
-      statusClass = "aufsteiger";
-      statusLabel = '<span class="status-label text-auf">Aufstieg</span>';
-    }
-
-    html += `
-      <tr class="clickable ${statusClass}" onclick="toggle('${detailId}')">
-        <td class="col-rang"><b>${t.rang}.</b>${statusLabel}</td>
-        <td class="col-name">${t.name}</td>
-        <td class="col-jg">${t.jahrgang || "-"}</td>
-        <td class="col-total"><b>${formatNum(t.total)}</b></td>
-        <td class="col-zusatz">${auswaertsCount > 0 ? '<span class="badge-auswaerts">' + auswaertsCount + ' Auswärts</span>' : ""}</td>
-      </tr>
-      <tr id="${detailId}" class="details">
-        <td colspan="5">
-          <div class="detail-grid">
-            <div class="detail-box">
-              <h4>Meisterschaft <span>Pkt (%)</span></h4>
-              <ul>
-                ${t.schiessen.map(s => {
-                  const aktuellerWertPrz = Number(s.prozent).toFixed(2);
-                  const isStreich = sPrz && aktuellerWertPrz === sPrz && !hatBereitsGestrichen;
-                  if (isStreich) hatBereitsGestrichen = true;
-                  return '<li class="' + (isStreich ? 'is-streich' : '') + '">' +
-                    '<span class="item-name">' + s.name + '</span>' +
-                    '<span class="item-dots"></span>' +
-                    '<span class="item-value">' + s.punkte + ' <span class="prz-small">(' + aktuellerWertPrz + '%)</span></span>' +
-                  '</li>';
-                }).join('')}
-              </ul>
-              ${sPrz ? '<div class="streich-info">Streichresultat: ' + sPrz + '%</div>' : ''}
-            </div>
-            <div class="detail-box">
-              <h4>Mannschaft <span>Pkt</span></h4>
-              <ul>
-                ${t.mannschaft.map(m => '<li><span class="item-name">' + m.runde + '</span><span class="item-dots"></span><span class="item-value">' + (m.punkte > 0 ? m.punkte : '-') + '</span></li>').join('')}
-              </ul>
-            </div>
-            <div class="detail-box">
-              <h4>Auswärtschiessen <span>Pkt</span></h4>
-              ${t.auswaerts && t.auswaerts.length > 0 ? '<ul>' + t.auswaerts.map(a => '<li><span class="item-name">' + a.name + '</span><span class="item-dots"></span><span class="item-value">' + a.punkte + ' Pkt.</span></li>').join('') + '</ul>' : '<p style="color:#999; font-size:0.9rem">Keine Resultate vorhanden.</p>'}
-            </div>
-          </div>
-        </td>
-      </tr>
-    `;
-  });
-
-  html += `</tbody></table></div>`;
-  return html;
+function safeArray(v) {
+  return Array.isArray(v) ? v : [];
 }
 
 function toggle(id) {
   const el = document.getElementById(id);
-  const isVisible = el.style.display === "table-row";
-  document.querySelectorAll('.details').forEach(d => d.style.display = 'none');
-  el.style.display = isVisible ? "none" : "table-row";
+  if (!el) return;
+  const visible = getComputedStyle(el).display === "table-row";
+  document.querySelectorAll(".details").forEach(d => d.style.display="none");
+  el.style.display = visible ? "none" : "table-row";
 }
 
-// Daten abrufen
-fetch(API_URL)
-  .then(r => {
-    if (!r.ok) throw new Error("Server Fehler");
-    return r.json();
-  })
-  .then(data => {
-    console.log("Daten empfangen:", data);
-    let finalHtml = "";
-    if (data.liga1) finalHtml += renderLiga(1, data.liga1);
-    if (data.liga2) finalHtml += renderLiga(2, data.liga2);
-    document.getElementById("content").innerHTML = finalHtml || "Keine Ligen gefunden.";
-  })
-  .catch(err => {
-    console.error("Fehler:", err);
-    document.getElementById("content").innerHTML = "Fehler beim Laden: " + err.message;
+function renderLiga(ligaNr, rawTeilnehmer) {
+  const teilnehmer = safeArray(rawTeilnehmer);
+
+  let html = `
+  <div class="liga">
+    <h2>Liga ${ligaNr}</h2>
+    <table>
+      <thead>
+        <tr>
+          <th class="col-rang">Rang</th>
+          <th>Name</th>
+          <th class="col-jg">Jg.</th>
+          <th class="col-total">Total</th>
+          <th class="col-zusatz">Zusatz</th>
+        </tr>
+      </thead>
+      <tbody>`;
+
+  teilnehmer.forEach((t,i)=>{
+    const detailId = `liga${ligaNr}_${i}`;
+    const schiessen = safeArray(t.schiessen);
+    const mannschaft = safeArray(t.mannschaft);
+    const auswaerts = safeArray(t.auswaerts);
+
+    const streichPrz = Number(t.streichresultat_prz);
+    let streichUsed = false;
+
+    let statusClass="", statusLabel="";
+    if (ligaNr===1 && i>=teilnehmer.length-2) {
+      statusClass="absteiger";
+      statusLabel='<span class="status-label text-ab">Abstieg</span>';
+    }
+    if (ligaNr===2 && i<2) {
+      statusClass="aufsteiger";
+      statusLabel='<span class="status-label text-auf">Aufstieg</span>';
+    }
+
+    html+=`
+    <tr class="clickable ${statusClass}" onclick="toggle('${detailId}')">
+      <td><b>${t.rang ?? "-"}</b>${statusLabel}</td>
+      <td>${t.name ?? "-"}</td>
+      <td>${t.jahrgang ?? "-"}</td>
+      <td><b>${formatNum(t.total)}</b></td>
+      <td>${auswaerts.length ? `<span class="badge-auswaerts">${auswaerts.length} Auswärts</span>`:""}</td>
+    </tr>
+
+    <tr id="${detailId}" class="details">
+      <td colspan="5">
+        <div class="detail-grid">
+
+          <div class="detail-box">
+            <h4>Meisterschaft <span>Pkt (%)</span></h4>
+            <ul>
+            ${schiessen.map(s=>{
+              const p = Number(s.prozent);
+              const isStreich =
+                Number.isFinite(streichPrz) &&
+                !streichUsed &&
+                Math.abs(p-streichPrz)<0.0001 &&
+                streichPrz>0;
+              if (isStreich) streichUsed=true;
+              return `
+              <li class="${isStreich?"is-streich":""}">
+                <span class="item-name">${s.name ?? "-"}</span>
+                <span class="item-dots"></span>
+                <span class="item-value">${s.punkte ?? "-"} <span class="prz-small">(${formatNum(p)}%)</span></span>
+              </li>`;
+            }).join("")}
+            </ul>
+            ${streichPrz>0?`<div class="streich-info">Streichresultat: ${formatNum(streichPrz)}%</div>`:""}
+          </div>
+
+          <div class="detail-box">
+            <h4>Mannschaft <span>Pkt</span></h4>
+            <ul>
+            ${mannschaft.map(m=>`
+              <li>
+                <span class="item-name">${m.runde ?? "-"}</span>
+                <span class="item-dots"></span>
+                <span class="item-value">${m.punkte>0?m.punkte:"-"}</span>
+              </li>`).join("")}
+            </ul>
+          </div>
+
+          <div class="detail-box">
+            <h4>Auswärtschiessen <span>Pkt</span></h4>
+            ${auswaerts.length?`
+            <ul>
+            ${auswaerts.map(a=>`
+              <li>
+                <span class="item-name">${a.name ?? "-"}</span>
+                <span class="item-dots"></span>
+                <span class="item-value">${a.punkte ?? 0} Pkt.</span>
+              </li>`).join("")}
+            </ul>`:`<p style="color:#999;font-size:.9rem">Keine Resultate vorhanden.</p>`}
+          </div>
+
+        </div>
+      </td>
+    </tr>`;
   });
+
+  html+="</tbody></table></div>";
+  return html;
+}
+
+(async ()=>{
+  try {
+    const controller=new AbortController();
+    setTimeout(()=>controller.abort(),8000);
+
+    const res=await fetch(API_URL,{signal:controller.signal});
+    if(!res.ok) throw new Error("HTTP "+res.status);
+
+    const data=await res.json();
+    document.getElementById("content").innerHTML =
+      renderLiga(1,data.liga1) + renderLiga(2,data.liga2);
+
+  } catch(e) {
+    console.error(e);
+    document.getElementById("content").innerHTML =
+      `<div class="error-box"><b>Fehler beim Laden der Daten</b><br>${e.message}</div>`;
+  }
+})();
 </script>
 </body>
 </html>
