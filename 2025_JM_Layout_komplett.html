@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<title>Jahresmeisterschaft 2025</title>
+
+<style>
+  :root {
+    --primary: #0f3a5d;
+    --bg: #f6f7f8;
+    --text: #333;
+    --accent: #e67e22; /* Farbe für Streichresultat */
+  }
+
+  body {
+    font-family: system-ui, -apple-system, sans-serif;
+    background: var(--bg);
+    margin: 0;
+    padding: 20px;
+    color: var(--text);
+  }
+
+  h1 { margin-bottom: 5px; }
+  .subtitle { color: #666; margin-bottom: 30px; }
+
+  .liga { margin-bottom: 40px; }
+  
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  thead { background: var(--primary); color: white; }
+  th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #eee; }
+
+  .clickable { cursor: pointer; transition: background 0.2s; }
+  .clickable:hover { background: #f0f4f8; }
+
+  /* Detail-Bereich Design */
+  .details { display: none; background: #fdfdfd; }
+  .detail-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 25px;
+    padding: 20px;
+    border-top: 2px solid var(--primary);
+  }
+
+  .detail-box h4 {
+    margin: 0 0 10px 0;
+    padding-bottom: 5px;
+    border-bottom: 2px solid #ddd;
+    color: var(--primary);
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .detail-box ul { list-style: none; padding: 0; margin: 0; }
+  .detail-box li {
+    display: flex;
+    justify-content: space-between;
+    padding: 4px 0;
+    font-size: 0.95rem;
+    border-bottom: 1px dotted #eee;
+  }
+
+  .val { font-weight: 600; }
+  .prz { color: #666; font-size: 0.85rem; margin-left: 5px; }
+  
+  /* Highlight Streichresultat */
+  .streich-info {
+    background: #fff3e0;
+    padding: 10px;
+    border-radius: 4px;
+    border-left: 4px solid var(--accent);
+    margin-bottom: 15px;
+    font-size: 0.9rem;
+  }
+
+  .badge-auswarts {
+    background: #e8f5e9;
+    color: #2e7d32;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: bold;
+  }
+</style>
+</head>
+<body>
+
+<h1>Jahresmeisterschaft 2025</h1>
+<div class="subtitle">Klicken Sie auf einen Schützen für die detaillierte Auswertung</div>
+
+<div id="content">Lade Daten...</div>
+
+<script>
+const API_URL = "https://jahresmeisterschaft-muhen.dan-hunziker73.workers.dev";
+
+function renderLiga(ligaNr, teilnehmer) {
+  let html = `
+    <div class="liga">
+      <h2>Liga ${ligaNr}</h2>
+      <table>
+        <thead>
+          <tr>
+            <th style="width: 50px">Rang</th>
+            <th>Name</th>
+            <th>Jg.</th>
+            <th>Total (S)</th>
+            <th>Zusatz</th>
+          </tr>
+        </thead>
+        <tbody>
+  `;
+
+  teilnehmer.forEach((t, i) => {
+    const detailId = `liga${ligaNr}_d${i}`;
+    const auswaertsCount = t.auswaerts ? t.auswaerts.length : 0;
+
+    html += `
+      <tr class="clickable" onclick="toggle('${detailId}')">
+        <td><b>${t.rang}.</b></td>
+        <td>${t.name}</td>
+        <td>${t.jahrgang || "-"}</td>
+        <td><b>${t.total}</b></td>
+        <td>${auswaertsCount > 0 ? `<span class="badge-auswarts">${auswaertsCount} Auswärts</span>` : ""}</td>
+      </tr>
+
+      <tr id="${detailId}" class="details">
+        <td colspan="5">
+          <div class="detail-grid">
+            
+            <div class="detail-box">
+              <h4>Meisterschaft <span>Pkt (%)</span></h4>
+              ${t.streichresultat_prz ? `
+                <div class="streich-info">
+                  Streichresultat: <b>${t.streichresultat_prz}%</b>
+                </div>` : ''}
+              <ul>
+                ${t.schiessen.map(s => `
+                  <li>
+                    <span>${s.name}</span>
+                    <span><span class="val">${s.punkte}</span> <span class="prz">(${s.prozent}%)</span></span>
+                  </li>
+                `).join('')}
+              </ul>
+            </div>
+
+            <div class="detail-box">
+              <h4>Mannschaft <span>Runden</span></h4>
+              <ul>
+                ${t.mannschaft.map(m => `
+                  <li>
+                    <span>${m.runde}</span>
+                    <span class="val">${m.punkte > 0 ? m.punkte : '-'}</span>
+                  </li>
+                `).join('')}
+              </ul>
+            </div>
+
+            <div class="detail-box">
+              <h4>Auswärtsschießen</h4>
+              ${t.auswaerts && t.auswaerts.length > 0 ? `
+                <ul>
+                  ${t.auswaerts.map(a => `
+                    <li>
+                      <span>${a.name}</span>
+                      <span class="val">${a.punkte}</span>
+                    </li>
+                  `).join('')}
+                </ul>
+              ` : '<p style="color:#999; font-size:0.9rem">Keine Resultate vorhanden.</p>'}
+            </div>
+
+          </div>
+        </td>
+      </tr>
+    `;
+  });
+
+  html += `</tbody></table></div>`;
+  return html;
+}
+
+function toggle(id) {
+  const el = document.getElementById(id);
+  const isVisible = el.style.display === "table-row";
+  
+  // Alle anderen Details schließen (optional, für bessere Übersicht)
+  document.querySelectorAll('.details').forEach(d => d.style.display = 'none');
+  
+  el.style.display = isVisible ? "none" : "table-row";
+}
+
+fetch(API_URL)
+  .then(r => r.json())
+  .then(data => {
+    document.getElementById("content").innerHTML = 
+      renderLiga(1, data.liga1) + 
+      renderLiga(2, data.liga2);
+  })
+  .catch(err => {
+    console.error(err);
+    document.getElementById("content").innerHTML = "Fehler beim Laden der Daten.";
+  });
+</script>
+
+</body>
+</html>
