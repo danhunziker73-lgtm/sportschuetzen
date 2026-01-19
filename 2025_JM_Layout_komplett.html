@@ -3,97 +3,38 @@
 <head>
 <meta charset="UTF-8">
 <title>Jahresmeisterschaft 2025</title>
-
 <style>
-  :root {
-    --primary: #0f3a5d;
-    --bg: #f6f7f8;
-    --text: #333;
-    --accent: #e74c3c; /* Rot für Streichresultat */
-  }
-
+  :root { --primary: #0f3a5d; --bg: #f6f7f8; --text: #333; --accent: #e74c3c; }
   body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 20px; color: var(--text); }
   h1 { margin-bottom: 5px; }
   .subtitle { color: #666; margin-bottom: 30px; }
-
   .liga { margin-bottom: 40px; }
-  
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    background: white;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-    border-radius: 8px;
-    overflow: hidden;
-    table-layout: fixed;
-  }
-
+  table { width: 100%; border-collapse: collapse; background: white; box-shadow: 0 4px 12px rgba(0,0,0,0.08); border-radius: 8px; overflow: hidden; table-layout: fixed; }
   thead { background: var(--primary); color: white; }
   th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #eee; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-
-  .col-rang { width: 60px; }
+  .col-rang { width: 70px; }
   .col-name { width: auto; }
   .col-jg   { width: 80px; }
   .col-total { width: 100px; }
   .col-zusatz { width: 120px; }
-
   .clickable { cursor: pointer; transition: background 0.2s; }
   .clickable:hover { background: #f0f4f8; }
-
   .details { display: none; background: #fdfdfd; }
   .details td { white-space: normal; }
-
-  .detail-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: 25px;
-    padding: 20px;
-    border-top: 2px solid var(--primary);
-  }
-
-  .detail-box h4 {
-    margin: 0 0 10px 0;
-    padding-bottom: 5px;
-    border-bottom: 2px solid #ddd;
-    color: var(--primary);
-    display: flex;
-    justify-content: space-between;
-  }
-
+  .detail-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 25px; padding: 20px; border-top: 2px solid var(--primary); }
+  .detail-box h4 { margin: 0 0 10px 0; padding-bottom: 5px; border-bottom: 2px solid #ddd; color: var(--primary); display: flex; justify-content: space-between; }
   .detail-box ul { list-style: none; padding: 0; margin: 0; }
-  
-  /* LEADER-LINE */
   .detail-box li { display: flex; align-items: baseline; padding: 4px 0; font-size: 0.95rem; }
   .item-name { flex-shrink: 0; }
   .item-dots { flex-grow: 1; border-bottom: 1px dotted #ccc; margin: 0 8px; position: relative; top: -4px; }
   .item-value { flex-shrink: 0; font-weight: 600; font-variant-numeric: tabular-nums; }
-
   .prz-small { color: #666; font-size: 0.85rem; font-weight: normal; margin-left: 4px; }
-  
-  .streich-info {
-    background: #fff0f0;
-    padding: 8px;
-    border-radius: 4px;
-    border-left: 4px solid var(--accent);
-    margin-top: 15px;
-    font-size: 0.9rem;
-    font-weight: 600;
-  }
-
+  .streich-info { background: #fff0f0; padding: 8px; border-radius: 4px; border-left: 4px solid var(--accent); margin-top: 15px; font-size: 0.9rem; font-weight: 600; }
   .is-streich { color: var(--accent); text-decoration: line-through; opacity: 0.7; }
   .badge-auswaerts { background: #e8f5e9; color: #2e7d32; padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; }
-
-  /* Markierung für Auf- und Absteiger */
   .aufsteiger { border-left: 5px solid #2ecc71 !important; background-color: #fafffa; }
   .absteiger { border-left: 5px solid #e74c3c !important; background-color: #fffaf9; }
-
-  .status-label { 
-    font-size: 0.65rem; 
-    font-weight: bold; 
-    text-transform: uppercase; 
-    display: block; 
-    margin-top: 2px;
-  }
+  .status-label { font-size: 0.65rem; font-weight: bold; text-transform: uppercase; display: block; margin-top: 2px; }
   .text-auf { color: #27ae60; }
   .text-ab { color: #c0392b; }
 </style>
@@ -103,7 +44,7 @@
 <h1>Jahresmeisterschaft 2025</h1>
 <div class="subtitle">Klicken Sie auf einen Schützen für die detaillierte Auswertung</div>
 
-<div id="content">Lade Daten...</div>
+<div id="content">Daten werden geladen...</div>
 
 <script>
 const API_URL = "https://jahresmeisterschaft-muhen.dan-hunziker73.workers.dev";
@@ -114,6 +55,8 @@ function formatNum(val) {
 }
 
 function renderLiga(ligaNr, teilnehmer) {
+  if (!teilnehmer || teilnehmer.length === 0) return `<div class="liga"><h2>Liga ${ligaNr}</h2><p>Keine Daten vorhanden.</p></div>`;
+
   let html = `
     <div class="liga">
       <h2>Liga ${ligaNr}</h2>
@@ -133,10 +76,9 @@ function renderLiga(ligaNr, teilnehmer) {
   teilnehmer.forEach((t, i) => {
     const detailId = `liga${ligaNr}_d${i}`;
     const auswaertsCount = t.auswaerts ? t.auswaerts.length : 0;
-    const sPrz = t.streichresultat_prz ? Number(t.streichresultat_prz).toFixed(2) : null;
+    const sPrz = (t.streichresultat_prz && Number(t.streichresultat_prz) > 0) ? Number(t.streichresultat_prz).toFixed(2) : null;
     let hatBereitsGestrichen = false;
 
-    // Auf- und Abstieg Logik
     let statusClass = "";
     let statusLabel = "";
     if (ligaNr === 1 && i >= teilnehmer.length - 2) {
@@ -153,7 +95,7 @@ function renderLiga(ligaNr, teilnehmer) {
         <td class="col-name">${t.name}</td>
         <td class="col-jg">${t.jahrgang || "-"}</td>
         <td class="col-total"><b>${formatNum(t.total)}</b></td>
-        <td class="col-zusatz">${auswaertsCount > 0 ? `<span class="badge-auswaerts">${auswaertsCount} Auswärts</span>` : ""}</td>
+        <td class="col-zusatz">${auswaertsCount > 0 ? '<span class="badge-auswaerts">' + auswaertsCount + ' Auswärts</span>' : ""}</td>
       </tr>
       <tr id="${detailId}" class="details">
         <td colspan="5">
@@ -163,36 +105,26 @@ function renderLiga(ligaNr, teilnehmer) {
               <ul>
                 ${t.schiessen.map(s => {
                   const aktuellerWertPrz = Number(s.prozent).toFixed(2);
-                  const isStreich = sPrz && aktuellerWertPrz === sPrz && !hatBereitsGestrichen && Number(sPrz) > 0;
+                  const isStreich = sPrz && aktuellerWertPrz === sPrz && !hatBereitsGestrichen;
                   if (isStreich) hatBereitsGestrichen = true;
-                  return `<li class="${isStreich ? 'is-streich' : ''}">
-                    <span class="item-name">${s.name}</span>
-                    <span class="item-dots"></span>
-                    <span class="item-value">${s.punkte} <span class="prz-small">(${aktuellerWertPrz}%)</span></span>
-                  </li>`;
+                  return '<li class="' + (isStreich ? 'is-streich' : '') + '">' +
+                    '<span class="item-name">' + s.name + '</span>' +
+                    '<span class="item-dots"></span>' +
+                    '<span class="item-value">' + s.punkte + ' <span class="prz-small">(' + aktuellerWertPrz + '%)</span></span>' +
+                  '</li>';
                 }).join('')}
               </ul>
-              ${sPrz && Number(sPrz) > 0 ? `<div class="streich-info">Streichresultat: ${sPrz}%</div>` : ''}
+              ${sPrz ? '<div class="streich-info">Streichresultat: ' + sPrz + '%</div>' : ''}
             </div>
             <div class="detail-box">
               <h4>Mannschaft <span>Pkt</span></h4>
               <ul>
-                ${t.mannschaft.map(m => `<li>
-                  <span class="item-name">${m.runde}</span>
-                  <span class="item-dots"></span>
-                  <span class="item-value">${m.punkte > 0 ? m.punkte : '-'}</span>
-                </li>`).join('')}
+                ${t.mannschaft.map(m => '<li><span class="item-name">' + m.runde + '</span><span class="item-dots"></span><span class="item-value">' + (m.punkte > 0 ? m.punkte : '-') + '</span></li>').join('')}
               </ul>
             </div>
             <div class="detail-box">
               <h4>Auswärtschiessen <span>Pkt</span></h4>
-              ${t.auswaerts && t.auswaerts.length > 0 ? `<ul>
-                ${t.auswaerts.map(a => `<li>
-                  <span class="item-name">${a.name}</span>
-                  <span class="item-dots"></span>
-                  <span class="item-value">${a.punkte} Pkt.</span>
-                </li>`).join('')}
-              </ul>` : '<p style="color:#999; font-size:0.9rem">Keine Resultate vorhanden.</p>'}
+              ${t.auswaerts && t.auswaerts.length > 0 ? '<ul>' + t.auswaerts.map(a => '<li><span class="item-name">' + a.name + '</span><span class="item-dots"></span><span class="item-value">' + a.punkte + ' Pkt.</span></li>').join('') + '</ul>' : '<p style="color:#999; font-size:0.9rem">Keine Resultate vorhanden.</p>'}
             </div>
           </div>
         </td>
@@ -206,3 +138,28 @@ function renderLiga(ligaNr, teilnehmer) {
 
 function toggle(id) {
   const el = document.getElementById(id);
+  const isVisible = el.style.display === "table-row";
+  document.querySelectorAll('.details').forEach(d => d.style.display = 'none');
+  el.style.display = isVisible ? "none" : "table-row";
+}
+
+// Daten abrufen
+fetch(API_URL)
+  .then(r => {
+    if (!r.ok) throw new Error("Server Fehler");
+    return r.json();
+  })
+  .then(data => {
+    console.log("Daten empfangen:", data);
+    let finalHtml = "";
+    if (data.liga1) finalHtml += renderLiga(1, data.liga1);
+    if (data.liga2) finalHtml += renderLiga(2, data.liga2);
+    document.getElementById("content").innerHTML = finalHtml || "Keine Ligen gefunden.";
+  })
+  .catch(err => {
+    console.error("Fehler:", err);
+    document.getElementById("content").innerHTML = "Fehler beim Laden: " + err.message;
+  });
+</script>
+</body>
+</html>
