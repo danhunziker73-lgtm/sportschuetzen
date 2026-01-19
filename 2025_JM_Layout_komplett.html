@@ -9,17 +9,10 @@
     --primary: #0f3a5d;
     --bg: #f6f7f8;
     --text: #333;
-    --accent: #e67e22; /* Farbe für Streichresultat */
+    --accent: #e74c3c; /* Rot für Streichresultat */
   }
 
-  body {
-    font-family: system-ui, -apple-system, sans-serif;
-    background: var(--bg);
-    margin: 0;
-    padding: 20px;
-    color: var(--text);
-  }
-
+  body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 20px; color: var(--text); }
   h1 { margin-bottom: 5px; }
   .subtitle { color: #666; margin-bottom: 30px; }
 
@@ -32,19 +25,28 @@
     box-shadow: 0 4px 12px rgba(0,0,0,0.08);
     border-radius: 8px;
     overflow: hidden;
+    table-layout: fixed; /* Erzwingt gleiche Spaltenbreiten in beiden Ligen */
   }
 
   thead { background: var(--primary); color: white; }
-  th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #eee; }
+  th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #eee; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  /* Spaltenbreiten fixieren für Symmetrie */
+  .col-rang { width: 60px; }
+  .col-name { width: auto; }
+  .col-jg   { width: 80px; }
+  .col-total { width: 100px; }
+  .col-zusatz { width: 120px; }
 
   .clickable { cursor: pointer; transition: background 0.2s; }
   .clickable:hover { background: #f0f4f8; }
 
-  /* Detail-Bereich Design */
   .details { display: none; background: #fdfdfd; }
+  .details td { white-space: normal; } /* Erlaubt Zeilenumbruch in Details */
+
   .detail-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
     gap: 25px;
     padding: 20px;
     border-top: 2px solid var(--primary);
@@ -60,35 +62,41 @@
   }
 
   .detail-box ul { list-style: none; padding: 0; margin: 0; }
+  
+  /* LEADER-LINE START - Hier kannst du die gepunktete Linie anpassen oder entfernen */
   .detail-box li {
     display: flex;
-    justify-content: space-between;
+    align-items: baseline;
     padding: 4px 0;
     font-size: 0.95rem;
-    border-bottom: 1px dotted #eee;
   }
+  .item-name { flex-shrink: 0; }
+  .item-dots {
+    flex-grow: 1;
+    border-bottom: 1px dotted #ccc;
+    margin: 0 8px;
+    position: relative;
+    top: -4px;
+  }
+  .item-value { flex-shrink: 0; font-weight: 600; font-variant-numeric: tabular-nums; }
+  /* LEADER-LINE END */
 
-  .val { font-weight: 600; }
-  .prz { color: #666; font-size: 0.85rem; margin-left: 5px; }
+  .prz-small { color: #666; font-size: 0.85rem; font-weight: normal; margin-left: 4px; }
   
-  /* Highlight Streichresultat */
   .streich-info {
-    background: #fff3e0;
-    padding: 10px;
+    background: #fff0f0;
+    padding: 8px;
     border-radius: 4px;
     border-left: 4px solid var(--accent);
-    margin-bottom: 15px;
+    margin-top: 15px;
     font-size: 0.9rem;
+    font-weight: 600;
   }
 
-  .badge-auswarts {
-    background: #e8f5e9;
-    color: #2e7d32;
-    padding: 2px 6px;
-    border-radius: 4px;
-    font-size: 0.75rem;
-    font-weight: bold;
-  }
+  /* Gestrichenes Resultat */
+  .is-streich { color: var(--accent); text-decoration: line-through; opacity: 0.7; }
+
+  .badge-auswaerts { background: #e8f5e9; color: #2e7d32; padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; }
 </style>
 </head>
 <body>
@@ -101,6 +109,11 @@
 <script>
 const API_URL = "https://jahresmeisterschaft-muhen.dan-hunziker73.workers.dev";
 
+function formatNum(val) {
+  if (val === null || val === undefined || isNaN(val)) return "0.00";
+  return Number(val).toFixed(2);
+}
+
 function renderLiga(ligaNr, teilnehmer) {
   let html = `
     <div class="liga">
@@ -108,11 +121,11 @@ function renderLiga(ligaNr, teilnehmer) {
       <table>
         <thead>
           <tr>
-            <th style="width: 50px">Rang</th>
-            <th>Name</th>
-            <th>Jg.</th>
-            <th>Total (S)</th>
-            <th>Zusatz</th>
+            <th class="col-rang">Rang</th>
+            <th class="col-name">Name</th>
+            <th class="col-jg">Jg.</th>
+            <th class="col-total">Total</th>
+            <th class="col-zusatz">Zusatz</th>
           </tr>
         </thead>
         <tbody>
@@ -121,14 +134,15 @@ function renderLiga(ligaNr, teilnehmer) {
   teilnehmer.forEach((t, i) => {
     const detailId = `liga${ligaNr}_d${i}`;
     const auswaertsCount = t.auswaerts ? t.auswaerts.length : 0;
+    const sPrz = t.streichresultat_prz ? Number(t.streichresultat_prz).toFixed(2) : null;
 
     html += `
       <tr class="clickable" onclick="toggle('${detailId}')">
-        <td><b>${t.rang}.</b></td>
-        <td>${t.name}</td>
-        <td>${t.jahrgang || "-"}</td>
-        <td><b>${t.total}</b></td>
-        <td>${auswaertsCount > 0 ? `<span class="badge-auswarts">${auswaertsCount} Auswärts</span>` : ""}</td>
+        <td class="col-rang"><b>${t.rang}.</b></td>
+        <td class="col-name">${t.name}</td>
+        <td class="col-jg">${t.jahrgang || "-"}</td>
+        <td class="col-total"><b>${formatNum(t.total)}</b></td>
+        <td class="col-zusatz">${auswaertsCount > 0 ? `<span class="badge-auswaerts">${auswaertsCount} Auswärts</span>` : ""}</td>
       </tr>
 
       <tr id="${detailId}" class="details">
@@ -137,40 +151,42 @@ function renderLiga(ligaNr, teilnehmer) {
             
             <div class="detail-box">
               <h4>Meisterschaft <span>Pkt (%)</span></h4>
-              ${t.streichresultat_prz ? `
-                <div class="streich-info">
-                  Streichresultat: <b>${t.streichresultat_prz}%</b>
-                </div>` : ''}
               <ul>
-                ${t.schiessen.map(s => `
-                  <li>
-                    <span>${s.name}</span>
-                    <span><span class="val">${s.punkte}</span> <span class="prz">(${s.prozent}%)</span></span>
-                  </li>
-                `).join('')}
+                ${t.schiessen.map(s => {
+                  const isStreich = sPrz && Number(s.prozent).toFixed(2) === sPrz;
+                  return `
+                  <li class="${isStreich ? 'is-streich' : ''}">
+                    <span class="item-name">${s.name}</span>
+                    <span class="item-dots"></span>
+                    <span class="item-value">${s.punkte} <span class="prz-small">(${formatNum(s.prozent)}%)</span></span>
+                  </li>`;
+                }).join('')}
               </ul>
+              ${sPrz ? `<div class="streich-info">Streichresultat: ${sPrz}%</div>` : ''}
             </div>
 
             <div class="detail-box">
-              <h4>Mannschaft <span>Runden</span></h4>
+              <h4>Mannschaft <span>Pkt</span></h4>
               <ul>
                 ${t.mannschaft.map(m => `
                   <li>
-                    <span>${m.runde}</span>
-                    <span class="val">${m.punkte > 0 ? m.punkte : '-'}</span>
+                    <span class="item-name">${m.runde}</span>
+                    <span class="item-dots"></span>
+                    <span class="item-value">${m.punkte > 0 ? m.punkte : '-'}</span>
                   </li>
                 `).join('')}
               </ul>
             </div>
 
             <div class="detail-box">
-              <h4>Auswärtsschießen</h4>
+              <h4>Auswärtschiessen <span>Pkt</span></h4>
               ${t.auswaerts && t.auswaerts.length > 0 ? `
                 <ul>
                   ${t.auswaerts.map(a => `
                     <li>
-                      <span>${a.name}</span>
-                      <span class="val">${a.punkte}</span>
+                      <span class="item-name">${a.name}</span>
+                      <span class="item-dots"></span>
+                      <span class="item-value">${a.punkte} Pkt.</span>
                     </li>
                   `).join('')}
                 </ul>
@@ -190,10 +206,7 @@ function renderLiga(ligaNr, teilnehmer) {
 function toggle(id) {
   const el = document.getElementById(id);
   const isVisible = el.style.display === "table-row";
-  
-  // Alle anderen Details schließen (optional, für bessere Übersicht)
   document.querySelectorAll('.details').forEach(d => d.style.display = 'none');
-  
   el.style.display = isVisible ? "none" : "table-row";
 }
 
