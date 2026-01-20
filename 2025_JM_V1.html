@@ -1,46 +1,3 @@
-<!DOCTYPE html>
-<html lang="de">
-<head>
-<meta charset="UTF-8">
-<title>Jahresmeisterschaft 2025</title>
-
-<style>
-:root{--primary:#0f3a5d;--bg:#f6f7f8;--text:#333;--accent:#e74c3c}
-body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg);margin:0;padding:20px;color:var(--text)}
-h1{margin-bottom:5px}
-.subtitle{color:#666;margin-bottom:30px}
-.liga{margin-bottom:40px}
-table{width:100%;border-collapse:collapse;background:#fff;box-shadow:0 4px 12px rgba(0,0,0,.08);border-radius:8px;overflow:hidden;table-layout:fixed}
-thead{background:var(--primary);color:#fff}
-th,td{padding:12px 15px;text-align:left;border-bottom:1px solid #eee;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.col-rang{width:60px}.col-jg{width:80px}.col-total{width:100px}.col-zusatz{width:120px}
-.clickable{cursor:pointer}.clickable:hover{background:#f0f4f8}
-.details{display:none;background:#fdfdfd}.details td{white-space:normal}
-.detail-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:25px;padding:20px;border-top:2px solid var(--primary)}
-.detail-box h4{margin:0 0 10px;padding-bottom:5px;border-bottom:2px solid #ddd;color:var(--primary);display:flex;justify-content:space-between}
-.detail-box ul{list-style:none;padding:0;margin:0}
-.detail-box li{display:flex;align-items:baseline;padding:4px 0;font-size:.95rem}
-.item-name{flex-shrink:0}
-.item-dots{flex-grow:1;border-bottom:1px dotted #ccc;margin:0 8px;position:relative;top:-4px}
-.item-value{flex-shrink:0;font-weight:600;font-variant-numeric:tabular-nums}
-.prz-small{color:#666;font-size:.85rem;margin-left:4px}
-.streich-info{background:#fff0f0;padding:8px;border-radius:4px;border-left:4px solid var(--accent);margin-top:15px;font-size:.9rem;font-weight:600}
-.is-streich{color:var(--accent);text-decoration:line-through;opacity:.7}
-.badge-auswaerts{background:#e8f5e9;color:#2e7d32;padding:2px 6px;border-radius:4px;font-size:.75rem;font-weight:bold}
-.aufsteiger{border-left:5px solid #2ecc71;background:#fafffa}
-.absteiger{border-left:5px solid #e74c3c;background:#fffaf9}
-.status-label{font-size:.65rem;font-weight:bold;text-transform:uppercase;display:block;margin-top:2px}
-.text-auf{color:#27ae60}.text-ab{color:#c0392b}
-.error-box{background:#fff0f0;border-left:5px solid #e74c3c;padding:15px;border-radius:6px}
-</style>
-</head>
-
-<body>
-<h1>Jahresmeisterschaft 2025</h1>
-<div class="subtitle">Klicken Sie auf einen Schützen für die detaillierte Auswertung</div>
-<div id="content">Lade Daten…</div>
-
-<script>
 (function(){
   var API_URL="https://jahresmeisterschaft-muhen.dan-hunziker73.workers.dev";
 
@@ -53,7 +10,6 @@ th,td{padding:12px 15px;text-align:left;border-bottom:1px solid #eee;overflow:hi
     return Object.prototype.toString.call(v)==="[object Array]"?v:[];
   }
 
-  // Mehrfach aufklappbar – nur diese Zeile toggeln
   window.toggle=function(id){
     var el=document.getElementById(id);
     if(!el)return;
@@ -72,7 +28,6 @@ th,td{padding:12px 15px;text-align:left;border-bottom:1px solid #eee;overflow:hi
       var sch=safeArray(t.schiessen);
       var ma=safeArray(t.mannschaft);
       var au=safeArray(t.auswaerts);
-
       var streichPrz=Number(t.streichresultat_prz);
       var used=false;
 
@@ -90,44 +45,43 @@ th,td{padding:12px 15px;text-align:left;border-bottom:1px solid #eee;overflow:hi
         '<td>'+(au.length?'<span class="badge-auswaerts">'+au.length+' Auswärts</span>':"")+'</td>'+
         '</tr>';
 
-      html+='<tr id="'+id+'" class="details"><td colspan="5"><div class="detail-grid">';
+      html+='<tr id="' + id + '" class="details"><td colspan="5"><div class="detail-grid">';
 
-      // Meisterschaft – Pkt (%) linksbündig mit Resultat darunter
-      html+='<div class="detail-box"><h4>Meisterschaft <span>Pkt (%)</span></h4><ul>';
+      // Meisterschaft - Ausrichtung linksbündig unter Header
+      html+='<div class="detail-box"><h4>Meisterschaft <span style="min-width:95px; text-align:left">Pkt (%)</span></h4><ul>';
       for(var j=0;j<sch.length;j++){
         var s=sch[j]||{};
         var p=Number(s.prozent);
         var isStreich=isFinite(streichPrz)&&!used&&Math.abs(p-streichPrz)<0.0001&&streichPrz>0;
         if(isStreich)used=true;
         html+='<li class="'+(isStreich?"is-streich":"")+'">'+
-          '<div class="item-name">'+(s.name||"-")+'</div>'+
-          '<div class="item-value">'+(s.punkte||"-")+
-          ' <span class="prz-small">('+formatNum(p)+'%)</span></div>'+
-        '</li>';
+          '<span class="item-name">'+(s.name||"-")+'</span>'+
+          '<span class="item-dots"></span>'+
+          '<span class="item-value" style="min-width:95px; text-align:left">'+(s.punkte||"-")+
+          ' <span class="prz-small">('+formatNum(p)+'%)</span></span></li>';
       }
       html+='</ul>'+(streichPrz>0?'<div class="streich-info">Streichresultat: '+formatNum(streichPrz)+'%</div>':"")+'</div>';
 
-      // Mannschaft – Runde 1–7, Pkt auf Höhe
-      html+='<div class="detail-box"><h4>Mannschaft <span>Pkt</span></h4><ul>';
-      for(var r=1;r<=7;r++){
-        var m=ma.find(m=>m.runde==r)||{};
-        html+='<li>'+
-          '<span class="item-name">Runde '+r+'</span>'+
-          '<span class="item-value">'+(m.punkte>0?m.punkte:"-")+'</span>'+
-        '</li>';
+      // Mannschaft - Fix Runde 1 bis 7
+      html+='<div class="detail-box"><h4>Mannschaft <span style="min-width:45px; text-align:left">Pkt</span></h4><ul>';
+      for(var r=1; r<=7; r++){
+        var mMatch = ma.find(function(item){ return (item.runde||"").indexOf("#"+r) !== -1; });
+        var pktDisp = (mMatch && mMatch.punkte > 0) ? mMatch.punkte : "-";
+        html+='<li><span class="item-name">Runde '+r+'</span>'+
+          '<span class="item-dots"></span><span class="item-value" style="min-width:45px; text-align:left">'+
+          pktDisp+'</span></li>';
       }
       html+='</ul></div>';
 
-      // Auswärtsschiessen – Pkt linksbündig, ohne "Pkt."
-      html+='<div class="detail-box"><h4>Auswärtsschiessen <span>Pkt</span></h4>';
+      // Auswärtschiessen - Ausrichtung linksbündig unter Header & "Pkt." entfernt
+      html+='<div class="detail-box"><h4>Auswärtschiessen <span style="min-width:45px; text-align:left">Pkt</span></h4>';
       if(au.length){
         html+='<ul>';
-        for(var j=0;j<au.length;j++){
+        for(j=0;j<au.length;j++){
           var a=au[j]||{};
-          html+='<li>'+
-            '<span class="item-name">'+(a.name||"-")+'</span>'+
-            '<span class="item-value">'+(a.punkte||0)+'</span>'+
-          '</li>';
+          html+='<li><span class="item-name">'+(a.name||"-")+
+            '</span><span class="item-dots"></span><span class="item-value" style="min-width:45px; text-align:left">'+
+            (a.punkte||0)+'</span></li>';
         }
         html+='</ul>';
       } else {
@@ -135,7 +89,6 @@ th,td{padding:12px 15px;text-align:left;border-bottom:1px solid #eee;overflow:hi
       }
       html+='</div></div></td></tr>';
     }
-
     return html+'</tbody></table></div>';
   }
 
@@ -144,21 +97,15 @@ th,td{padding:12px 15px;text-align:left;border-bottom:1px solid #eee;overflow:hi
   xhr.onreadystatechange=function(){
     if(xhr.readyState!==4)return;
     if(xhr.status!==200){
-      document.getElementById("content").innerHTML=
-        '<div class="error-box"><b>Fehler beim Laden</b><br>HTTP '+xhr.status+'</div>';
+      document.getElementById("content").innerHTML='<div class="error-box"><b>Fehler beim Laden</b></div>';
       return;
     }
     try{
       var data=JSON.parse(xhr.responseText);
-      document.getElementById("content").innerHTML=
-        renderLiga(1,data.liga1)+renderLiga(2,data.liga2);
+      document.getElementById("content").innerHTML=renderLiga(1,data.liga1)+renderLiga(2,data.liga2);
     }catch(e){
-      document.getElementById("content").innerHTML=
-        '<div class="error-box"><b>Ungültige API-Daten</b></div>';
+      document.getElementById("content").innerHTML='<div class="error-box"><b>Ungültige API-Daten</b></div>';
     }
   };
   xhr.send();
 })();
-</script>
-</body>
-</html>
