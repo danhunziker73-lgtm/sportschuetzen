@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!DOCTYPE html>1,2
 <html lang="de">
 <head>
 <meta charset="UTF-8">
@@ -41,10 +41,63 @@ th,td{padding:12px 15px;text-align:left;border-bottom:1px solid #eee;overflow:hi
 .status-label{font-size:.65rem;font-weight:bold;text-transform:uppercase;display:block;margin-top:2px}
 .text-auf{color:#27ae60}.text-ab{color:#c0392b}
 .error-box{background:#fff0f0;border-left:5px solid #e74c3c;padding:15px;border-radius:6px}
+
+.app-bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 64px;
+  background: #0f3a5d;
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  box-shadow: 0 -4px 12px rgba(0,0,0,.25);
+  z-index: 999;
+}
+
+.app-bottom-nav a {
+  color: #cbd5e1;
+  text-decoration: none;
+  font-size: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.app-bottom-nav a span {
+  font-size: 0.65rem;
+}
+
+.app-bottom-nav a.active {
+  color: #ffffff;
+  font-weight: 600;
+}
+
+body {
+  padding-bottom: 80px; /* Platz für Nav */
+}
+
+
+
+
+
+  
 </style>
 </head>
 
 <body>
+<nav class="app-bottom-nav">
+  <a href="index.html">🏠<span>Übersicht</span></a>
+  <a href="jm.html" class="active">🏆<span>JM</span></a>
+  <a href="mm.html">👥<span>MM</span></a>
+  <a href="gm.html">🎯<span>GM</span></a>
+  <a href="upload.html">📷<span>Upload</span></a>
+</nav>
+
+
+  
 <h1>Jahresmeisterschaft 2025</h1>
 <div class="subtitle">Tippen Sie auf einen Schützen für die Detailauswertung</div>
 <div id="content">Lade Daten…</div>
@@ -62,13 +115,19 @@ if ("serviceWorker" in navigator) {
   function formatNum(v){var n=Number(v);return isFinite(n)?n.toFixed(2):"0.00";}
   function safeArray(v){return Object.prototype.toString.call(v)==="[object Array]"?v:[];}
 
-  window.toggle=function(id){
-    var el=document.getElementById(id);
-    if(!el)return;
-    var rows=document.getElementsByClassName("details");
-    for(var i=0;i<rows.length;i++)rows[i].style.display="none";
-    el.style.display=(el.style.display==="table-row")?"none":"table-row";
-  };
+  window.toggle = function (id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+
+  // alle Details schliessen
+  const rows = document.querySelectorAll(".details");
+  rows.forEach(r => r.style.display = "none");
+
+  // aktuelles toggeln
+  const isHidden = el.style.display === "" || el.style.display === "none";
+  el.style.display = isHidden ? "table-row" : "none";
+};
+ 
 
   function renderLiga(ligaNr,raw){
     var teilnehmer=safeArray(raw);
