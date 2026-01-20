@@ -53,13 +53,10 @@ th,td{padding:12px 15px;text-align:left;border-bottom:1px solid #eee;overflow:hi
     return Object.prototype.toString.call(v)==="[object Array]"?v:[];
   }
 
-  // ──────────────────────────────────────────────
-  // Änderung: Mehrere Details können gleichzeitig offen sein
-  // ──────────────────────────────────────────────
+  // Mehrfach aufklappbar – nur diese Zeile toggeln
   window.toggle = function(id) {
     var el = document.getElementById(id);
     if (!el) return;
-    // Nur diese eine Zeile toggeln – andere bleiben unberührt
     el.style.display = (el.style.display === "table-row") ? "none" : "table-row";
   };
 
@@ -80,8 +77,8 @@ th,td{padding:12px 15px;text-align:left;border-bottom:1px solid #eee;overflow:hi
       var used=false;
 
       var statusClass="",statusLabel="";
-      if(ligaNr===1&&i>=teilnehmer.length-2){statusClass="absteiger";statusLabel='<span class="status-label text-ab">Abstieg</span>';}
-      if(ligaNr===2&&i<2){statusClass="aufsteiger";statusLabel='<span class="status-label text-auf">Aufstieg</span>';}
+      if(ligaNr===1&&i>=teilnehmer.length-2){statusClass="absteiger";statusLabel='<div class="status-label text-ab">Abstieg</div>';}
+      if(ligaNr===2&&i<2){statusClass="aufsteiger";statusLabel='<div class="status-label text-auf">Aufstieg</div>';}
 
       var id="liga"+ligaNr+"_"+i;
 
@@ -95,9 +92,7 @@ th,td{padding:12px 15px;text-align:left;border-bottom:1px solid #eee;overflow:hi
 
       html+='<tr id="'+id+'" class="details"><td colspan="5"><div class="detail-grid">';
 
-      // ──────────────────────────────────────────────
-      // Meisterschaft – Pkt (%) linksbündig zum Resultat
-      // ──────────────────────────────────────────────
+      // Meisterschaft – Pkt (%) linksbündig mit Resultat darunter
       html+='<div class="detail-box"><h4>Meisterschaft</h4><ul>';
       for(var j=0;j<sch.length;j++){
         var s=sch[j]||{};
@@ -105,15 +100,14 @@ th,td{padding:12px 15px;text-align:left;border-bottom:1px solid #eee;overflow:hi
         var isStreich=isFinite(streichPrz)&&!used&&Math.abs(p-streichPrz)<0.0001&&streichPrz>0;
         if(isStreich)used=true;
         html+='<li class="'+(isStreich?"is-streich":"")+'">'+
-          '<span class="item-name">'+(s.name||"-")+'</span>'+
-          '<span class="item-value">'+(s.punkte||"-")+
-          ' <span class="prz-small">('+formatNum(p)+'%)</span></span></li>';
+          '<div class="item-name">'+(s.name||"-")+'</div>'+
+          '<div class="item-value">'+(s.punkte||"-")+
+          ' <span class="prz-small">('+formatNum(p)+'%)</span></div>'+
+        '</li>';
       }
       html+='</ul>'+(streichPrz>0?'<div class="streich-info">Streichresultat: '+formatNum(streichPrz)+'%</div>':"")+'</div>';
 
-      // ──────────────────────────────────────────────
-      // Mannschaft – fix Runde 1–7
-      // ──────────────────────────────────────────────
+      // Mannschaft – fix Runde 1–7, Pkt auf Höhe
       html+='<div class="detail-box"><h4>Mannschaft</h4><ul>';
       for(var r=1;r<=7;r++){
         var m=ma.find(m=>m.runde==r)||{};
@@ -124,9 +118,7 @@ th,td{padding:12px 15px;text-align:left;border-bottom:1px solid #eee;overflow:hi
       }
       html+='</ul></div>';
 
-      // ──────────────────────────────────────────────
-      // Auswärtsschiessen – Pkt linksbündig, ohne "Pkt" dahinter
-      // ──────────────────────────────────────────────
+      // Auswärtsschiessen – Pkt linksbündig, ohne "Pkt"
       html+='<div class="detail-box"><h4>Auswärtsschiessen</h4>';
       if(au.length){
         html+='<ul>';
