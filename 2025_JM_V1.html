@@ -13,6 +13,7 @@
   window.toggle=function(id){
     var el=document.getElementById(id);
     if(!el)return;
+    // Mehrfachauswahl erlauben: Die Zeile zum Schließen anderer Reihen wurde entfernt
     el.style.display=(el.style.display==="table-row")?"none":"table-row";
   };
 
@@ -37,6 +38,7 @@
 
       var id="liga"+ligaNr+"_"+i;
 
+      // Hauptzeile
       html+='<tr class="clickable '+statusClass+'" onclick="toggle(\''+id+'\')">'+
         '<td><b>'+(t.rang!=null?t.rang:"-")+'</b>'+statusLabel+'</td>'+
         '<td>'+(t.name!=null?t.name:"-")+'</td>'+
@@ -45,13 +47,11 @@
         '<td>'+(au.length?'<span class="badge-auswaerts">'+au.length+' Auswärts</span>':"")+'</td>'+
         '</tr>';
 
+      // Detailzeile
       html+='<tr id="'+id+'" class="details"><td colspan="5"><div class="detail-grid">';
 
-      // Zentrales Style für die Pkt-Spalte: Erzwingt Linksbündigkeit und gleiche Breite
-      var valStyle = 'display:inline-block; min-width:100px; text-align:left; font-weight:600;';
-
-      // 1. MEISTERSCHAFT
-      html+='<div class="detail-box"><h4>Meisterschaft <span style="'+valStyle+'">Pkt (%)</span></h4><ul>';
+      // --- Meisterschaft ---
+      html+='<div class="detail-box"><h4>Meisterschaft <span style="min-width:100px; display:inline-block">Pkt (%)</span></h4><ul>';
       for(var j=0;j<sch.length;j++){
         var s=sch[j]||{};
         var p=Number(s.prozent);
@@ -60,31 +60,31 @@
         html+='<li class="'+(isStreich?"is-streich":"")+'">'+
           '<span class="item-name">'+(s.name||"-")+'</span>'+
           '<span class="item-dots"></span>'+
-          '<span class="item-value" style="'+valStyle+'">'+(s.punkte||"-")+
+          '<span class="item-value" style="min-width:100px; display:inline-block">'+(s.punkte||"-")+
           ' <span class="prz-small">('+formatNum(p)+'%)</span></span></li>';
       }
       html+='</ul>'+(streichPrz>0?'<div class="streich-info">Streichresultat: '+formatNum(streichPrz)+'%</div>':"")+'</div>';
 
-      // 2. MANNSCHAFT (Fix Runde 1 bis 7)
-      html+='<div class="detail-box"><h4>Mannschaft <span style="'+valStyle+'">Pkt</span></h4><ul>';
+      // --- Mannschaft (Runde 1-7 fix) ---
+      html+='<div class="detail-box"><h4>Mannschaft <span style="min-width:40px; display:inline-block">Pkt</span></h4><ul>';
       for(var r=1; r<=7; r++){
         var mMatch = ma.find(function(item){ return (item.runde||"").indexOf("#"+r) !== -1; });
         var pktDisp = (mMatch && mMatch.punkte > 0) ? mMatch.punkte : "-";
         html+='<li><span class="item-name">Runde '+r+'</span>'+
-          '<span class="item-dots"></span><span class="item-value" style="'+valStyle+'">'+
+          '<span class="item-dots"></span><span class="item-value" style="min-width:40px; display:inline-block">'+
           pktDisp+'</span></li>';
       }
       html+='</ul></div>';
 
-      // 3. AUSWÄRTSSCHIESSEN
-      html+='<div class="detail-box"><h4>Auswärtschiessen <span style="'+valStyle+'">Pkt</span></h4>';
+      // --- Auswärtschiessen ---
+      html+='<div class="detail-box"><h4>Auswärtschiessen <span style="min-width:40px; display:inline-block">Pkt</span></h4>';
       if(au.length){
         html+='<ul>';
         for(j=0;j<au.length;j++){
           var a=au[j]||{};
           html+='<li><span class="item-name">'+(a.name||"-")+
-            '</span><span class="item-dots"></span><span class="item-value" style="'+valStyle+'">'+
-            (a.punkte||0)+'</span></li>';
+            '</span><span class="item-dots"></span><span class="item-value" style="min-width:40px; display:inline-block">'+
+            (a.punkte||0)+'</span></li>'; // "Pkt." hier entfernt
         }
         html+='</ul>';
       } else {
@@ -108,7 +108,7 @@
       var data=JSON.parse(xhr.responseText);
       document.getElementById("content").innerHTML=renderLiga(1,data.liga1)+renderLiga(2,data.liga2);
     }catch(e){
-      document.getElementById("content").innerHTML='<div class="error-box"><b>Datenfehler</b></div>';
+      document.getElementById("content").innerHTML='<div class="error-box"><b>Ungültige API-Daten</b></div>';
     }
   };
   xhr.send();
