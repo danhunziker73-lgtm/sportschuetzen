@@ -1,113 +1,118 @@
 (function(){
-  var API_URL="https://jahresmeisterschaft-muhen.dan-hunziker73.workers.dev";
+  var API_URL = "https://jahresmeisterschaft-muhen.dan-hunziker73.workers.dev";
 
   function formatNum(v){
-    var n=Number(v);
-    return isFinite(n)?n.toFixed(2):"0.00";
+    var n = Number(v);
+    return isFinite(n) ? n.toFixed(2) : "0.00";
   }
 
   function safeArray(v){
-    return Object.prototype.toString.call(v)==="[object Array]"?v:[];
+    return Object.prototype.toString.call(v) === "[object Array]" ? v : [];
   }
 
-  // GEÄNDERT: Erlaubt nun mehrfaches Aufklappen
-  window.toggle=function(id){
-    var el=document.getElementById(id);
-    if(!el)return;
-    el.style.display=(el.style.display==="table-row")?"none":"table-row";
+  // Erlaubt mehrfaches Aufklappen
+  window.toggle = function(id){
+    var el = document.getElementById(id);
+    if(!el) return;
+    el.style.display = (el.style.display === "table-row") ? "none" : "table-row";
   };
 
-  function renderLiga(ligaNr,raw){
-    var teilnehmer=safeArray(raw);
-    var html='<div class="liga"><h2>Liga '+ligaNr+'</h2><table><thead><tr>'+
-      '<th class="col-rang">Rang</th><th>Name</th><th class="col-jg">Jg.</th>'+
-      '<th class="col-total">Total</th><th class="col-zusatz">Zusatz</th>'+
-      '</tr></thead><tbody>';
+  function renderLiga(ligaNr, raw){
+    var teilnehmer = safeArray(raw);
+    
+    // 1. Tabellenkopf (Header) korrekt öffnen
+    var html = '<div class="liga"><h2>Liga ' + ligaNr + '</h2>' +
+               '<table><thead><tr>' +
+               '<th class="col-rang">Rang</th><th>Name</th><th class="col-jg">Jg.</th>' +
+               '<th class="col-total">Total</th><th class="col-zusatz">Zusatz</th>' +
+               '</tr></thead><tbody>';
 
-    for(var i=0; i < teilnehmer.length; i++){
-      var t=teilnehmer[i]||{};
-      var sch=safeArray(t.schiessen);
-      var ma=safeArray(t.mannschaft);
-      var au=safeArray(t.auswaerts);
-      var streichPrz=Number(t.streichresultat_prz);
-      var used=false;
+    for(var i = 0; i < teilnehmer.length; i++){
+      var t = teilnehmer[i] || {};
+      var sch = safeArray(t.schiessen);
+      var ma = safeArray(t.mannschaft);
+      var au = safeArray(t.auswaerts);
+      var streichPrz = Number(t.streichresultat_prz);
+      var used = false;
 
-      var statusClass="",statusLabel="";
-      if(ligaNr===1 && i>=teilnehmer.length-2){statusClass="absteiger";statusLabel='<span class="status-label text-ab">Abstieg</span>';}
-      if(ligaNr===2 && i<2){statusClass="aufsteiger";statusLabel='<span class="status-label text-auf">Aufstieg</span>';}
+      var statusClass = "", statusLabel = "";
+      if(ligaNr === 1 && i >= teilnehmer.length - 2){ statusClass = "absteiger"; statusLabel = '<span class="status-label text-ab">Abstieg</span>'; }
+      if(ligaNr === 2 && i < 2){ statusClass = "aufsteiger"; statusLabel = '<span class="status-label text-auf">Aufstieg</span>'; }
 
-      var id="liga"+ligaNr+"_"+i;
+      var id = "liga" + ligaNr + "_" + i;
 
-      html+='<tr class="clickable '+statusClass+'" onclick="toggle(\''+id+'\')">'+
-        '<td><b>'+(t.rang!=null?t.rang:"-")+'</b>'+statusLabel+'</td>'+
-        '<td>'+(t.name!=null?t.name:"-")+'</td>'+
-        '<td>'+(t.jahrgang!=null?t.jahrgang:"-")+'</td>'+
-        '<td><b>'+formatNum(t.total)+'</b></td>'+
-        '<td>'+(au.length?'<span class="badge-auswaerts">'+au.length+' Auswärts</span>':"")+'</td>'+
-        '</tr>';
+      // 2. Hauptzeile für jeden Schützen
+      html += '<tr class="clickable ' + statusClass + '" onclick="toggle(\'' + id + '\')">' +
+              '<td><b>' + (t.rang != null ? t.rang : "-") + '</b>' + statusLabel + '</td>' +
+              '<td>' + (t.name != null ? t.name : "-") + '</td>' +
+              '<td>' + (t.jahrgang != null ? t.jahrgang : "-") + '</td>' +
+              '<td><b>' + formatNum(t.total) + '</b></td>' +
+              '<td>' + (au.length ? '<span class="badge-auswaerts">' + au.length + ' Auswärts</span>' : "") + '</td>' +
+              '</tr>';
 
-      html+='<tr id="'+id+'" class="details"><td colspan="5"><div class="detail-grid">';
+      // 3. Detail-Zeile (ausklappbar)
+      html += '<tr id="' + id + '" class="details"><td colspan="5"><div class="detail-grid">';
 
-      // --- Meisterschaft ---
-      html+='<div class="detail-box"><h4>Meisterschaft <span style="min-width:90px; text-align:right">Pkt (%)</span></h4><ul>';
-      for(var j=0; j<sch.length; j++){
-        var s=sch[j]||{};
-        var p=Number(s.prozent);
-        var isStreich=isFinite(streichPrz)&&!used&&Math.abs(p-streichPrz)<0.0001&&streichPrz>0;
-        if(isStreich)used=true;
-        html+='<li class="'+(isStreich?"is-streich":"")+'">'+
-          '<span class="item-name">'+(s.name||"-")+'</span>'+
-          '<span class="item-dots"></span>'+
-          '<span class="item-value" style="min-width:90px; text-align:right">'+(s.punkte||"-")+
-          ' <span class="prz-small">('+formatNum(p)+'%)</span></span></li>';
+      // --- Sektion: Meisterschaft ---
+      html += '<div class="detail-box"><h4>Meisterschaft <span style="min-width:95px; text-align:right">Pkt (%)</span></h4><ul>';
+      for(var j = 0; j < sch.length; j++){
+        var s = sch[j] || {};
+        var p = Number(s.prozent);
+        var isStreich = isFinite(streichPrz) && !used && Math.abs(p - streichPrz) < 0.0001 && streichPrz > 0;
+        if(isStreich) used = true;
+        html += '<li class="' + (isStreich ? "is-streich" : "") + '">' +
+                '<span class="item-name">' + (s.name || "-") + '</span>' +
+                '<span class="item-dots"></span>' +
+                '<span class="item-value" style="min-width:95px; text-align:right">' + (s.punkte || "-") + 
+                ' <span class="prz-small">(' + formatNum(p) + '%)</span></span></li>';
       }
-      html+='</ul>'+(streichPrz>0?'<div class="streich-info">Streichresultat: '+formatNum(streichPrz)+'%</div>':"")+'</div>';
+      html += '</ul>' + (streichPrz > 0 ? '<div class="streich-info">Streichresultat: ' + formatNum(streichPrz) + '%</div>' : "") + '</div>';
 
-      // --- Mannschaft (Fix Runde 1-7) ---
-      html+='<div class="detail-box"><h4>Mannschaft <span style="min-width:40px; text-align:right">Pkt</span></h4><ul>';
-      for(var r=1; r<=7; r++){
-        // Suche im Array ma, ob es ein Resultat für diese Runde gibt
-        var mMatch = ma.find(function(item){ return (item.runde||"").indexOf("#"+r) !== -1; });
+      // --- Sektion: Mannschaft (Runde 1-7 fix) ---
+      html += '<div class="detail-box"><h4>Mannschaft <span style="min-width:45px; text-align:right">Pkt</span></h4><ul>';
+      for(var r = 1; r <= 7; r++){
+        var mMatch = ma.find(function(item){ return (item.runde || "").indexOf("#" + r) !== -1; });
         var pktDisp = (mMatch && mMatch.punkte > 0) ? mMatch.punkte : "-";
-        html+='<li><span class="item-name">Runde '+r+'</span>'+
-          '<span class="item-dots"></span><span class="item-value" style="min-width:40px; text-align:right">'+
-          pktDisp+'</span></li>';
+        html += '<li><span class="item-name">Runde ' + r + '</span>' +
+                '<span class="item-dots"></span><span class="item-value" style="min-width:45px; text-align:right">' + 
+                pktDisp + '</span></li>';
       }
-      html+='</ul></div>';
+      html += '</ul></div>';
 
-      // --- Auswärtschiessen ---
-      html+='<div class="detail-box"><h4>Auswärtschiessen <span style="min-width:40px; text-align:right">Pkt</span></h4>';
+      // --- Sektion: Auswärtsschiessen ---
+      html += '<div class="detail-box"><h4>Auswärtschiessen <span style="min-width:45px; text-align:right">Pkt</span></h4>';
       if(au.length){
-        html+='<ul>';
-        for(j=0; j<au.length; j++){
-          var a=au[j]||{};
-          html+='<li><span class="item-name">'+(a.name||"-")+
-            '</span><span class="item-dots"></span><span class="item-value" style="min-width:40px; text-align:right">'+
-            (a.punkte||0)+'</span></li>'; // "Pkt." entfernt
+        html += '<ul>';
+        for(j = 0; j < au.length; j++){
+          var a = au[j] || {};
+          html += '<li><span class="item-name">' + (a.name || "-") + '</span>' +
+                  '<span class="item-dots"></span><span class="item-value" style="min-width:45px; text-align:right">' + 
+                  (a.punkte || 0) + '</span></li>';
         }
-        html+='</ul>';
+        html += '</ul>';
       } else {
-        html+='<p style="color:#999;font-size:.9rem">Keine Resultate vorhanden.</p>';
+        html += '<p style="color:#999;font-size:.9rem">Keine Resultate vorhanden.</p>';
       }
-      html+='</div></div></td></tr>';
+      html += '</div></div></td></tr>';
     }
 
-    return html+'</tbody></table></div>';
+    return html + '</tbody></table></div>';
   }
 
-  var xhr=new XMLHttpRequest();
-  xhr.open("GET",API_URL,true);
-  xhr.onreadystatechange=function(){
-    if(xhr.readyState!==4)return;
-    if(xhr.status!==200){
-      document.getElementById("content").innerHTML='<div class="error-box"><b>Fehler beim Laden</b><br>HTTP '+xhr.status+'</div>';
+  // API Abruf
+  var xhr = new XMLHttpRequest();
+  xhr.open("GET", API_URL, true);
+  xhr.onreadystatechange = function(){
+    if(xhr.readyState !== 4) return;
+    if(xhr.status !== 200){
+      document.getElementById("content").innerHTML = '<div class="error-box"><b>Fehler beim Laden</b></div>';
       return;
     }
-    try{
-      var data=JSON.parse(xhr.responseText);
-      document.getElementById("content").innerHTML=renderLiga(1,data.liga1)+renderLiga(2,data.liga2);
-    }catch(e){
-      document.getElementById("content").innerHTML='<div class="error-box"><b>Ungültige API-Daten</b></div>';
+    try {
+      var data = JSON.parse(xhr.responseText);
+      document.getElementById("content").innerHTML = renderLiga(1, data.liga1) + renderLiga(2, data.liga2);
+    } catch(e) {
+      document.getElementById("content").innerHTML = '<div class="error-box"><b>Datenfehler</b></div>';
     }
   };
   xhr.send();
