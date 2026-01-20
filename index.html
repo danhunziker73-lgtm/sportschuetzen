@@ -1,295 +1,110 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-  <meta charset="UTF-8" />
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 
-  <!-- Viewport + iOS Safe Area -->
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Jahresmeisterschaft 2025</title>
 
-  <title>Jahresmeisterschaft – Standblatt</title>
+<!-- PWA -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0f3a5d">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 
-  <!-- PWA -->
-  <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#0f172a">
-
-  <!-- iOS PWA -->
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="JM Upload">
-  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-
-  <!-- Fonts -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-
-  <style>
-    :root {
-      --primary: #6d28d9;
-      --primary-dark: #5b21b6;
-      --bg: #0f172a;
-      --card: #1e293b;
-      --text: #e2e8f0;
-      --text-light: #94a3b8;
-      --border: #334155;
-      --error: #f87171;
-      --success: #34d399;
-    }
-
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-
-    body {
-      font-family: 'Inter', system-ui, sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      min-height: 100vh;
-      padding: 2rem 1rem;
-      padding-top: env(safe-area-inset-top);
-      padding-bottom: env(safe-area-inset-bottom);
-    }
-
-    .container {
-      max-width: 560px;
-      margin: 0 auto;
-    }
-
-    header {
-      text-align: center;
-      margin-bottom: 2.5rem;
-    }
-
-    h1 {
-      font-size: 2.2rem;
-      font-weight: 700;
-      margin-bottom: 0.5rem;
-      background: linear-gradient(90deg, #a78bfa, #c084fc);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-    }
-
-    .subtitle {
-      color: var(--text-light);
-    }
-
-    .card {
-      background: var(--card);
-      border-radius: 16px;
-      padding: 2rem;
-      border: 1px solid var(--border);
-      box-shadow: 0 10px 25px rgba(0,0,0,0.4);
-    }
-
-    .form-group {
-      margin-bottom: 1.6rem;
-      position: relative;
-    }
-
-    label {
-      position: absolute;
-      top: 1rem;
-      left: 1rem;
-      color: var(--text-light);
-      font-size: 0.95rem;
-      pointer-events: none;
-      transition: all .25s;
-    }
-
-    input, select {
-      width: 100%;
-      padding: 1.1rem 1rem 0.4rem;
-      background: #0f172a;
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      color: var(--text);
-      font-size: 1rem;
-    }
-
-    input:focus, select:focus {
-      outline: none;
-      border-color: var(--primary);
-    }
-
-    input:focus + label,
-    input:not(:placeholder-shown) + label,
-    select:focus + label,
-    select:valid + label {
-      top: .4rem;
-      font-size: .75rem;
-      color: var(--primary);
-    }
-
-    .file-upload {
-      border: 2px dashed var(--border);
-      border-radius: 12px;
-      padding: 2rem;
-      text-align: center;
-      cursor: pointer;
-    }
-
-    .file-upload:hover {
-      border-color: var(--primary);
-    }
-
-    .file-preview {
-      display: none;
-      margin-top: 1rem;
-      max-width: 100%;
-      border-radius: 8px;
-    }
-
-    button {
-      width: 100%;
-      padding: 1.1rem;
-      background: var(--primary);
-      color: white;
-      border: none;
-      border-radius: 10px;
-      font-size: 1.05rem;
-      font-weight: 600;
-      cursor: pointer;
-    }
-
-    button:disabled {
-      opacity: .6;
-    }
-
-    .loading {
-      display: inline-block;
-      width: 20px;
-      height: 20px;
-      border: 3px solid rgba(255,255,255,.3);
-      border-top-color: white;
-      border-radius: 50%;
-      animation: spin 1s linear infinite;
-      margin-right: .5rem;
-    }
-
-    @keyframes spin { to { transform: rotate(360deg); } }
-
-    .info {
-      text-align: center;
-      color: var(--text-light);
-      font-size: .85rem;
-      margin-top: 1.5rem;
-    }
-  </style>
+<style>
+:root{--primary:#0f3a5d;--bg:#f6f7f8;--text:#333;--accent:#e74c3c}
+body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg);margin:0;padding:20px;color:var(--text)}
+h1{margin-bottom:5px}
+.subtitle{color:#666;margin-bottom:30px}
+.liga{margin-bottom:40px}
+table{width:100%;border-collapse:collapse;background:#fff;box-shadow:0 4px 12px rgba(0,0,0,.08);border-radius:8px;overflow:hidden;table-layout:fixed}
+thead{background:var(--primary);color:#fff}
+th,td{padding:12px 15px;text-align:left;border-bottom:1px solid #eee;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.col-rang{width:60px}.col-jg{width:80px}.col-total{width:100px}.col-zusatz{width:120px}
+.clickable{cursor:pointer}.clickable:hover{background:#f0f4f8}
+.details{display:none;background:#fdfdfd}.details td{white-space:normal}
+.detail-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:25px;padding:20px;border-top:2px solid var(--primary)}
+.detail-box h4{margin:0 0 10px;padding-bottom:5px;border-bottom:2px solid #ddd;color:var(--primary);display:flex;justify-content:space-between}
+.detail-box ul{list-style:none;padding:0;margin:0}
+.detail-box li{display:flex;align-items:baseline;padding:4px 0;font-size:.95rem}
+.item-name{flex-shrink:0}
+.item-dots{flex-grow:1;border-bottom:1px dotted #ccc;margin:0 8px;position:relative;top:-4px}
+.item-value{flex-shrink:0;font-weight:600;font-variant-numeric:tabular-nums}
+.prz-small{color:#666;font-size:.85rem;margin-left:4px}
+.streich-info{background:#fff0f0;padding:8px;border-radius:4px;border-left:4px solid var(--accent);margin-top:15px;font-size:.9rem;font-weight:600}
+.is-streich{color:var(--accent);text-decoration:line-through;opacity:.7}
+.badge-auswaerts{background:#e8f5e9;color:#2e7d32;padding:2px 6px;border-radius:4px;font-size:.75rem;font-weight:bold}
+.aufsteiger{border-left:5px solid #2ecc71;background:#fafffa}
+.absteiger{border-left:5px solid #e74c3c;background:#fffaf9}
+.status-label{font-size:.65rem;font-weight:bold;text-transform:uppercase;display:block;margin-top:2px}
+.text-auf{color:#27ae60}.text-ab{color:#c0392b}
+.error-box{background:#fff0f0;border-left:5px solid #e74c3c;padding:15px;border-radius:6px}
+</style>
 </head>
 
 <body>
-
-<div class="container">
-  <header>
-    <h1>Jahresmeisterschaft</h1>
-    <div class="subtitle">Standblatt hochladen</div>
-  </header>
-
-  <div class="card">
-    <form id="uploadForm">
-
-      <div class="form-group">
-        <select id="name" required>
-          <option value="" disabled selected></option>
-        </select>
-        <label>Dein Name *</label>
-      </div>
-
-      <div class="form-group">
-        <div class="file-upload" id="dropZone">
-          <p>Foto Standblatt hochladen *</p>
-          <p style="font-size:.85rem;color:var(--text-light)">(JPG / PNG)</p>
-          <input type="file" id="foto" accept="image/jpeg,image/png" hidden required>
-          <img id="preview" class="file-preview">
-        </div>
-      </div>
-
-      <div class="form-group">
-        <input type="number" id="erzielt" placeholder=" " required>
-        <label>Erzielte Punkte *</label>
-      </div>
-
-      <div class="form-group">
-        <input type="number" id="maximal" placeholder=" " required>
-        <label>Maximale Punkte *</label>
-      </div>
-
-      <button id="submitBtn">
-        <span id="btnText">Senden</span>
-      </button>
-    </form>
-
-    <div class="info">Nur der Vorstand hat Zugriff</div>
-  </div>
-</div>
+<h1>Jahresmeisterschaft 2025</h1>
+<div class="subtitle">Tippen Sie auf einen Schützen für die Detailauswertung</div>
+<div id="content">Lade Daten…</div>
 
 <script>
-/* Teilnehmer */
-const teilnehmer = [
-  "Fischer Marco",
-  "Luginbühl Jürg",
-  "Lüscher Stefan",
-  "Morgenthaler Lars",
-  "Rossi Andrea",
-  "Rossi Olivia",
-  "Verrillo Simone Luigi",
-  "Zurbriggen Nicole"
-];
-
-const select = document.getElementById('name');
-teilnehmer.forEach(n => {
-  const o = document.createElement('option');
-  o.value = o.textContent = n;
-  select.appendChild(o);
-});
-
-/* Foto */
-const fileInput = document.getElementById('foto');
-const preview = document.getElementById('preview');
-const dropZone = document.getElementById('dropZone');
-
-dropZone.onclick = () => fileInput.click();
-
-fileInput.onchange = e => {
-  const f = e.target.files[0];
-  if (!f) return;
-  const r = new FileReader();
-  r.onload = ev => {
-    preview.src = ev.target.result;
-    preview.style.display = 'block';
-  };
-  r.readAsDataURL(f);
-};
-
-/* Submit */
-document.getElementById('uploadForm').onsubmit = async e => {
-  e.preventDefault();
-  const btn = document.getElementById('submitBtn');
-  const txt = document.getElementById('btnText');
-  btn.disabled = true;
-  txt.innerHTML = '<span class="loading"></span>Sendet...';
-
-  await new Promise(r => setTimeout(r, 1500));
-
-  txt.textContent = '✔ Erfolgreich';
-  btn.style.background = 'var(--success)';
-
-  setTimeout(() => {
-    btn.disabled = false;
-    btn.style.background = 'var(--primary)';
-    txt.textContent = 'Senden';
-    e.target.reset();
-    preview.style.display = 'none';
-  }, 2000);
-};
-
-/* Service Worker */
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('./sw.js');
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("sw.js");
 }
 </script>
 
+<script>
+(function(){
+  var API_URL="https://jahresmeisterschaft-muhen.dan-hunziker73.workers.dev";
+
+  function formatNum(v){var n=Number(v);return isFinite(n)?n.toFixed(2):"0.00";}
+  function safeArray(v){return Object.prototype.toString.call(v)==="[object Array]"?v:[];}
+
+  window.toggle=function(id){
+    var el=document.getElementById(id);
+    if(!el)return;
+    var rows=document.getElementsByClassName("details");
+    for(var i=0;i<rows.length;i++)rows[i].style.display="none";
+    el.style.display=(el.style.display==="table-row")?"none":"table-row";
+  };
+
+  function renderLiga(ligaNr,raw){
+    var teilnehmer=safeArray(raw);
+    var html='<div class="liga"><h2>Liga '+ligaNr+'</h2><table><thead><tr>'+
+      '<th class="col-rang">Rang</th><th>Name</th><th class="col-jg">Jg.</th>'+
+      '<th class="col-total">Total</th><th class="col-zusatz">Zusatz</th>'+
+      '</tr></thead><tbody>';
+
+    for(var i=0;i<teilnehmer.length;i++){
+      var t=teilnehmer[i]||{};
+      var au=safeArray(t.auswaerts);
+      var id="l"+ligaNr+"_"+i;
+
+      html+='<tr class="clickable" onclick="toggle(\''+id+'\')">'+
+        '<td><b>'+(t.rang||"-")+'</b></td>'+
+        '<td>'+(t.name||"-")+'</td>'+
+        '<td>'+(t.jahrgang||"-")+'</td>'+
+        '<td><b>'+formatNum(t.total)+'</b></td>'+
+        '<td>'+(au.length?'<span class="badge-auswaerts">'+au.length+' Auswärts</span>':"")+'</td></tr>';
+
+      html+='<tr id="'+id+'" class="details"><td colspan="5"><div class="detail-grid">Details siehe Web-Version</div></td></tr>';
+    }
+    return html+'</tbody></table></div>';
+  }
+
+  fetch(API_URL)
+    .then(r=>r.json())
+    .then(d=>{
+      document.getElementById("content").innerHTML=
+        renderLiga(1,d.liga1)+renderLiga(2,d.liga2);
+    })
+    .catch(()=>{
+      document.getElementById("content").innerHTML=
+        '<div class="error-box"><b>Fehler beim Laden</b></div>';
+    });
+})();
+</script>
 </body>
 </html>
