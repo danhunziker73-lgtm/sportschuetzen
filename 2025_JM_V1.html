@@ -13,7 +13,6 @@
   window.toggle=function(id){
     var el=document.getElementById(id);
     if(!el)return;
-    // Zeile zum Schließen anderer Reihen entfernt, um Mehrfachauswahl zu erlauben
     el.style.display=(el.style.display==="table-row")?"none":"table-row";
   };
 
@@ -48,8 +47,11 @@
 
       html+='<tr id="'+id+'" class="details"><td colspan="5"><div class="detail-grid">';
 
-      // MEISTERSCHAFT: Linksbündig ausgerichtet
-      html+='<div class="detail-box"><h4>Meisterschaft <span style="min-width:90px; text-align:left; display:inline-block;">Pkt (%)</span></h4><ul>';
+      // Zentrales Style für die Pkt-Spalte: Erzwingt Linksbündigkeit und gleiche Breite
+      var valStyle = 'display:inline-block; min-width:100px; text-align:left; font-weight:600;';
+
+      // 1. MEISTERSCHAFT
+      html+='<div class="detail-box"><h4>Meisterschaft <span style="'+valStyle+'">Pkt (%)</span></h4><ul>';
       for(var j=0;j<sch.length;j++){
         var s=sch[j]||{};
         var p=Number(s.prozent);
@@ -58,30 +60,30 @@
         html+='<li class="'+(isStreich?"is-streich":"")+'">'+
           '<span class="item-name">'+(s.name||"-")+'</span>'+
           '<span class="item-dots"></span>'+
-          '<span class="item-value" style="min-width:90px; text-align:left;">'+(s.punkte||"-")+
+          '<span class="item-value" style="'+valStyle+'">'+(s.punkte||"-")+
           ' <span class="prz-small">('+formatNum(p)+'%)</span></span></li>';
       }
       html+='</ul>'+(streichPrz>0?'<div class="streich-info">Streichresultat: '+formatNum(streichPrz)+'%</div>':"")+'</div>';
 
-      // MANNSCHAFT: Fix Runde 1 bis 7
-      html+='<div class="detail-box"><h4>Mannschaft <span style="min-width:40px; text-align:left; display:inline-block;">Pkt</span></h4><ul>';
+      // 2. MANNSCHAFT (Fix Runde 1 bis 7)
+      html+='<div class="detail-box"><h4>Mannschaft <span style="'+valStyle+'">Pkt</span></h4><ul>';
       for(var r=1; r<=7; r++){
         var mMatch = ma.find(function(item){ return (item.runde||"").indexOf("#"+r) !== -1; });
         var pktDisp = (mMatch && mMatch.punkte > 0) ? mMatch.punkte : "-";
         html+='<li><span class="item-name">Runde '+r+'</span>'+
-          '<span class="item-dots"></span><span class="item-value" style="min-width:40px; text-align:left;">'+
+          '<span class="item-dots"></span><span class="item-value" style="'+valStyle+'">'+
           pktDisp+'</span></li>';
       }
       html+='</ul></div>';
 
-      // AUSWÄRTSSCHIESSEN: Linksbündig & ohne "Pkt." beim Wert
-      html+='<div class="detail-box"><h4>Auswärtschiessen <span style="min-width:40px; text-align:left; display:inline-block;">Pkt</span></h4>';
+      // 3. AUSWÄRTSSCHIESSEN
+      html+='<div class="detail-box"><h4>Auswärtschiessen <span style="'+valStyle+'">Pkt</span></h4>';
       if(au.length){
         html+='<ul>';
         for(j=0;j<au.length;j++){
           var a=au[j]||{};
           html+='<li><span class="item-name">'+(a.name||"-")+
-            '</span><span class="item-dots"></span><span class="item-value" style="min-width:40px; text-align:left;">'+
+            '</span><span class="item-dots"></span><span class="item-value" style="'+valStyle+'">'+
             (a.punkte||0)+'</span></li>';
         }
         html+='</ul>';
@@ -99,17 +101,14 @@
   xhr.onreadystatechange=function(){
     if(xhr.readyState!==4)return;
     if(xhr.status!==200){
-      document.getElementById("content").innerHTML=
-        '<div class="error-box"><b>Fehler beim Laden</b><br>HTTP '+xhr.status+'</div>';
+      document.getElementById("content").innerHTML='<div class="error-box"><b>Fehler beim Laden</b></div>';
       return;
     }
     try{
       var data=JSON.parse(xhr.responseText);
-      document.getElementById("content").innerHTML=
-        renderLiga(1,data.liga1)+renderLiga(2,data.liga2);
+      document.getElementById("content").innerHTML=renderLiga(1,data.liga1)+renderLiga(2,data.liga2);
     }catch(e){
-      document.getElementById("content").innerHTML=
-        '<div class="error-box"><b>Ungültige API-Daten</b></div>';
+      document.getElementById("content").innerHTML='<div class="error-box"><b>Datenfehler</b></div>';
     }
   };
   xhr.send();
