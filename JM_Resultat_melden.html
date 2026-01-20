@@ -299,7 +299,11 @@ document.getElementById('uploadForm').addEventListener('submit', async e => {
       const result = await response.json();
 
       if (result.success) {
-        alert('Erfolg! Dein Standblatt wurde erfolgreich hochgeladen.');
+      //  alert('Erfolg! Dein Standblatt wurde erfolgreich hochgeladen.');
+      btnText.textContent = '✔ Erfolgreich gesendet';
+      btn.style.background = 'var(--success)';
+
+        
         document.getElementById('uploadForm').reset();
         preview.style.display = 'none';
         filePrompt.style.display = 'block';
