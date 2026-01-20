@@ -1,115 +1,36 @@
 (function(){
   var API_URL="https://jahresmeisterschaft-muhen.dan-hunziker73.workers.dev";
+  var fN = v => isFinite(Number(v)) ? Number(v).toFixed(2) : "0.00";
 
-  function formatNum(v){
-    var n=Number(v);
-    return isFinite(n)?n.toFixed(2):"0.00";
-  }
-
-  function safeArray(v){
-    return Object.prototype.toString.call(v)==="[object Array]"?v:[];
-  }
-
-  window.toggle=function(id){
-    var el=document.getElementById(id);
-    if(!el)return;
-    el.style.display=(el.style.display==="table-row")?"none":"table-row";
+  window.toggle = id => {
+    var e = document.getElementById(id);
+    if(e) e.style.display = e.style.display === "table-row" ? "none" : "table-row";
   };
 
-  function renderLiga(ligaNr,raw){
-    var teilnehmer=safeArray(raw);
-    var html='<div class="liga"><h2>Liga '+ligaNr+'</h2><table><thead><tr>'+
-      '<th class="col-rang">Rang</th><th>Name</th><th class="col-jg">Jg.</th>'+
-      '<th class="col-total">Total</th><th class="col-zusatz">Zusatz</th>'+
-      '</tr></thead><tbody>';
-
-    for(var i=0;i<teilnehmer.length;i++){
-      var t=teilnehmer[i]||{};
-      var sch=safeArray(t.schiessen);
-      var ma=safeArray(t.mannschaft);
-      var au=safeArray(t.auswaerts);
-      var streichPrz=Number(t.streichresultat_prz);
-      var used=false;
-
-      var statusClass="",statusLabel="";
-      if(ligaNr===1&&i>=teilnehmer.length-2){statusClass="absteiger";statusLabel='<span class="status-label text-ab">Abstieg</span>';}
-      if(ligaNr===2&&i<2){statusClass="aufsteiger";statusLabel='<span class="status-label text-auf">Aufstieg</span>';}
-
-      var id="liga"+ligaNr+"_"+i;
-
-      html+='<tr class="clickable '+statusClass+'" onclick="toggle(\''+id+'\')">'+
-        '<td><b>'+(t.rang!=null?t.rang:"-")+'</b>'+statusLabel+'</td>'+
-        '<td>'+(t.name!=null?t.name:"-")+'</td>'+
-        '<td>'+(t.jahrgang!=null?t.jahrgang:"-")+'</td>'+
-        '<td><b>'+formatNum(t.total)+'</b></td>'+
-        '<td>'+(au.length?'<span class="badge-auswaerts">'+au.length+' Auswärts</span>':"")+'</td>'+
-        '</tr>';
-
-      html+='<tr id="' + id + '" class="details"><td colspan="5"><div class="detail-grid">';
-
-      // Gemeinsames Style für die Werte-Spalte (Linksbündig mit fester Breite)
-      var valStyle = 'display:inline-block; min-width:100px; text-align:left; font-weight:600;';
-
-      // --- 1. Meisterschaft ---
-      html+='<div class="detail-box"><h4>Meisterschaft <span style="'+valStyle+'">Pkt (%)</span></h4><ul>';
-      for(var j=0;j<sch.length;j++){
-        var s=sch[j]||{};
-        var p=Number(s.prozent);
-        var isStreich=isFinite(streichPrz)&&!used&&Math.abs(p-streichPrz)<0.0001&&streichPrz>0;
-        if(isStreich)used=true;
-        html+='<li class="'+(isStreich?"is-streich":"")+'">'+
-          '<span class="item-name">'+(s.name||"-")+'</span>'+
-          '<span class="item-dots"></span>'+
-          '<span class="item-value" style="'+valStyle+'">'+(s.punkte||"-")+
-          ' <span class="prz-small">('+formatNum(p)+'%)</span></span></li>';
-      }
-      html+='</ul>'+(streichPrz>0?'<div class="streich-info">Streichresultat: '+formatNum(streichPrz)+'%</div>':"")+'</div>';
-
-      // --- 2. Mannschaft (Runde 1-7) ---
-      html+='<div class="detail-box"><h4>Mannschaft <span style="'+valStyle+'">Pkt</span></h4><ul>';
-      for(var r=1; r<=7; r++){
-        var mMatch = ma.find(function(item){ return (item.runde||"").indexOf("#"+r) !== -1; });
-        var pktDisp = (mMatch && mMatch.punkte > 0) ? mMatch.punkte : "-";
-        html+='<li><span class="item-name">Runde '+r+'</span>'+
-          '<span class="item-dots"></span><span class="item-value" style="'+valStyle+'">'+
-          pktDisp+'</span></li>';
-      }
-      html+='</ul></div>';
-
-      // --- 3. Auswärtsschiessen ---
-      html+='<div class="detail-box"><h4>Auswärtschiessen <span style="'+valStyle+'">Pkt</span></h4>';
-      if(au.length){
-        html+='<ul>';
-        for(j=0;j<au.length;j++){
-          var a=au[j]||{};
-          html+='<li><span class="item-name">'+(a.name||"-")+
-            '</span><span class="item-dots"></span><span class="item-value" style="'+valStyle+'">'+
-            (a.punkte||0)+'</span></li>';
-        }
-        html+='</ul>';
-      } else {
-        html+='<p style="color:#999;font-size:.9rem">Keine Resultate vorhanden.</p>';
-      }
-      html+='</div></div></td></tr>';
-    }
-    return html+'</tbody></table></div>';
+  function renderLiga(ligaNr, raw) {
+    var html = `<div class="liga"><h2>Liga ${ligaNr}</h2><table><thead><tr><th class="col-rang">Rang</th><th>Name</th><th class="col-jg">Jg.</th><th class="col-total">Total</th><th class="col-zusatz">Zusatz</th></tr></thead><tbody>`;
+    
+    (raw || []).forEach((t, i) => {
+      var id = `l${ligaNr}_${i}`, au = t.auswaerts || [], sP = 'style="display:inline-block;min-width:100px;text-align:left"';
+      
+      html += `<tr class="clickable" onclick="toggle('${id}')"><td><b>${t.rang||"-"}</b></td><td>${t.name||"-"}</td><td>${t.jahrgang||"-"}</td><td><b>${fN(t.total)}</b></td><td>${au.length?au.length+' Auswärts':''}</td></tr>
+      <tr id="${id}" class="details"><td colspan="5"><div class="detail-grid">
+        <div class="detail-box"><h4>Meisterschaft <span ${sP}>Pkt (%)</span></h4><ul>${(t.schiessen||[]).map(s => `<li><span class="item-name">${s.name}</span><span class="item-dots"></span><span ${sP}>${s.punkte} <small>(${fN(s.prozent)}%)</small></span></li>`).join('')}</ul></div>
+        <div class="detail-box"><h4>Mannschaft <span ${sP}>Pkt</span></h4><ul>${[1,2,3,4,5,6,7].map(r => {
+          var m = (t.mannschaft||[]).find(x => (x.runde||"").includes("#"+r));
+          return `<li><span class="item-name">Runde ${r}</span><span class="item-dots"></span><span ${sP}>${m?m.punkte:'-'}</span></li>`;
+        }).join('')}</ul></div>
+        <div class="detail-box"><h4>Auswärts <span ${sP}>Pkt</span></h4><ul>${au.map(a => `<li><span class="item-name">${a.name}</span><span class="item-dots"></span><span ${sP}>${a.punkte}</span></li>`).join('')}</ul></div>
+      </div></td></tr>`;
+    });
+    return html + '</tbody></table></div>';
   }
 
-  // --- API Abruf ---
-  var xhr=new XMLHttpRequest();
-  xhr.open("GET",API_URL,true);
-  xhr.onreadystatechange=function(){
-    if(xhr.readyState!==4)return;
-    if(xhr.status!==200){
-      document.getElementById("content").innerHTML='<div class="error-box"><b>Fehler beim Laden</b></div>';
-      return;
-    }
-    try{
-      var data=JSON.parse(xhr.responseText);
-      document.getElementById("content").innerHTML=renderLiga(1,data.liga1)+renderLiga(2,data.liga2);
-    }catch(e){
-      document.getElementById("content").innerHTML='<div class="error-box"><b>Datenfehler</b></div>';
-    }
+  var xhr = new XMLHttpRequest();
+  xhr.open("GET", API_URL, true);
+  xhr.onload = () => {
+    var d = JSON.parse(xhr.responseText);
+    document.getElementById("content").innerHTML = renderLiga(1, d.liga1) + renderLiga(2, d.liga2);
   };
   xhr.send();
 })();
