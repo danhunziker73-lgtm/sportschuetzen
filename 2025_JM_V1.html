@@ -54,10 +54,10 @@ th,td{padding:12px 15px;text-align:left;border-bottom:1px solid #eee;overflow:hi
   }
 
   // Mehrfach aufklappbar – nur diese Zeile toggeln
-  window.toggle = function(id) {
-    var el = document.getElementById(id);
-    if (!el) return;
-    el.style.display = (el.style.display === "table-row") ? "none" : "table-row";
+  window.toggle=function(id){
+    var el=document.getElementById(id);
+    if(!el)return;
+    el.style.display=(el.style.display==="table-row")?"none":"table-row";
   };
 
   function renderLiga(ligaNr,raw){
@@ -77,8 +77,8 @@ th,td{padding:12px 15px;text-align:left;border-bottom:1px solid #eee;overflow:hi
       var used=false;
 
       var statusClass="",statusLabel="";
-      if(ligaNr===1&&i>=teilnehmer.length-2){statusClass="absteiger";statusLabel='<div class="status-label text-ab">Abstieg</div>';}
-      if(ligaNr===2&&i<2){statusClass="aufsteiger";statusLabel='<div class="status-label text-auf">Aufstieg</div>';}
+      if(ligaNr===1&&i>=teilnehmer.length-2){statusClass="absteiger";statusLabel='<span class="status-label text-ab">Abstieg</span>';}
+      if(ligaNr===2&&i<2){statusClass="aufsteiger";statusLabel='<span class="status-label text-auf">Aufstieg</span>';}
 
       var id="liga"+ligaNr+"_"+i;
 
@@ -93,7 +93,7 @@ th,td{padding:12px 15px;text-align:left;border-bottom:1px solid #eee;overflow:hi
       html+='<tr id="'+id+'" class="details"><td colspan="5"><div class="detail-grid">';
 
       // Meisterschaft – Pkt (%) linksbündig mit Resultat darunter
-      html+='<div class="detail-box"><h4>Meisterschaft</h4><ul>';
+      html+='<div class="detail-box"><h4>Meisterschaft <span>Pkt (%)</span></h4><ul>';
       for(var j=0;j<sch.length;j++){
         var s=sch[j]||{};
         var p=Number(s.prozent);
@@ -107,8 +107,8 @@ th,td{padding:12px 15px;text-align:left;border-bottom:1px solid #eee;overflow:hi
       }
       html+='</ul>'+(streichPrz>0?'<div class="streich-info">Streichresultat: '+formatNum(streichPrz)+'%</div>':"")+'</div>';
 
-      // Mannschaft – fix Runde 1–7, Pkt auf Höhe
-      html+='<div class="detail-box"><h4>Mannschaft</h4><ul>';
+      // Mannschaft – Runde 1–7, Pkt auf Höhe
+      html+='<div class="detail-box"><h4>Mannschaft <span>Pkt</span></h4><ul>';
       for(var r=1;r<=7;r++){
         var m=ma.find(m=>m.runde==r)||{};
         html+='<li>'+
@@ -118,8 +118,8 @@ th,td{padding:12px 15px;text-align:left;border-bottom:1px solid #eee;overflow:hi
       }
       html+='</ul></div>';
 
-      // Auswärtsschiessen – Pkt linksbündig, ohne "Pkt"
-      html+='<div class="detail-box"><h4>Auswärtsschiessen</h4>';
+      // Auswärtsschiessen – Pkt linksbündig, ohne "Pkt."
+      html+='<div class="detail-box"><h4>Auswärtsschiessen <span>Pkt</span></h4>';
       if(au.length){
         html+='<ul>';
         for(var j=0;j<au.length;j++){
