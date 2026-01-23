@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Gruppenmeisterschaft 2025</title>
+<title>Gruppenmeisterschaft</title>
 
 <script src="https://www.gstatic.com/charts/loader.js"></script>
 
@@ -120,13 +120,20 @@
 google.charts.load('current');
 google.charts.setOnLoadCallback(loadData);
 
+// === Hier Jahr aus Sheet-Name extrahieren ===
 const SHEET_ID = "1VuOv6b8r5m1g_9ZidPR3OPZ7YIwLUm6dYLC9nKmC2mE";
-const SHEET_NAME = "2025_Gruppe";  // dynamisch, aber hier fix für 2026
+const SHEET_NAME = "2025_Gruppe";  // dynamisch, z.B. "2025_Gruppe"
+
+// Jahr extrahieren (erste 4 Zeichen von SHEET_NAME)
+const YEAR = SHEET_NAME.substring(0, 4);
 
 let raw = [];
 let teams = [];
 
 function loadData() {
+  // Titel dynamisch setzen
+  document.querySelector('h1').textContent = `Gruppenmeisterschaft ${YEAR}`;
+
   const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?sheet=${SHEET_NAME}`;
   const query = new google.visualization.Query(url);
   query.send(res => {
@@ -223,11 +230,5 @@ function showDetail(team, round) {
 
 <body>
 
-<h1>Gruppenmeisterschaft 2025</h1>
-<div class="subtitle">Übersicht – auf Punkte klicken für Details</div>
-
-<div id="overview"></div>
-<div id="detail" class="detail"></div>
-
-</body>
-</html>
+<h1>Gruppenmeisterschaft</h1>
+<div
