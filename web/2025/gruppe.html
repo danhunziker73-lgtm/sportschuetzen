@@ -8,124 +8,37 @@
 <script src="https://www.gstatic.com/charts/loader.js"></script>
 
 <style>
-  body {
-    font-family: Arial, sans-serif;
-    background: #f4f6f8;
-    margin: 0;
-    padding: 15px;
-  }
-
-  h1 {
-    margin-bottom: 5px;
-  }
-
-  .subtitle {
-    color: #666;
-    margin-bottom: 15px;
-  }
-
-  .table-wrapper {
-    overflow-x: auto;
-  }
-
-  table {
-    width: 100%;
-    min-width: 600px;
-    border-collapse: collapse;
-    background: white;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.08);
-  }
-
-  th, td {
-    padding: 10px;
-    text-align: center;
-    border-bottom: 1px solid #e0e0e0;
-  }
-
-  th {
-    background: #0f3c5c;
-    color: white;
-  }
-
-  td.team {
-    font-weight: bold;
-    text-align: left;
-    white-space: nowrap;
-  }
-
-  td.cell {
-    cursor: pointer;
-    background: #fafafa;
-  }
-
-  td.cell:hover {
-    background: #e6eef5;
-  }
-
-  .detail {
-    margin-top: 20px;
-    background: white;
-    padding: 15px;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.08);
-    display: none;
-  }
-
-  .player {
-    display: grid;
-    grid-template-columns: 1fr auto auto auto;
-    gap: 12px;
-    padding: 6px 0;
-    border-bottom: 1px solid #eee;
-    align-items: center;
-  }
-
-  .name {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .stellung {
-    font-size: 12px;
-    font-weight: bold;
-    padding: 3px 10px;
-    border-radius: 12px;
-    white-space: nowrap;
-  }
-
-  .liegend {
-    background: #e3f0ff;
-    color: #1e5dbf;
-  }
-
-  .kniend {
-    background: #e6f6ec;
-    color: #1f7a3a;
-  }
-
-  .total {
-    font-weight: bold;
-    text-align: right;
-    margin-top: 10px;
-    font-size: 18px;
-  }
-
-  @media (max-width: 768px) {
-    th, td { padding: 8px; font-size: 14px; }
-    h1 { font-size: 20px; }
-  }
+/* --- Dein CSS bleibt unverändert --- */
+body { font-family: Arial, sans-serif; background: #f4f6f8; margin: 0; padding: 15px; }
+h1 { margin-bottom: 5px; }
+.subtitle { color: #666; margin-bottom: 15px; }
+.table-wrapper { overflow-x: auto; }
+table { width: 100%; min-width: 600px; border-collapse: collapse; background: white; box-shadow: 0 2px 6px rgba(0,0,0,0.08); }
+th, td { padding: 10px; text-align: center; border-bottom: 1px solid #e0e0e0; }
+th { background: #0f3c5c; color: white; }
+td.team { font-weight: bold; text-align: left; white-space: nowrap; }
+td.cell { cursor: pointer; background: #fafafa; }
+td.cell:hover { background: #e6eef5; }
+.detail { margin-top: 20px; background: white; padding: 15px; box-shadow: 0 2px 6px rgba(0,0,0,0.08); display: none; }
+.player { display: grid; grid-template-columns: 1fr auto auto auto; gap: 12px; padding: 6px 0; border-bottom: 1px solid #eee; align-items: center; }
+.name { display: flex; align-items: center; gap: 8px; }
+.stellung { font-size: 12px; font-weight: bold; padding: 3px 10px; border-radius: 12px; white-space: nowrap; }
+.liegend { background: #e3f0ff; color: #1e5dbf; }
+.kniend { background: #e6f6ec; color: #1f7a3a; }
+.total { font-weight: bold; text-align: right; margin-top: 10px; font-size: 18px; }
+@media (max-width: 768px) { th, td { padding: 8px; font-size: 14px; } h1 { font-size: 20px; } }
 </style>
 
 <script>
 google.charts.load('current');
 google.charts.setOnLoadCallback(loadData);
 
-// === Hier Jahr aus Sheet-Name extrahieren ===
+// --- Konstanten ---
 const SHEET_ID = "1VuOv6b8r5m1g_9ZidPR3OPZ7YIwLUm6dYLC9nKmC2mE";
-const SHEET_NAME = "2025_Gruppe";  // dynamisch, z.B. "2025_Gruppe"
+const SHEET_NAME = "2025_Gruppe"; // dynamisch anpassen
 
-// Jahr extrahieren (erste 4 Zeichen von SHEET_NAME)
-const YEAR = SHEET_NAME.substring(0, 4);
+// Jahr automatisch aus Sheet-Name extrahieren
+const YEAR = SHEET_NAME.substring(0,4);
 
 let raw = [];
 let teams = [];
@@ -133,6 +46,7 @@ let teams = [];
 function loadData() {
   // Titel dynamisch setzen
   document.querySelector('h1').textContent = `Gruppenmeisterschaft ${YEAR}`;
+  document.querySelector('.subtitle').textContent = `Übersicht ${YEAR} – auf Punkte klicken für Details`;
 
   const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?sheet=${SHEET_NAME}`;
   const query = new google.visualization.Query(url);
@@ -148,7 +62,6 @@ function loadData() {
         name: data.getValue(r, 0) || "",
         stellung: data.getValue(r, 1) || ""
       };
-
       for (let i = 1; i <= 3; i++) {
         row[`r${i}Team`] = data.getValue(r, (i-1)*3 + 2) || "";
         row[`r${i}Pkt1`] = Number(data.getValue(r, (i-1)*3 + 3)) || 0;
@@ -170,16 +83,7 @@ function loadData() {
 }
 
 function buildTable() {
-  let html = `
-  <div class="table-wrapper">
-  <table>
-    <tr>
-      <th>Gruppe</th>
-      <th>R1</th>
-      <th>R2</th>
-      <th>R3</th>
-    </tr>`;
-
+  let html = `<div class="table-wrapper"><table><tr><th>Gruppe</th><th>R1</th><th>R2</th><th>R3</th></tr>`;
   teams.forEach(team => {
     html += `<tr><td class="team">${team}</td>`;
     for (let r=1; r<=3; r++) {
@@ -190,7 +94,6 @@ function buildTable() {
     }
     html += `</tr>`;
   });
-
   html += `</table></div>`;
   document.getElementById("overview").innerHTML = html;
 }
@@ -199,15 +102,12 @@ function showDetail(team, round) {
   const list = raw.filter(p => p[`r${round}Team`] === team);
   let total = 0;
   let html = `<h2>Gruppe ${team} – Runde ${round}</h2>`;
-
   list.forEach(p => {
     const p1 = p[`r${round}Pkt1`];
     const p2 = p[`r${round}Pkt2`];
     const sum = p1 + p2;
     total += sum;
-
     const cls = p.stellung.toLowerCase() === "liegend" ? "liegend" : "kniend";
-
     html += `
       <div class="player">
         <div class="name">
@@ -219,7 +119,6 @@ function showDetail(team, round) {
         <div><strong>${sum}</strong></div>
       </div>`;
   });
-
   html += `<div class="total">Gesamt: ${total}</div>`;
   const d = document.getElementById("detail");
   d.innerHTML = html;
@@ -229,6 +128,10 @@ function showDetail(team, round) {
 </head>
 
 <body>
-
 <h1>Gruppenmeisterschaft</h1>
-<div
+<div class="subtitle">Übersicht – auf Punkte klicken für Details</div>
+
+<div id="overview"></div>
+<div id="detail" class="detail"></div>
+</body>
+</html>
