@@ -66,10 +66,38 @@ th,td{
 }
 
 .detail-box h4{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-end;
   margin:0 0 10px;
   padding-bottom:5px;
   border-bottom:2px solid #ddd;
   color:var(--primary);
+}
+
+.two-col{
+  list-style:none;
+  padding:0;
+  margin:0;
+}
+
+.two-col li{
+  display:flex;
+  justify-content:space-between;
+  align-items:baseline;
+  padding:4px 0;
+}
+
+.item-right{
+  font-weight:600;
+  font-variant-numeric:tabular-nums;
+  white-space:nowrap;
+}
+
+.prz-small{
+  font-size:.85rem;
+  color:#666;
+  margin-left:4px;
 }
 
 .badge-auswaerts{
@@ -109,35 +137,6 @@ th,td{
   color:var(--accent);
   text-decoration:line-through;
   opacity:.7;
-}
-
-/* ===== Neues 2-Spalten-Layout ===== */
-.two-col{
-  list-style:none;
-  padding:0;
-  margin:0;
-}
-
-.two-col li{
-  display:flex;
-  justify-content:space-between;
-  align-items:flex-start;
-  padding:4px 0;
-}
-
-.item-left{
-  display:flex;
-  flex-direction:column;
-}
-
-.item-right{
-  font-weight:600;
-  font-variant-numeric:tabular-nums;
-}
-
-.sub-value{
-  font-size:.85rem;
-  color:#666;
 }
 </style>
 </head>
@@ -204,7 +203,7 @@ th,td{
       html+='<tr id="'+id+'" class="details"><td colspan="5"><div class="detail-grid">';
 
       /* Meisterschaft */
-      html+='<div class="detail-box"><h4>Meisterschaft</h4><ul class="two-col">';
+      html+='<div class="detail-box"><h4><span>Meisterschaft</span><span>Pkt (%)</span></h4><ul class="two-col">';
       for(var j=0;j<sch.length;j++){
         var s=sch[j]||{};
         var p=Number(s.prozent);
@@ -212,32 +211,32 @@ th,td{
         if(isStreich)used=true;
 
         html+='<li class="'+(isStreich?'is-streich':'')+'">'+
-          '<span class="item-left">'+
-            '<div>'+(s.name||"-")+'</div>'+
-            '<div class="sub-value">'+formatNum(p)+' %</div>'+
+          '<span>'+(s.name||"-")+'</span>'+
+          '<span class="item-right">'+
+            (s.punkte||"-")+
+            ' <span class="prz-small">('+formatNum(p)+'%)</span>'+
           '</span>'+
-          '<span class="item-right">'+(s.punkte||"-")+'</span>'+
         '</li>';
       }
       html+='</ul>'+(streichPrz>0?'<div class="streich-info">Streichresultat: '+formatNum(streichPrz)+'%</div>':"")+'</div>';
 
       /* Mannschaft */
-      html+='<div class="detail-box"><h4>Mannschaft</h4><ul class="two-col">';
+      html+='<div class="detail-box"><h4><span>Mannschaft</span><span>Pkt</span></h4><ul class="two-col">';
       for(j=0;j<ma.length;j++){
         html+='<li>'+
-          '<span class="item-left">Runde '+(j+1)+'</span>'+
+          '<span>Runde '+(j+1)+'</span>'+
           '<span class="item-right">'+(ma[j].punkte||"-")+'</span>'+
         '</li>';
       }
       html+='</ul></div>';
 
       /* Auswärtsschiessen */
-      html+='<div class="detail-box"><h4>Auswärtsschiessen</h4>';
+      html+='<div class="detail-box"><h4><span>Auswärtsschiessen</span><span>Pkt</span></h4>';
       if(au.length){
         html+='<ul class="two-col">';
         for(j=0;j<au.length;j++){
           html+='<li>'+
-            '<span class="item-left">'+(au[j].name||"-")+'</span>'+
+            '<span>'+(au[j].name||"-")+'</span>'+
             '<span class="item-right">'+(au[j].punkte||"-")+'</span>'+
           '</li>';
         }
