@@ -101,7 +101,7 @@ function buildTable() {
 function showDetail(team, round) {
   const list = raw.filter(p => p[`r${round}Team`] === team);
   let total = 0;
-  let html = `<h2>Gruppe ${team} – Runde ${round}</h2>`;
+  let html = `<h2>${team} – Runde ${round}</h2>`;
   list.forEach(p => {
     const p1 = p[`r${round}Pkt1`];
     const p2 = p[`r${round}Pkt2`];
