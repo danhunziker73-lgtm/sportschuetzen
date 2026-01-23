@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Mannschaftsmeisterschaft 2025</title>
+<title>Mannschaftsmeisterschaft</title>
 
 <script src="https://www.gstatic.com/charts/loader.js"></script>
 
@@ -15,18 +15,10 @@ body {
   padding: 15px;
 }
 
-h1 {
-  margin-bottom: 5px;
-}
+h1 { margin-bottom: 5px; }
+.subtitle { color: #666; margin-bottom: 15px; }
 
-.subtitle {
-  color: #666;
-  margin-bottom: 15px;
-}
-
-.table-wrapper {
-  overflow-x: auto;
-}
+.table-wrapper { overflow-x: auto; margin-bottom: 20px; }
 
 table {
   width: 100%;
@@ -42,15 +34,15 @@ th, td {
   border-bottom: 1px solid #e0e0e0;
 }
 
-th {
-  background: #0f3c5c;
-  color: white;
-}
+th { background: #0f3c5c; color: white; }
 
 td.team {
   font-weight: bold;
   text-align: left;
-  white-space: nowrap;
+  white-space: normal;   /* lange Namen umbrechen */
+  word-wrap: break-word;
+  max-width: 180px;
+  color: #0f3c5c;
 }
 
 td.cell {
@@ -58,15 +50,13 @@ td.cell {
   background: #fafafa;
 }
 
-td.cell:hover {
-  background: #e6eef5;
-}
+td.cell:hover { background: #e6eef5; }
 
 .detail {
-  margin-top: 20px;
-  background: white;
-  padding: 15px;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+  margin-top: 5px;
+  background: #f9f9f9;
+  padding: 10px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
   display: none;
 }
 
@@ -81,7 +71,7 @@ td.cell:hover {
   font-weight: bold;
   text-align: right;
   margin-top: 10px;
-  font-size: 18px;
+  font-size: 16px;
 }
 
 /* Mobile */
@@ -96,84 +86,90 @@ google.charts.load('current');
 google.charts.setOnLoadCallback(loadData);
 
 const SHEET_ID = "1VuOv6b8r5m1g_9ZidPR3OPZ7YIwLUm6dYLC9nKmC2mE";
-const SHEET_NAME = "2025_Mannschaft";
+const SHEET_NAME = "2025_Mannschaft"; // dynamisch anpassen
+const YEAR = SHEET_NAME.substring(0,4);
 
 let raw = [];
 let teams = [];
 
 function loadData() {
+  document.querySelector('h1').textContent = `Mannschaftsmeisterschaft ${YEAR}`;
+  document.querySelector('.subtitle').textContent = `Übersicht ${YEAR} – auf Punkte klicken für Details`;
+
   const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?sheet=${SHEET_NAME}`;
   const query = new google.visualization.Query(url);
   query.send(res => {
+    if(res.isError()){
+      document.getElementById("overview").innerHTML = "<p style='color:red'>Fehler beim Laden: " + res.getMessage() + "</p>";
+      return;
+    }
+
     const data = res.getDataTable();
-    for (let r = 0; r < data.getNumberOfRows(); r++) {
-      let row = { name: data.getValue(r,0) };
-      for (let i = 1; i <= 7; i++) {
-        row[`r${i}Team`] = data.getValue(r,(i-1)*2+1);
-        row[`r${i}Pkt`]  = data.getValue(r,(i-1)*2+2);
+    for(let r=0; r<data.getNumberOfRows(); r++){
+      let row = { name: data.getValue(r,0) || "" };
+      for(let i=1;i<=7;i++){
+        row[`r${i}Team`] = data.getValue(r,(i-1)*2+1) || "";
+        row[`r${i}Pkt`]  = Number(data.getValue(r,(i-1)*2+2)) || 0;
       }
       raw.push(row);
     }
-    teams = [...new Set(raw.flatMap(r =>
-      Object.keys(r)
-        .filter(k => k.includes("Team"))
-        .map(k => r[k])
-        .filter(Boolean)
-    ))];
+
+    teams = [...new Set(raw.flatMap(r=>Object.keys(r).filter(k=>k.includes("Team")).map(k=>r[k]).filter(Boolean)))].sort();
     buildTable();
   });
 }
 
-function buildTable() {
-  let html = `
-  <div class="table-wrapper">
-  <table>
-    <tr>
-      <th>Mannschaft</th>
-      ${[1,2,3,4,5,6,7].map(r => `<th>R${r}</th>`).join("")}
-    </tr>`;
+function buildTable(){
+  let html = `<div class="table-wrapper"><table><tr>
+    <th></th>`; // leere erste Spalte statt 'Mannschaft'
+  
+  for(let r=1;r<=7;r++) html += `<th>R${r}</th>`;
+  html += `</tr>`;
 
-  teams.forEach(team => {
-    html += `<tr><td class="team">${team}</td>`;
-    for (let r=1;r<=7;r++) {
-      const sum = raw
-        .filter(p => p[`r${r}Team`] === team)
-        .reduce((a,b)=>a+(b[`r${r}Pkt`]||0),0);
-      html += `<td class="cell" onclick="showDetail('${team}',${r})">${sum||"–"}</td>`;
+  teams.forEach((team,index)=>{
+    html += `<tr>
+      <td class="team">${team}</td>`; // Teamname nicht klickbar
+    for(let r=1;r<=7;r++){
+      const sum = raw.filter(p=>p[`r${r}Team`]===team).reduce((a,b)=>a+(b[`r${r}Pkt`]||0),0);
+      html += `<td class="cell" onclick="toggleDetail('${team}',${r},${index})">${sum||"–"}</td>`;
     }
-    html += `</tr>`;
+    html += `</tr>
+      <tr id="detail-${index}" class="detail-row">
+        <td colspan="8"><div id="detail-div-${index}" class="detail"></div></td>
+      </tr>`;
   });
 
   html += `</table></div>`;
   document.getElementById("overview").innerHTML = html;
 }
 
-function showDetail(team, round) {
-  const list = raw.filter(p => p[`r${round}Team`] === team);
-  let total = 0;
-  let html = `<h2>${team} – Runde ${round}</h2>`;
+function toggleDetail(team, round, index){
+  const div = document.getElementById(`detail-div-${index}`);
+  const list = raw.filter(p=>p[`r${round}Team`]===team);
+  if(div.style.display==="block"){
+    div.style.display="none";
+    div.innerHTML="";
+    return;
+  }
 
-  list.forEach(p => {
+  let total=0;
+  let html = `<h3>${team} – Runde ${round}</h3>`;
+  list.forEach(p=>{
     const pts = p[`r${round}Pkt`]||0;
     total += pts;
     html += `<div class="player"><div>${p.name}</div><div>${pts}</div></div>`;
   });
-
   html += `<div class="total">Total: ${total}</div>`;
-  const d = document.getElementById("detail");
-  d.innerHTML = html;
-  d.style.display = "block";
+  div.innerHTML = html;
+  div.style.display = "block";
 }
 </script>
 </head>
 
 <body>
-
-<h1>Mannschaftsmeisterschaft 2025</h1>
+<h1>Mannschaftsmeisterschaft</h1>
 <div class="subtitle">Übersicht – auf Punkte klicken für Details</div>
 
 <div id="overview"></div>
-<div id="detail" class="detail"></div>
-
 </body>
 </html>
