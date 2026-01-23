@@ -203,7 +203,7 @@ fetch('https://raw.githubusercontent.com/danhunziker73-lgtm/sportschuetzen/main/
     list.forEach(p => {
       const opt = document.createElement('option');
       opt.value = p.lizenz || p.id;
-      opt.text = p.name;
+      opt.text = `${p.nachname} ${p.vorname} (${p.lizenz || p.id})`;
       select.appendChild(opt);
     });
     console.log("Mitglieder geladen:", list.length);
@@ -266,22 +266,22 @@ document.getElementById('uploadForm').addEventListener('submit', async e => {
   btn.disabled = true;
   btnText.innerHTML = '<span class="loading"></span> Wird gesendet...';
 
-  const user = globalTeilnehmerListe.find(t => (t.lizenz || t.id) === selectedId);
+  const selectedUser = globalTeilnehmerListe.find(t => (t.lizenz || t.id) === selectedId);
   const file = fileInput.files[0];
   const reader = new FileReader();
 
   reader.onload = async () => {
     const payload = {
-      foto: reader.result,        // Base64
+      foto: reader.result,
       lizenz: selectedId,
-      vorname: user ? user.vorname : "",
-      nachname: user ? user.nachname : "",
+      vorname: selectedUser ? selectedUser.vorname : "",
+      nachname: selectedUser ? selectedUser.nachname : "",
       erzielt: erz,
       maximal: max
     };
 
     try {
-      const response = await fetch('https://jm-bild.dan-hunziker73.workers.dev', {
+      const response = await fetch('https://github-dropdown-refresh.dan-hunziker73.workers.dev', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -303,10 +303,8 @@ document.getElementById('uploadForm').addEventListener('submit', async e => {
       alert('Netzwerkfehler: Server nicht erreichbar.');
     } finally {
       btn.disabled = false;
-      setTimeout(() => {
-        btnText.textContent = 'Standblatt senden';
-        btn.style.background = 'var(--primary)';
-      }, 2000);
+      btnText.textContent = 'Standblatt senden';
+      btn.style.background = 'var(--primary)';
     }
   };
 
