@@ -70,18 +70,26 @@ function loadData() {
 }
 
 function buildTable() {
-  let html = `<div class="table-wrapper"><table><tr><th>R1</th><th>R2</th><th>R3</th></tr>`;
+  let html = `<div class="table-wrapper"><table>`;
+  // Kopfzeile: Gruppe | R1 | R2 | R3
+  html += `<tr><th>Gruppe</th><th>R1</th><th>R2</th><th>R3</th></tr>`;
+
   teams.forEach(team => {
-    html += `<tr><td class="team" onclick="showDetail('${team.replace(/'/g,"\\'")}',1)">${team}</td>`;
-    for (let r=1;r<=3;r++){
-      const sum = raw.filter(p=>p[`r${r}Team`]===team).reduce((a,b)=>a+b[`r${r}Sum`],0);
+    html += `<tr>`;
+    // Gruppenzelle klickbar
+    html += `<td class="team" onclick="showDetail('${team.replace(/'/g,"\\'")}',1)">${team}</td>`;
+    for (let r=1; r<=3; r++) {
+      const sum = raw.filter(p=>p[`r${r}Team`]===team)
+                     .reduce((a,b)=>a+b[`r${r}Sum`],0);
       html += `<td class="cell" onclick="showDetail('${team.replace(/'/g,"\\'")}',${r})">${sum||"–"}</td>`;
     }
     html += `</tr>`;
   });
+
   html += `</table></div>`;
   document.getElementById("overview").innerHTML = html;
 }
+
 
 function showDetail(team, round){
   const list = raw.filter(p=>p[`r${round}Team`]===team);
