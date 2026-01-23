@@ -1,20 +1,135 @@
-function buildTable() {
-  let html = `<div class="table-wrapper"><table>`;
-  // Kopfzeile: Gruppe | R1 | R2 | R3
-  html += `<tr><th></th> <th>R1</th><th>R2</th><th>R3</th></tr>`;
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gruppenmeisterschaft</title>
 
-  teams.forEach(team => {
-    html += `<tr>`;
-    // Gruppenzelle klickbar
-    html += `<td class="team" onclick="showDetail('${team.replace(/'/g,"\\'")}',1)">${team}</td>`;
-    for (let r=1; r<=3; r++) {
-      const sum = raw.filter(p=>p[`r${r}Team`]===team)
-                     .reduce((a,b)=>a+b[`r${r}Sum`],0);
-      html += `<td class="cell" onclick="showDetail('${team.replace(/'/g,"\\'")}',${r})">${sum||"–"}</td>`;
+<script src="https://www.gstatic.com/charts/loader.js"></script>
+
+<style>
+body { font-family: Arial, sans-serif; background: #f4f6f8; margin: 0; padding: 15px; }
+h1 { margin-bottom: 5px; }
+.subtitle { color: #666; margin-bottom: 15px; }
+.table-wrapper { overflow-x: auto; margin-bottom: 20px; }
+table { width: 100%; min-width: 400px; border-collapse: collapse; background: white; box-shadow: 0 2px 6px rgba(0,0,0,0.08); }
+th, td { padding: 10px; text-align: center; border-bottom: 1px solid #e0e0e0; }
+th { background: #0f3c5c; color: white; }
+td.team { font-weight: bold; text-align: left; cursor: pointer; white-space: nowrap; color: #0f3c5c; }
+td.team:hover { text-decoration: underline; }
+td.cell { background: #fafafa; cursor: pointer; }
+td.cell:hover { background: #e6eef5; }
+.detail { margin-top: 5px; background: #f9f9f9; padding: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); display: none; }
+.player { display: grid; grid-template-columns: 1fr auto auto auto; gap: 12px; padding: 6px 0; border-bottom: 1px solid #eee; align-items: center; }
+.name { display: flex; align-items: center; gap: 8px; }
+.stellung { font-size: 12px; font-weight: bold; padding: 3px 10px; border-radius: 12px; white-space: nowrap; }
+.liegend { background: #e3f0ff; color: #1e5dbf; }
+.kniend { background: #e6f6ec; color: #1f7a3a; }
+.total { font-weight: bold; text-align: right; margin-top: 10px; font-size: 16px; }
+@media (max-width: 768px) { th, td { padding: 8px; font-size: 14px; } h1 { font-size: 20px; } }
+</style>
+
+<script>
+google.charts.load('current');
+google.charts.setOnLoadCallback(loadData);
+
+const SHEET_ID = "1VuOv6b8r5m1g_9ZidPR3OPZ7YIwLUm6dYLC9nKmC2mE";
+const SHEET_NAME = "2025_Gruppe"; // dynamisch anpassen
+const YEAR = SHEET_NAME.substring(0,4);
+
+let raw = [];
+let teams = [];
+
+function loadData() {
+  document.querySelector('h1').textContent = `Gruppenmeisterschaft ${YEAR}`;
+  document.querySelector('.subtitle').textContent = `Übersicht ${YEAR} – auf Gruppe oder Punkte klicken für Details`;
+
+  const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?sheet=${SHEET_NAME}`;
+  const query = new google.visualization.Query(url);
+  query.send(res => {
+    if(res.isError()){
+      document.getElementById("overview").innerHTML = "<p style='color:red'>Fehler beim Laden: " + res.getMessage() + "</p>";
+      return;
     }
-    html += `</tr>`;
+
+    const data = res.getDataTable();
+    for(let r=0; r<data.getNumberOfRows(); r++){
+      let row = { name: data.getValue(r,0)||"", stellung: data.getValue(r,1)||"" };
+      for(let i=1;i<=3;i++){
+        row[`r${i}Team`] = data.getValue(r,(i-1)*3+2)||"";
+        row[`r${i}Pkt1`] = Number(data.getValue(r,(i-1)*3+3))||0;
+        row[`r${i}Pkt2`] = Number(data.getValue(r,(i-1)*3+4))||0;
+        row[`r${i}Sum`] = row[`r${i}Pkt1`] + row[`r${i}Pkt2`];
+      }
+      raw.push(row);
+    }
+
+    teams = [...new Set(raw.flatMap(r=>Object.keys(r).filter(k=>k.includes("Team")).map(k=>r[k]).filter(Boolean)))].sort();
+    buildTable();
+  });
+}
+
+function buildTable(){
+  let html = `<div class="table-wrapper"><table><tr>
+    <th></th> <!-- leere erste Spalte statt 'Gruppe' -->
+    <th>R1</th>
+    <th>R2</th>
+    <th>R3</th>
+  </tr>`;
+
+  teams.forEach((team,index)=>{
+    html += `<tr>
+      <td class="team">${team}</td>`; // Teamname sichtbar
+    for(let r=1;r<=3;r++){
+      const sum = raw.filter(p=>p[`r${r}Team`]===team).reduce((a,b)=>a+b[`r${r}Sum`],0);
+      html += `<td class="cell" onclick="toggleDetail('${team.replace(/'/g,"\\'")}',${r},${index})">${sum||"–"}</td>`;
+    }
+    html += `</tr>
+      <tr id="detail-${index}" class="detail-row">
+        <td colspan="4"><div id="detail-div-${index}" class="detail"></div></td>
+      </tr>`;
   });
 
   html += `</table></div>`;
   document.getElementById("overview").innerHTML = html;
 }
+
+function toggleDetail(team, round, index){
+  const div = document.getElementById(`detail-div-${index}`);
+  const list = raw.filter(p=>p[`r${round}Team`]===team);
+  if(div.style.display==="block"){
+    div.style.display="none";
+    div.innerHTML="";
+    return;
+  }
+
+  let total=0;
+  let html = `<h3>${team} – Runde ${round}</h3>`;
+  list.forEach(p=>{
+    const p1=p[`r${round}Pkt1`];
+    const p2=p[`r${round}Pkt2`];
+    const sum=p1+p2;
+    total+=sum;
+    const cls=p.stellung.toLowerCase()==="liegend"?"liegend":"kniend";
+    html += `
+      <div class="player">
+        <div class="name">${p.name}<span class="stellung ${cls}">${p.stellung}</span></div>
+        <div>${p1}</div>
+        <div>${p2}</div>
+        <div><strong>${sum}</strong></div>
+      </div>`;
+  });
+  html += `<div class="total">Gesamt: ${total}</div>`;
+  div.innerHTML = html;
+  div.style.display = "block";
+}
+</script>
+</head>
+
+<body>
+<h1>Gruppenmeisterschaft</h1>
+<div class="subtitle">Übersicht – auf Punkte klicken für Details</div>
+
+<div id="overview"></div>
+</body>
+</html>
