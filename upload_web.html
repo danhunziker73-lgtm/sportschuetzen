@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Standblatt hochladen – Jahresmeisterschaft</title>
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -35,185 +35,137 @@ body {
 header { text-align: center; margin-bottom: 2.5rem; }
 .logo { max-width: 140px; margin-bottom: 1.5rem; }
 h1 { font-size: 2.2rem; color: var(--text); }
-.card {
-  background: var(--card);
-  border-radius: 16px;
-  padding: 2rem;
-  border: 1px solid rgba(0,0,0,0.05);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-}
-
+.card { background: var(--card); border-radius: 16px; padding: 2rem; border: 1px solid rgba(0,0,0,0.05); box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
 .form-group { margin-bottom: 1.8rem; position: relative; }
 label {
-  position: absolute;
-  top: 1rem;
-  left: 1rem;
-  color: var(--text-light);
-  font-size: 0.85rem;
-  pointer-events: none;
-  transition: all 0.25s ease;
+  position: absolute; top: 1rem; left: 1rem; color: var(--text-light); font-size: 0.85rem;
+  pointer-events: none; transition: all 0.25s ease;
 }
-
 input, select {
-  width: 100%;
-  padding: 1.1rem 1rem 0.4rem;
-  background: #ffffff;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  color: var(--text);
-  font-size: 1rem;
+  width: 100%; padding: 1.1rem 1rem 0.4rem;
+  background: #ffffff; border: 1px solid var(--border); border-radius: 8px;
+  color: var(--text); font-size: 1rem;
 }
-
 input:focus, select:focus {
-  outline: none;
-  border-color: var(--primary);
+  outline: none; border-color: var(--primary);
   box-shadow: 0 0 0 3px rgba(15,58,93,0.15);
 }
-
-input:focus + label,
-input:not(:placeholder-shown) + label,
-select:focus + label,
-select:not(:placeholder-shown) + label {
-  top: 0.5rem;
-  left: 0.9rem;
-  font-size: 0.75rem;
-  color: var(--primary);
+input:focus + label, input:not(:placeholder-shown) + label,
+select:focus + label, select:not(:placeholder-shown) + label {
+  top: 0.5rem; left: 0.9rem; font-size: 0.75rem; color: var(--primary);
 }
 
 .file-area {
-  border: 2px dashed var(--border);
-  border-radius: 12px;
-  padding: 2rem;
-  text-align: center;
-  cursor: pointer;
-  transition: border-color 0.25s, background 0.25s;
-  background: #ffffff;
+  border: 2px dashed var(--border); border-radius: 12px; padding: 2rem;
+  text-align: center; cursor: pointer; transition: 0.25s; background: #ffffff;
 }
-.file-area:hover { 
-  border-color: var(--primary); 
-  background: rgba(15,58,93,0.05); 
-}
+.file-area:hover { border-color: var(--primary); background: rgba(15,58,93,0.05); }
 
-#preview {
-  max-width: 100%;
-  max-height: 160px;
-  margin-top: 1rem;
-  border-radius: 8px;
-  display: none;
-  margin-left: auto;
-  margin-right: auto;
-}
+#preview { max-width: 100%; max-height: 160px; margin-top: 1rem; border-radius: 8px; display: none; margin-left:auto;margin-right:auto; }
 
 .error { color: var(--error); font-size: 0.85rem; margin-top: 0.4rem; display: none; }
-
 button {
-  width: 100%;
-  padding: 1.1rem;
-  background: var(--primary);
-  color: white;
-  border: none;
-  border-radius: 10px;
-  font-size: 1.05rem;
-  font-weight: 600;
-  cursor: pointer;
-  margin-top: 1.5rem;
-  transition: background 0.25s;
+  width: 100%; padding: 1.1rem; background: var(--primary); color: white;
+  border: none; border-radius: 10px; font-size: 1.05rem; font-weight: 600;
+  cursor: pointer; margin-top: 1.5rem; transition: background 0.25s;
 }
-
 button:hover:not(:disabled) { background: var(--primary-dark); }
 button:disabled { opacity: 0.6; cursor: not-allowed; }
 
 .loading {
-  display: inline-block;
-  width: 20px; height: 20px;
-  border: 3px solid rgba(255,255,255,0.3);
-  border-radius: 50%;
-  border-top-color: white;
-  animation: spin 1s linear infinite;
-  vertical-align: middle;
-  margin-right: 10px;
+  display: inline-block; width: 20px; height: 20px;
+  border: 3px solid rgba(255,255,255,0.3); border-radius: 50%;
+  border-top-color: white; animation: spin 1s linear infinite; vertical-align: middle; margin-right: 10px;
 }
-
 @keyframes spin { to { transform: rotate(360deg); } }
 </style>
 </head>
 <body>
 
 <div class="container">
-  <header>
-    <img src="https://raw.githubusercontent.com/danhunziker73-lgtm/sportschuetzen/main/logo.png" 
-         alt="Logo" class="logo" 
-         onerror="this.src='https://ui-avatars.com/api/?name=Logo&background=0f3a5d&color=fff';">
-    <h1>Jahresmeisterschaft</h1>
-    <div style="color:#6b7280; margin-top:0.5rem;">Standblatt hochladen</div>
-  </header>
+<header>
+  <img src="https://raw.githubusercontent.com/danhunziker73-lgtm/sportschuetzen/main/logo.png"  
+       alt="Logo" class="logo"
+       onerror="this.src='https://ui-avatars.com/api/?name=Logo&background=0f3a5d&color=fff';">
+  <h1>Jahresmeisterschaft</h1>
+  <div style="color:#6b7280; margin-top:0.5rem;">Standblatt hochladen</div>
+</header>
 
-  <div class="card">
-    <form id="uploadForm">
-      <div class="form-group">
-        <select id="name" required>
-          <option value="" disabled selected>Deinen Namen auswählen *</option>
-        </select>
-        <label for="name">Dein Name *</label>
-        <div class="error" id="nameError">Bitte Namen auswählen</div>
-      </div>
-
-      <div class="form-group">
-        <div class="file-area" id="dropZone">
-          <p id="filePrompt">Foto Standblatt hochladen *</p>
-          <p style="font-size:0.85rem; color:#6b7280;">(JPG/PNG, max. 10 MB)</p>
-          <input type="file" id="foto" accept="image/jpeg,image/png" hidden required>
-          <img id="preview" alt="Vorschau">
-        </div>
-        <div class="error" id="fotoError">Bitte Foto auswählen</div>
-      </div>
-
-      <div class="form-group">
-        <input type="number" id="erzielt" min="0" step="0.1" placeholder=" " required>
-        <label for="erzielt">Erzielte Punkteanzahl *</label>
-        <div class="error" id="erzieltError">Bitte Punkte eingeben</div>
-      </div>
-
-      <div class="form-group">
-        <input type="number" id="maximal" min="0" step="0.1" placeholder=" " required>
-        <label for="maximal">Maximal zu erzielende Punkteanzahl *</label>
-        <div class="error" id="maximalError">Bitte maximale Punkte eingeben</div>
-      </div>
-
-      <button type="submit" id="submitBtn">
-        <span id="btnText">Standblatt senden</span>
-      </button>
-    </form>
-
-    <div style="text-align:center; color:#6b7280; font-size:0.85rem; margin-top:1.5rem;">
-      Deine Daten werden sicher verarbeitet. Nur der Vorstand hat Zugriff.
+<div class="card">
+  <form id="uploadForm">
+    <div class="form-group">
+      <select id="name" required>
+        <option value="" disabled selected>Deinen Namen auswählen *</option>
+      </select>
+      <label for="name">Dein Name *</label>
+      <div class="error" id="nameError">Bitte Namen auswählen</div>
     </div>
+
+    <div class="form-group">
+      <div class="file-area" id="dropZone">
+        <p id="filePrompt">Foto Standblatt hochladen *</p>
+        <p style="font-size:0.85rem; color:#6b7280;">(JPG/PNG, max. 10 MB)</p>
+        <input type="file" id="foto" accept="image/jpeg,image/png" hidden required>
+        <img id="preview" alt="Vorschau">
+      </div>
+      <div class="error" id="fotoError">Bitte Foto auswählen</div>
+    </div>
+
+    <div class="form-group">
+      <input type="number" id="erzielt" min="0" step="0.1" placeholder=" " required>
+      <label for="erzielt">Erzielte Punkteanzahl *</label>
+      <div class="error" id="erzieltError">Bitte Punkte eingeben</div>
+    </div>
+
+    <div class="form-group">
+      <input type="number" id="maximal" min="0" step="0.1" placeholder=" " required>
+      <label for="maximal">Maximal zu erzielende Punkteanzahl *</label>
+      <div class="error" id="maximalError">Bitte maximale Punkte eingeben</div>
+    </div>
+
+    <button type="submit" id="submitBtn">
+      <span id="btnText">Standblatt senden</span>
+    </button>
+  </form>
+
+  <div style="text-align:center; color:#6b7280; font-size:0.85rem; margin-top:1.5rem;">
+    Deine Daten werden sicher verarbeitet. Nur der Vorstand hat Zugriff.
   </div>
+</div>
 </div>
 
 <script>
+const WORKER_URL = "https://github-dropdown-refresh.dan-hunziker73.workers.dev/";
+
 let globalTeilnehmerListe = [];
 
-// Teilnehmer von GitHub laden
-fetch('https://raw.githubusercontent.com/danhunziker73-lgtm/sportschuetzen/main/teilnehmer.json?t=' + Date.now())
-  .then(r => r.json())
-  .then(list => {
+// -----------------
+// Teilnehmer Dropdown laden
+// -----------------
+async function loadTeilnehmer() {
+  try {
+    const res = await fetch('https://raw.githubusercontent.com/danhunziker73-lgtm/sportschuetzen/main/teilnehmer.json?t=' + Date.now());
+    const list = await res.json();
     globalTeilnehmerListe = list;
+
     const select = document.getElementById('name');
     list.forEach(p => {
       const opt = document.createElement('option');
       opt.value = p.lizenz || p.id;
-      opt.text = `${p.nachname} ${p.vorname} (${p.lizenz || p.id})`;
+      opt.text = p.name;
       select.appendChild(opt);
     });
     console.log("Mitglieder geladen:", list.length);
-  })
-  .catch(err => {
-    console.error('Fehler beim Laden der Teilnehmer:', err);
-    alert('Die Teilnehmerliste konnte nicht geladen werden. Bitte Seite neu laden.');
-  });
+  } catch (err) {
+    console.error("Fehler beim Laden der Teilnehmer:", err);
+    alert("Teilnehmerliste konnte nicht geladen werden. Bitte Seite neu laden.");
+  }
+}
+loadTeilnehmer();
 
-// File Vorschau
+// -----------------
+// Datei Upload / Vorschau
+// -----------------
 const fileInput = document.getElementById('foto');
 const preview = document.getElementById('preview');
 const dropZone = document.getElementById('dropZone');
@@ -221,7 +173,7 @@ const filePrompt = document.getElementById('filePrompt');
 
 fileInput.addEventListener('change', e => {
   const file = e.target.files[0];
-  if (file) {
+  if(file){
     const reader = new FileReader();
     reader.onload = ev => {
       preview.src = ev.target.result;
@@ -242,65 +194,69 @@ dropZone.addEventListener('drop', e => {
   fileInput.dispatchEvent(new Event('change'));
 });
 
+// -----------------
 // Formular senden
+// -----------------
 document.getElementById('uploadForm').addEventListener('submit', async e => {
   e.preventDefault();
 
   const btn = document.getElementById('submitBtn');
   const btnText = document.getElementById('btnText');
-  
-  let valid = true;
-  document.querySelectorAll('.error').forEach(el => el.style.display = 'none');
+
+  // Reset Fehler
+  document.querySelectorAll('.error').forEach(el => el.style.display='none');
 
   const selectedId = document.getElementById('name').value;
   const erz = document.getElementById('erzielt').value;
   const max = document.getElementById('maximal').value;
 
-  if (!selectedId) { document.getElementById('nameError').style.display = 'block'; valid = false; }
-  if (!fileInput.files.length) { document.getElementById('fotoError').style.display = 'block'; valid = false; }
-  if (!erz) { document.getElementById('erzieltError').style.display = 'block'; valid = false; }
-  if (!max) { document.getElementById('maximalError').style.display = 'block'; valid = false; }
+  let valid = true;
+  if(!selectedId){ document.getElementById('nameError').style.display='block'; valid=false; }
+  if(!fileInput.files.length){ document.getElementById('fotoError').style.display='block'; valid=false; }
+  if(!erz){ document.getElementById('erzieltError').style.display='block'; valid=false; }
+  if(!max){ document.getElementById('maximalError').style.display='block'; valid=false; }
 
-  if (!valid) return;
+  if(!valid) return;
 
   btn.disabled = true;
   btnText.innerHTML = '<span class="loading"></span> Wird gesendet...';
 
-  const selectedUser = globalTeilnehmerListe.find(t => (t.lizenz || t.id) === selectedId);
+  const user = globalTeilnehmerListe.find(t => (t.lizenz || t.id) === selectedId);
+
   const file = fileInput.files[0];
   const reader = new FileReader();
 
   reader.onload = async () => {
     const payload = {
-      foto: reader.result,
+      action: "upload_standblatt",
       lizenz: selectedId,
-      vorname: selectedUser ? selectedUser.vorname : "",
-      nachname: selectedUser ? selectedUser.nachname : "",
+      vorname: user?.vorname || "",
+      nachname: user?.nachname || "",
       erzielt: erz,
-      maximal: max
+      maximal: max,
+      foto: reader.result
     };
 
     try {
-      const response = await fetch('https://github-dropdown-refresh.dan-hunziker73.workers.dev', {
+      const res = await fetch(WORKER_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
+      const result = await res.json();
 
-      const result = await response.json();
-
-      if (result.success) {
+      if(result.success){
         btnText.textContent = '✔ Erfolgreich gesendet';
         btn.style.background = 'var(--success)';
         document.getElementById('uploadForm').reset();
         preview.style.display = 'none';
         filePrompt.style.display = 'block';
       } else {
-        alert('Fehler: ' + (result.error || 'Serverfehler beim Speichern.'));
+        alert("Fehler beim Upload: " + (result.error || "Serverfehler"));
       }
-    } catch (err) {
-      console.error("Sende-Fehler:", err);
-      alert('Netzwerkfehler: Server nicht erreichbar.');
+    } catch(err){
+      console.error("Netzwerkfehler:", err);
+      alert("Netzwerkfehler: Server nicht erreichbar");
     } finally {
       btn.disabled = false;
       btnText.textContent = 'Standblatt senden';
@@ -312,10 +268,12 @@ document.getElementById('uploadForm').addEventListener('submit', async e => {
     alert("Fehler beim Lesen des Bildes.");
     btn.disabled = false;
     btnText.textContent = 'Standblatt senden';
+    btn.style.background = 'var(--primary)';
   };
 
   reader.readAsDataURL(file);
 });
 </script>
+
 </body>
 </html>
