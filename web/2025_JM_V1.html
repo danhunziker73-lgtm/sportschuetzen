@@ -10,12 +10,14 @@
     return Object.prototype.toString.call(v)==="[object Array]"?v:[];
   }
 
-  window.toggle=function(id){
-    var el=document.getElementById(id);
-    if(!el)return;
-    // Mehrfachauswahl erlauben: Die Zeile zum Schließen anderer Reihen wurde entfernt
-    el.style.display=(el.style.display==="table-row")?"none":"table-row";
-  };
+
+window.toggle = function(id){
+  var el = document.getElementById(id);
+  if(!el) return;
+  el.style.display = (el.style.display === "table-row") ? "none" : "table-row";
+};
+
+
 
   function renderLiga(ligaNr,raw){
     var teilnehmer=safeArray(raw);
@@ -51,42 +53,46 @@
       html+='<tr id="'+id+'" class="details"><td colspan="5"><div class="detail-grid">';
 
       // --- Meisterschaft ---
-      html+='<div class="detail-box"><h4>Meisterschaft <span style="min-width:100px; display:inline-block">Pkt (%)</span></h4><ul>';
+      html+='<div class="detail-box"><h4>Meisterschaft</h4><ul class="two-col">';
       for(var j=0;j<sch.length;j++){
         var s=sch[j]||{};
         var p=Number(s.prozent);
         var isStreich=isFinite(streichPrz)&&!used&&Math.abs(p-streichPrz)<0.0001&&streichPrz>0;
         if(isStreich)used=true;
         html+='<li class="'+(isStreich?"is-streich":"")+'">'+
-          '<span class="item-name">'+(s.name||"-")+'</span>'+
-          '<span class="item-dots"></span>'+
-          '<span class="item-value" style="min-width:100px; display:inline-block">'+(s.punkte||"-")+
-          ' <span class="prz-small">('+formatNum(p)+'%)</span></span></li>';
-      }
+        '<span class="item-left">'+
+        '<div>'+ (s.name||"-") +'</div>'+
+        '<div class="sub-value">'+ formatNum(p) +' %</div>'+
+        '</span>'+
+        '<span class="item-right">'+ (s.punkte||"-") +'</span>'+
+        '</li>';
+        }
       html+='</ul>'+(streichPrz>0?'<div class="streich-info">Streichresultat: '+formatNum(streichPrz)+'%</div>':"")+'</div>';
 
       // --- Mannschaft (Runde 1-7 fix) ---
-      html+='<div class="detail-box"><h4>Mannschaft <span style="min-width:40px; display:inline-block">Pkt</span></h4><ul>';
-      for(var r=1; r<=7; r++){
-        var mMatch = ma.find(function(item){ return (item.runde||"").indexOf("#"+r) !== -1; });
-        var pktDisp = (mMatch && mMatch.punkte > 0) ? mMatch.punkte : "-";
-        html+='<li><span class="item-name">Runde '+r+'</span>'+
-          '<span class="item-dots"></span><span class="item-value" style="min-width:40px; display:inline-block">'+
-          pktDisp+'</span></li>';
-      }
-      html+='</ul></div>';
+    html+='<div class="detail-box"><h4>Mannschaft</h4><ul class="two-col">';
+for(j=0;j<ma.length;j++){
+  var m=ma[j]||{};
+  html+='<li>'+
+    '<span class="item-left">Runde '+(j+1)+'</span>'+
+    '<span class="item-right">'+(m.punkte>0?m.punkte:"-")+'</span>'+
+  '</li>';
+}
+html+='</ul></div>';
 
       // --- Auswärtschiessen ---
-      html+='<div class="detail-box"><h4>Auswärtschiessen <span style="min-width:40px; display:inline-block">Pkt</span></h4>';
-      if(au.length){
-        html+='<ul>';
-        for(j=0;j<au.length;j++){
-          var a=au[j]||{};
-          html+='<li><span class="item-name">'+(a.name||"-")+
-            '</span><span class="item-dots"></span><span class="item-value" style="min-width:40px; display:inline-block">'+
-            (a.punkte||0)+'</span></li>'; // "Pkt." hier entfernt
-        }
-        html+='</ul>';
+  html+='<div class="detail-box"><h4>Auswärtsschiessen</h4>';
+if(au.length){
+  html+='<ul class="two-col">';
+  for(j=0;j<au.length;j++){
+    var a=au[j]||{};
+    html+='<li>'+
+      '<span class="item-left">'+(a.name||"-")+'</span>'+
+      '<span class="item-right">'+(a.punkte||"-")+'</span>'+
+    '</li>';
+  }
+  html+='</ul>';
+}
       } else {
         html+='<p style="color:#999;font-size:.9rem">Keine Resultate vorhanden.</p>';
       }
@@ -95,6 +101,27 @@
 
     return html+'</tbody></table></div>';
   }
+  .two-col li{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+}
+
+.item-left{
+  display:flex;
+  flex-direction:column;
+}
+
+.item-right{
+  font-weight:600;
+  font-variant-numeric:tabular-nums;
+}
+
+.sub-value{
+  font-size:.85rem;
+  color:#666;
+}
+
 
   var xhr=new XMLHttpRequest();
   xhr.open("GET",API_URL,true);
