@@ -11,15 +11,15 @@
 
 <style>
 :root {
-  --primary: #0f3a5d;           /* Primärfarbe Blau */
-  --primary-dark: #0a2a45;      /* Hover / Active */
-  --bg: #ffffff;                /* Hintergrund Seite */
-  --card: #f9fafb;              /* Card / Formular */
-  --text: #1f2937;              /* Standardtext */
-  --text-light: #6b7280;        /* Labels / Hilfetexte */
-  --border: #d1d5db;            /* Input / Card Border */
-  --error: #f87171;             /* Fehler */
-  --success: #22c55e;           /* Erfolg */
+  --primary: #0f3a5d;
+  --primary-dark: #0a2a45;
+  --bg: #ffffff;
+  --card: #f9fafb;
+  --text: #1f2937;
+  --text-light: #6b7280;
+  --border: #d1d5db;
+  --error: #f87171;
+  --success: #22c55e;
 }
 
 body {
@@ -194,7 +194,7 @@ button:disabled { opacity: 0.6; cursor: not-allowed; }
 <script>
 let globalTeilnehmerListe = [];
 
-// Teilnehmer laden
+// Teilnehmer von GitHub laden
 fetch('https://raw.githubusercontent.com/danhunziker73-lgtm/sportschuetzen/main/teilnehmer.json?t=' + Date.now())
   .then(r => r.json())
   .then(list => {
@@ -272,13 +272,12 @@ document.getElementById('uploadForm').addEventListener('submit', async e => {
 
   reader.onload = async () => {
     const payload = {
-      action: "upload_standblatt",
+      foto: reader.result,        // Base64
       lizenz: selectedId,
       vorname: user ? user.vorname : "",
       nachname: user ? user.nachname : "",
       erzielt: erz,
-      maximal: max,
-      foto: reader.result
+      maximal: max
     };
 
     try {
@@ -301,11 +300,13 @@ document.getElementById('uploadForm').addEventListener('submit', async e => {
       }
     } catch (err) {
       console.error("Sende-Fehler:", err);
-      alert('Netzwerkfehler: Der Server ist nicht erreichbar.');
+      alert('Netzwerkfehler: Server nicht erreichbar.');
     } finally {
       btn.disabled = false;
-      setTimeout(()=>btnText.textContent = 'Standblatt senden', 2000);
-      btn.style.background = 'var(--primary)';
+      setTimeout(() => {
+        btnText.textContent = 'Standblatt senden';
+        btn.style.background = 'var(--primary)';
+      }, 2000);
     }
   };
 
