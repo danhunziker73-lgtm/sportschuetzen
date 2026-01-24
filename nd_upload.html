@@ -40,6 +40,17 @@ body {
   box-shadow: 0 10px 25px rgba(0,0,0,0.05);
 }
 
+/* Logo Styling */
+.logo-container {
+  text-align: center;
+  margin-bottom: 1rem;
+}
+
+.logo-container img {
+  max-width: 80px;
+  height: auto;
+}
+
 h2 { margin: 0 0 1.5rem; text-align: center; color: var(--primary); font-size: 1.5rem; }
 
 .form-group { margin-bottom: 1.2rem; }
@@ -64,7 +75,7 @@ input, select {
   appearance: none;
 }
 
-/* Entfernt die kleinen Pfeile (Spin-Buttons) bei Zahlenfeldern */
+/* Entfernt Pfeile bei Zahlenfeldern (Chrome, Safari, Firefox) */
 input[type=number]::-webkit-inner-spin-button, 
 input[type=number]::-webkit-outer-spin-button { 
   -webkit-appearance: none; 
@@ -77,7 +88,6 @@ input:focus, select:focus {
   border-color: var(--primary);
 }
 
-/* Foto Upload Area */
 .upload-area {
   border: 2px dashed var(--border);
   border-radius: 12px;
@@ -116,7 +126,6 @@ button {
 
 button:disabled { background: var(--text-light); opacity: 0.7; }
 
-/* Fehlermeldung Style */
 .validation-msg {
   color: var(--error);
   font-size: 0.75rem;
@@ -130,6 +139,11 @@ button:disabled { background: var(--text-light); opacity: 0.7; }
 <body>
 <div class="container">
   <div class="card">
+    
+    <div class="logo-container">
+      <img src="https://raw.githubusercontent.com/danhunziker73-lgtm/sportschuetzen/main/logo.png" alt="Vereinslogo">
+    </div>
+
     <h2>Standblatt senden</h2>
     <form id="uploadForm">
 
@@ -171,7 +185,6 @@ button:disabled { background: var(--text-light); opacity: 0.7; }
 const WORKER_URL = "https://github-dropdown-refresh.dan-hunziker73.workers.dev/";
 let teilnehmer = [];
 
-/* --- Teilnehmer laden --- */
 async function loadTeilnehmer() {
   try {
     const res = await fetch("https://raw.githubusercontent.com/danhunziker73-lgtm/sportschuetzen/main/teilnehmer.json?t=" + Date.now());
@@ -183,11 +196,10 @@ async function loadTeilnehmer() {
       opt.textContent = p.name;
       select.appendChild(opt);
     });
-  } catch(e) { console.error("Fehler beim Laden der Teilnehmer", e); }
+  } catch(e) { console.error("Fehler beim Laden", e); }
 }
 loadTeilnehmer();
 
-/* --- Preview --- */
 document.getElementById("foto").addEventListener("change", e => {
   const f = e.target.files[0];
   if (!f) return;
@@ -201,7 +213,6 @@ document.getElementById("foto").addEventListener("change", e => {
   r.readAsDataURL(f);
 });
 
-/* --- Live-Check: Erzielt vs Maximum --- */
 function checkPoints() {
   const erz = parseFloat(document.getElementById("erzielt").value);
   const max = parseFloat(document.getElementById("maximal").value);
@@ -222,13 +233,10 @@ function checkPoints() {
 document.getElementById("erzielt").addEventListener("input", checkPoints);
 document.getElementById("maximal").addEventListener("input", checkPoints);
 
-/* --- Submit --- */
 document.getElementById("uploadForm").addEventListener("submit", async e => {
   e.preventDefault();
-  
-  // Validierung vor dem Senden
   if (!checkPoints()) {
-    alert("Bitte korrigiere die Punktzahl (Erzielt darf nicht höher als Maximum sein).");
+    alert("Fehler: Erzielte Punkte sind höher als das Maximum.");
     return;
   }
 
@@ -237,10 +245,6 @@ document.getElementById("uploadForm").addEventListener("submit", async e => {
   btn.textContent = "Wird gesendet...";
 
   const selectedId = String(document.getElementById("name").value);
-  const erz = document.getElementById("erzielt").value;
-  const max = document.getElementById("maximal").value;
-  const fotoFile = document.getElementById("foto").files[0];
-
   const user = teilnehmer.find(t => String(t.lizenz || t.id) === selectedId);
 
   const reader = new FileReader();
@@ -251,8 +255,8 @@ document.getElementById("uploadForm").addEventListener("submit", async e => {
         lizenz: selectedId,
         vorname: user.vorname,
         nachname: user.nachname,
-        erzielt: erz,
-        maximal: max,
+        erzielt: document.getElementById("erzielt").value,
+        maximal: document.getElementById("maximal").value,
         foto: reader.result
       };
 
@@ -272,13 +276,13 @@ document.getElementById("uploadForm").addEventListener("submit", async e => {
         alert("Fehler: " + (json.error || "unbekannt"));
       }
     } catch (err) {
-      alert("Netzwerkfehler: " + err.message);
+      alert("Netzwerkfehler");
     } finally {
       btn.disabled = false;
       btn.textContent = "Standblatt senden";
     }
   };
-  reader.readAsDataURL(fotoFile);
+  reader.readAsDataURL(document.getElementById("foto").files[0]);
 });
 </script>
 </body>
