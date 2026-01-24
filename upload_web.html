@@ -11,274 +11,151 @@
 
 <style>
 :root {
-  --primary: #0f3a5d;
-  --primary-dark: #0a2a45;
-  --bg: #ffffff;
-  --card: #f9fafb;
-  --text: #1f2937;
-  --text-light: #6b7280;
-  --border: #d1d5db;
-  --error: #f87171;
-  --success: #22c55e;
+  --primary:#0f3a5d;
+  --primary-dark:#0a2a45;
+  --bg:#ffffff;
+  --card:#f9fafb;
+  --text:#1f2937;
+  --text-light:#6b7280;
+  --border:#d1d5db;
+  --error:#f87171;
+  --success:#22c55e;
 }
-
-body {
-  font-family: 'Inter', sans-serif;
-  background: var(--bg);
-  color: var(--text);
-  min-height: 100vh;
-  padding: 2rem 1rem;
-  margin: 0;
-}
-
-.container { max-width: 520px; margin: 0 auto; }
-header { text-align: center; margin-bottom: 2.5rem; }
-.logo { max-width: 140px; margin-bottom: 1.5rem; }
-h1 { font-size: 2.2rem; color: var(--text); }
-.card { background: var(--card); border-radius: 16px; padding: 2rem; border: 1px solid rgba(0,0,0,0.05); box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
-.form-group { margin-bottom: 1.8rem; position: relative; }
-label {
-  position: absolute; top: 1rem; left: 1rem; color: var(--text-light); font-size: 0.85rem;
-  pointer-events: none; transition: all 0.25s ease;
-}
-input, select {
-  width: 100%; padding: 1.1rem 1rem 0.4rem;
-  background: #ffffff; border: 1px solid var(--border); border-radius: 8px;
-  color: var(--text); font-size: 1rem;
-}
-input:focus, select:focus {
-  outline: none; border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(15,58,93,0.15);
-}
-input:focus + label, input:not(:placeholder-shown) + label,
-select:focus + label, select:not(:placeholder-shown) + label {
-  top: 0.5rem; left: 0.9rem; font-size: 0.75rem; color: var(--primary);
-}
-
-.file-area {
-  border: 2px dashed var(--border); border-radius: 12px; padding: 2rem;
-  text-align: center; cursor: pointer; transition: 0.25s; background: #ffffff;
-}
-.file-area:hover { border-color: var(--primary); background: rgba(15,58,93,0.05); }
-
-#preview { max-width: 100%; max-height: 160px; margin-top: 1rem; border-radius: 8px; display: none; margin-left:auto;margin-right:auto; }
-
-.error { color: var(--error); font-size: 0.85rem; margin-top: 0.4rem; display: none; }
-button {
-  width: 100%; padding: 1.1rem; background: var(--primary); color: white;
-  border: none; border-radius: 10px; font-size: 1.05rem; font-weight: 600;
-  cursor: pointer; margin-top: 1.5rem; transition: background 0.25s;
-}
-button:hover:not(:disabled) { background: var(--primary-dark); }
-button:disabled { opacity: 0.6; cursor: not-allowed; }
-
-.loading {
-  display: inline-block; width: 20px; height: 20px;
-  border: 3px solid rgba(255,255,255,0.3); border-radius: 50%;
-  border-top-color: white; animation: spin 1s linear infinite; vertical-align: middle; margin-right: 10px;
-}
-@keyframes spin { to { transform: rotate(360deg); } }
+body{font-family:Inter,sans-serif;background:var(--bg);margin:0;padding:2rem 1rem}
+.container{max-width:520px;margin:0 auto}
+.card{background:var(--card);padding:2rem;border-radius:16px}
+.form-group{margin-bottom:1.6rem;position:relative}
+label{position:absolute;top:.8rem;left:1rem;font-size:.75rem;color:var(--text-light)}
+input,select{width:100%;padding:1.2rem 1rem .4rem;border:1px solid var(--border);border-radius:8px}
+button{width:100%;padding:1.1rem;background:var(--primary);color:#fff;border:none;border-radius:10px;font-size:1.05rem;font-weight:600}
+.error{display:none;color:var(--error);font-size:.85rem;margin-top:.4rem}
+#preview{max-width:100%;max-height:160px;display:none;margin-top:1rem}
 </style>
 </head>
+
 <body>
-
 <div class="container">
-<header>
-  <img src="https://raw.githubusercontent.com/danhunziker73-lgtm/sportschuetzen/main/logo.png"  
-       alt="Logo" class="logo"
-       onerror="this.src='https://ui-avatars.com/api/?name=Logo&background=0f3a5d&color=fff';">
-  <h1>Jahresmeisterschaft</h1>
-  <div style="color:#6b7280; margin-top:0.5rem;">Standblatt hochladen</div>
-</header>
-
 <div class="card">
-  <form id="uploadForm">
-    <div class="form-group">
-      <select id="name" required>
-        <option value="" disabled selected>Deinen Namen auswählen *</option>
-      </select>
-      <label for="name">Dein Name *</label>
-      <div class="error" id="nameError">Bitte Namen auswählen</div>
-    </div>
+<form id="uploadForm">
 
-    <div class="form-group">
-      <div class="file-area" id="dropZone">
-        <p id="filePrompt">Foto Standblatt hochladen *</p>
-        <p style="font-size:0.85rem; color:#6b7280;">(JPG/PNG, max. 10 MB)</p>
-        <input type="file" id="foto" accept="image/jpeg,image/png" hidden required>
-        <img id="preview" alt="Vorschau">
-      </div>
-      <div class="error" id="fotoError">Bitte Foto auswählen</div>
-    </div>
+<div class="form-group">
+  <select id="name" required>
+    <option value="" disabled selected>Deinen Namen auswählen *</option>
+  </select>
+  <label>Dein Name *</label>
+  <div class="error" id="nameError">Bitte Namen auswählen</div>
+</div>
 
-    <div class="form-group">
-      <input type="number" id="erzielt" min="0" step="0.1" placeholder=" " required>
-      <label for="erzielt">Erzielte Punkteanzahl *</label>
-      <div class="error" id="erzieltError">Bitte Punkte eingeben</div>
-    </div>
+<div class="form-group">
+  <input type="file" id="foto" accept="image/jpeg,image/png" required>
+  <label>Foto Standblatt *</label>
+  <img id="preview">
+</div>
 
-    <div class="form-group">
-      <input type="number" id="maximal" min="0" step="0.1" placeholder=" " required>
-      <label for="maximal">Maximal zu erzielende Punkteanzahl *</label>
-      <div class="error" id="maximalError">Bitte maximale Punkte eingeben</div>
-    </div>
+<div class="form-group">
+  <input type="number" id="erzielt" required>
+  <label>Erzielte Punkte *</label>
+</div>
 
-    <button type="submit" id="submitBtn">
-      <span id="btnText">Standblatt senden</span>
-    </button>
-  </form>
+<div class="form-group">
+  <input type="number" id="maximal" required>
+  <label>Maximal *</label>
+</div>
 
-  <div style="text-align:center; color:#6b7280; font-size:0.85rem; margin-top:1.5rem;">
-    Deine Daten werden sicher verarbeitet. Nur der Vorstand hat Zugriff.
-  </div>
+<button type="submit" id="submitBtn">Standblatt senden</button>
+</form>
 </div>
 </div>
 
 <script>
 const WORKER_URL = "https://github-dropdown-refresh.dan-hunziker73.workers.dev/";
+let teilnehmer = [];
 
-let globalTeilnehmerListe = [];
-
-// -----------------
-// Teilnehmer Dropdown laden
-// -----------------
+/* -------------------------
+   Teilnehmer laden
+-------------------------- */
 async function loadTeilnehmer() {
-  try {
-    const res = await fetch('https://raw.githubusercontent.com/danhunziker73-lgtm/sportschuetzen/main/teilnehmer.json?t=' + Date.now());
-    const list = await res.json();
-    globalTeilnehmerListe = list;
+  const res = await fetch(
+    "https://raw.githubusercontent.com/danhunziker73-lgtm/sportschuetzen/main/teilnehmer.json?t=" + Date.now()
+  );
+  teilnehmer = await res.json();
 
-    const select = document.getElementById('name');
-    list.forEach(p => {
-      const opt = document.createElement('option');
-      opt.value = p.lizenz || p.id;
-      opt.text = p.name;
-      select.appendChild(opt);
-    });
-    console.log("Mitglieder geladen:", list.length);
-  } catch (err) {
-    console.error("Fehler beim Laden der Teilnehmer:", err);
-    alert("Teilnehmerliste konnte nicht geladen werden. Bitte Seite neu laden.");
-  }
+  const select = document.getElementById("name");
+  teilnehmer.forEach(p => {
+    const opt = document.createElement("option");
+    opt.value = String(p.lizenz || p.id);   // STRING!
+    opt.textContent = p.name;
+    select.appendChild(opt);
+  });
 }
 loadTeilnehmer();
 
-// -----------------
-// Datei Upload / Vorschau
-// -----------------
-const fileInput = document.getElementById('foto');
-const preview = document.getElementById('preview');
-const dropZone = document.getElementById('dropZone');
-const filePrompt = document.getElementById('filePrompt');
+/* -------------------------
+   Preview
+-------------------------- */
+document.getElementById("foto").addEventListener("change", e => {
+  const f = e.target.files[0];
+  if (!f) return;
+  const r = new FileReader();
+  r.onload = ev => {
+    const img = document.getElementById("preview");
+    img.src = ev.target.result;
+    img.style.display = "block";
+  };
+  r.readAsDataURL(f);
+});
 
-fileInput.addEventListener('change', e => {
-  const file = e.target.files[0];
-  if(file){
-    const reader = new FileReader();
-    reader.onload = ev => {
-      preview.src = ev.target.result;
-      preview.style.display = 'block';
-      filePrompt.style.display = 'none';
-    };
-    reader.readAsDataURL(file);
+/* -------------------------
+   Submit
+-------------------------- */
+document.getElementById("uploadForm").addEventListener("submit", async e => {
+  e.preventDefault();
+
+  const selectedId = String(document.getElementById("name").value);
+  const erz = document.getElementById("erzielt").value;
+  const max = document.getElementById("maximal").value;
+  const fotoFile = document.getElementById("foto").files[0];
+
+  const user = teilnehmer.find(
+    t => String(t.lizenz || t.id) === selectedId   // ✅ FIX
+  );
+
+  if (!user) {
+    alert("Teilnehmer nicht gefunden – bitte Seite neu laden");
+    return;
   }
-});
 
-dropZone.addEventListener('click', () => fileInput.click());
-dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.style.borderColor = 'var(--primary)'; });
-dropZone.addEventListener('dragleave', () => dropZone.style.borderColor = 'var(--border)');
-dropZone.addEventListener('drop', e => {
-  e.preventDefault();
-  dropZone.style.borderColor = 'var(--border)';
-  fileInput.files = e.dataTransfer.files;
-  fileInput.dispatchEvent(new Event('change'));
-});
-
-// -----------------
-// Formular senden
-// -----------------
-document.getElementById('uploadForm').addEventListener('submit', async e => {
-  e.preventDefault();
-
-  const btn = document.getElementById('submitBtn');
-  const btnText = document.getElementById('btnText');
-
-  // Reset Fehler
-  document.querySelectorAll('.error').forEach(el => el.style.display='none');
-
-  const selectedId = document.getElementById('name').value;
-  const erz = document.getElementById('erzielt').value;
-  const max = document.getElementById('maximal').value;
-
-  let valid = true;
-  if(!selectedId){ document.getElementById('nameError').style.display='block'; valid=false; }
-  if(!fileInput.files.length){ document.getElementById('fotoError').style.display='block'; valid=false; }
-  if(!erz){ document.getElementById('erzieltError').style.display='block'; valid=false; }
-  if(!max){ document.getElementById('maximalError').style.display='block'; valid=false; }
-
-  if(!valid) return;
-
-  btn.disabled = true;
-  btnText.innerHTML = '<span class="loading"></span> Wird gesendet...';
-
- const user = globalTeilnehmerListe.find(
-  t => String(t.lizenz || t.id) === String(selectedId)
-);
-console.log("SELECTED ID", selectedId, typeof selectedId);
-console.log("LIST SAMPLE", globalTeilnehmerListe[0].lizenz, typeof globalTeilnehmerListe[0].lizenz);
-console.log("FOUND USER", user);
-
-  const file = fileInput.files[0];
   const reader = new FileReader();
-
   reader.onload = async () => {
+
     const payload = {
       action: "upload_standblatt",
       lizenz: selectedId,
-      vorname: user?.vorname || "",
-      nachname: user?.nachname || "",
+      vorname: user.vorname,
+      nachname: user.nachname,
       erzielt: erz,
       maximal: max,
       foto: reader.result
     };
 
-    try {
-      const res = await fetch(WORKER_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-      const result = await res.json();
+    const res = await fetch(WORKER_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
 
-      if(result.success){
-        btnText.textContent = '✔ Erfolgreich gesendet';
-        btn.style.background = 'var(--success)';
-        document.getElementById('uploadForm').reset();
-        preview.style.display = 'none';
-        filePrompt.style.display = 'block';
-      } else {
-        alert("Fehler beim Upload: " + (result.error || "Serverfehler"));
-      }
-    } catch(err){
-      console.error("Netzwerkfehler:", err);
-      alert("Netzwerkfehler: Server nicht erreichbar");
-    } finally {
-      btn.disabled = false;
-      btnText.textContent = 'Standblatt senden';
-      btn.style.background = 'var(--primary)';
+    const json = await res.json();
+    if (json.success) {
+      alert("✔ Erfolgreich gesendet");
+      e.target.reset();
+      document.getElementById("preview").style.display = "none";
+    } else {
+      alert("Fehler: " + (json.error || "unbekannt"));
     }
   };
 
-  reader.onerror = () => {
-    alert("Fehler beim Lesen des Bildes.");
-    btn.disabled = false;
-    btnText.textContent = 'Standblatt senden';
-    btn.style.background = 'var(--primary)';
-  };
-
-  reader.readAsDataURL(file);
+  reader.readAsDataURL(fotoFile);
 });
 </script>
-
 </body>
 </html>
