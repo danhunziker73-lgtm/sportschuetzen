@@ -221,7 +221,12 @@ document.getElementById('uploadForm').addEventListener('submit', async e => {
   btn.disabled = true;
   btnText.innerHTML = '<span class="loading"></span> Wird gesendet...';
 
-  const user = globalTeilnehmerListe.find(t => (t.lizenz || t.id) === selectedId);
+ const user = globalTeilnehmerListe.find(
+  t => String(t.lizenz || t.id) === String(selectedId)
+);
+console.log("SELECTED ID", selectedId, typeof selectedId);
+console.log("LIST SAMPLE", globalTeilnehmerListe[0].lizenz, typeof globalTeilnehmerListe[0].lizenz);
+console.log("FOUND USER", user);
 
   const file = fileInput.files[0];
   const reader = new FileReader();
