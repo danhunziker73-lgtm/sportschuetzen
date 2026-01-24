@@ -138,6 +138,34 @@ th,td{
   text-decoration:line-through;
   opacity:.7;
 }
+
+/* --- Tooltip --- */
+.info-icon{
+  font-size:.8rem;
+  margin-left:6px;
+  opacity:.75;
+  cursor:help;
+}
+
+.tooltip{
+  position:fixed;
+  transform:translate(-50%,-100%) scale(.95);
+  background:#fff;
+  color:#333;
+  padding:6px 10px;
+  font-size:.75rem;
+  border-radius:6px;
+  box-shadow:0 4px 12px rgba(0,0,0,.15);
+  pointer-events:none;
+  opacity:0;
+  transition:opacity .15s ease, transform .15s ease;
+  z-index:9999;
+}
+
+.tooltip.show{
+  opacity:1;
+  transform:translate(-50%,-110%) scale(1);
+}
 </style>
 </head>
 
@@ -146,10 +174,11 @@ th,td{
 <div class="subtitle">Klicken Sie auf einen Schützen für die detaillierte Auswertung</div>
 <div id="content">Lade Daten…</div>
 
+<div id="tooltip" class="tooltip"></div>
+
 <script>
 (function(){
-  var API_URL = "https://jahresmeisterschaft-muhen.dan-hunziker73.workers.dev?jahr=2026";
-
+  var API_URL = "https://jahresmeisterschaft-muhen.dan-hunziker73.workers.dev?jahr=2025";
 
   function formatNum(v){
     var n=Number(v);
@@ -165,34 +194,13 @@ th,td{
     if(!el)return;
     el.style.display=(el.style.display==="table-row")?"none":"table-row";
   };
-  var tooltip = document.getElementById("tooltip");
-
-document.addEventListener("click",function(e){
-  var icon = e.target.closest(".info-icon");
-  if(!icon){
-    tooltip.classList.remove("show");
-    return;
-  }
-
-  var rect = icon.getBoundingClientRect();
-  tooltip.textContent = icon.dataset.tooltip;
-
-  tooltip.style.left = rect.left + rect.width/2 + "px";
-  tooltip.style.top = rect.top - 8 + "px";
-
-  tooltip.classList.add("show");
-});
 
   function renderLiga(ligaNr,raw){
     var teilnehmer=safeArray(raw);
     var html='<div class="liga"><h2>Liga '+ligaNr+'</h2><table><thead><tr>'+
       '<th class="col-rang">Rang</th><th>Name</th><th class="col-jg">Jg.</th>'+
-      '<th class="col-total">
-      Total
-      <span class="info-icon" data-tooltip="Maximum: {{MAX}}">
-      ⓘ
-      </span>
-      </th><th class="col-zusatz">Zusatz</th>'+
+      '<th class="col-total">Total <span class="info-icon">ⓘ</span></th>'+
+      '<th class="col-zusatz">Zusatz</th>'+
       '</tr></thead><tbody>';
 
     for(var i=0;i<teilnehmer.length;i++){
@@ -225,7 +233,6 @@ document.addEventListener("click",function(e){
 
       html+='<tr id="'+id+'" class="details"><td colspan="5"><div class="detail-grid">';
 
-      /* Meisterschaft */
       html+='<div class="detail-box"><h4><span>Meisterschaft</span><span>Pkt (%)</span></h4><ul class="two-col">';
       for(var j=0;j<sch.length;j++){
         var s=sch[j]||{};
@@ -243,25 +250,17 @@ document.addEventListener("click",function(e){
       }
       html+='</ul>'+(streichPrz>0?'<div class="streich-info">Streichresultat: '+formatNum(streichPrz)+'%</div>':"")+'</div>';
 
-      /* Mannschaft */
       html+='<div class="detail-box"><h4><span>Mannschaft</span><span>Pkt</span></h4><ul class="two-col">';
       for(j=0;j<ma.length;j++){
-        html+='<li>'+
-          '<span>Runde '+(j+1)+'</span>'+
-          '<span class="item-right">'+(ma[j].punkte||"-")+'</span>'+
-        '</li>';
+        html+='<li><span>Runde '+(j+1)+'</span><span class="item-right">'+(ma[j].punkte||"-")+'</span></li>';
       }
       html+='</ul></div>';
 
-      /* Auswärtsschiessen */
       html+='<div class="detail-box"><h4><span>Auswärtsschiessen</span><span>Pkt</span></h4>';
       if(au.length){
         html+='<ul class="two-col">';
         for(j=0;j<au.length;j++){
-          html+='<li>'+
-            '<span>'+(au[j].name||"-")+'</span>'+
-            '<span class="item-right">'+(au[j].punkte||"-")+'</span>'+
-          '</li>';
+          html+='<li><span>'+(au[j].name||"-")+'</span><span class="item-right">'+(au[j].punkte||"-")+'</span></li>';
         }
         html+='</ul>';
       } else {
@@ -282,19 +281,33 @@ document.addEventListener("click",function(e){
     if(xhr.status!==200){
       document.getElementById("content").innerHTML='<div class="error-box">Fehler beim Laden</div>';
       return;
-      document.querySelectorAll(".info-icon").forEach(function(el){
-      el.setAttribute("data-tooltip","Maximum: "+MAX_WERT);
-});
-
     }
+
     var data=JSON.parse(xhr.responseText);
-    var MAX_WERT = data.max;
+    var MAX_WERT=data.max;
+
     document.getElementById("content").innerHTML=
       renderLiga(1,data.liga1)+renderLiga(2,data.liga2);
+
+    var tooltip=document.getElementById("tooltip");
+
+    document.querySelectorAll(".info-icon").forEach(function(icon){
+      icon.addEventListener("click",function(e){
+        e.stopPropagation();
+        var r=icon.getBoundingClientRect();
+        tooltip.textContent="Maximum: "+MAX_WERT;
+        tooltip.style.left=r.left+r.width/2+"px";
+        tooltip.style.top=r.top+"px";
+        tooltip.classList.add("show");
+      });
+    });
+
+    document.addEventListener("click",function(){
+      tooltip.classList.remove("show");
+    });
   };
   xhr.send();
 })();
 </script>
- <div id="tooltip" class="tooltip"></div>
 </body>
 </html>
