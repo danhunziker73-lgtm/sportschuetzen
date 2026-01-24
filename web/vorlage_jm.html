@@ -62,8 +62,8 @@ th,td{
   font-size:.6em;
   vertical-align:super;
   margin-left:4px;
-  color:rgba(255,255,255,.65);
-  cursor:default;
+  color:rgba(255,255,255,.6);
+  cursor:pointer;
 }
 
 /* ---- tooltip ---- */
@@ -100,6 +100,11 @@ th,td{
 (function(){
   var API_URL = "https://jahresmeisterschaft-muhen.dan-hunziker73.workers.dev?jahr=2026";
 
+  function formatNum(v){
+    var n=Number(v);
+    return isFinite(n)?n.toFixed(2):"0.00";
+  }
+
   function safeArray(v){
     return Object.prototype.toString.call(v)==="[object Array]"?v:[];
   }
@@ -113,23 +118,27 @@ th,td{
   function renderLiga(ligaNr,raw){
     var teilnehmer=safeArray(raw);
     var html='<div class="liga"><h2>Liga '+ligaNr+'</h2><table><thead><tr>'+
-      '<th class="col-rang">Rang</th>'+
-      '<th>Name</th>'+
-      '<th class="col-jg">Jg.</th>'+
-      '<th class="col-total">Total <span class="max-hint" data-max>max</span></th>'+
+      '<th class="col-rang">Rang</th><th>Name</th><th class="col-jg">Jg.</th>'+
+      '<th class="col-total">Total <span class="max-hint">max</span></th>'+
       '<th class="col-zusatz">Zusatz</th>'+
       '</tr></thead><tbody>';
 
     for(var i=0;i<teilnehmer.length;i++){
       var t=teilnehmer[i]||{};
+      var sch=safeArray(t.schiessen);
+      var ma=safeArray(t.mannschaft);
+      var au=safeArray(t.auswaerts);
+      var streichPrz=Number(t.streichresultat_prz);
+      var used=false;
+
       var id="liga"+ligaNr+"_"+i;
 
       html+='<tr class="clickable" onclick="toggle(\''+id+'\')">'+
         '<td><b>'+(t.rang??"-")+'</b></td>'+
         '<td>'+(t.name??"-")+'</td>'+
         '<td>'+(t.jahrgang??"-")+'</td>'+
-        '<td><b>'+(Number(t.total)||0).toFixed(2)+'</b></td>'+
-        '<td></td>'+
+        '<td><b>'+formatNum(t.total)+'</b></td>'+
+        '<td>'+(au.length?'<span class="badge-auswaerts">'+au.length+' Auswärts</span>':"")+'</td>'+
         '</tr>';
 
       html+='<tr id="'+id+'" class="details"><td colspan="5"></td></tr>';
@@ -152,8 +161,8 @@ th,td{
 
     var tooltip=document.getElementById("tooltip");
 
-    document.querySelectorAll("[data-max]").forEach(function(el){
-      function show(e){
+    document.querySelectorAll(".max-hint").forEach(function(el){
+      function show(){
         var r=el.getBoundingClientRect();
         tooltip.textContent="Maximum: "+MAX;
         tooltip.style.left=r.left+r.width/2+"px";
