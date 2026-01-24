@@ -57,96 +57,16 @@ th,td{
 .details{display:none;background:#fdfdfd}
 .details td{white-space:normal}
 
-.detail-grid{
-  display:grid;
-  grid-template-columns:repeat(auto-fit,minmax(280px,1fr));
-  gap:25px;
-  padding:20px;
-  border-top:2px solid var(--primary);
-}
-
-.detail-box h4{
-  display:flex;
-  justify-content:space-between;
-  align-items:flex-end;
-  margin:0 0 10px;
-  padding-bottom:5px;
-  border-bottom:2px solid #ddd;
-  color:var(--primary);
-}
-
-.two-col{
-  list-style:none;
-  padding:0;
-  margin:0;
-}
-
-.two-col li{
-  display:flex;
-  justify-content:space-between;
-  align-items:baseline;
-  padding:4px 0;
-}
-
-.item-right{
-  font-weight:600;
-  font-variant-numeric:tabular-nums;
-  white-space:nowrap;
-}
-
-.prz-small{
-  font-size:.85rem;
-  color:#666;
+/* ---- max hint ---- */
+.max-hint{
+  font-size:.6em;
+  vertical-align:super;
   margin-left:4px;
+  color:rgba(255,255,255,.65);
+  cursor:default;
 }
 
-.badge-auswaerts{
-  background:#e8f5e9;
-  color:#2e7d32;
-  padding:2px 6px;
-  border-radius:4px;
-  font-size:.75rem;
-  font-weight:bold;
-}
-
-.status-label{
-  font-size:.65rem;
-  font-weight:bold;
-  text-transform:uppercase;
-  display:block;
-  margin-top:2px;
-}
-
-.text-auf{color:#27ae60}
-.text-ab{color:#c0392b}
-
-.aufsteiger{border-left:5px solid #2ecc71;background:#fafffa}
-.absteiger{border-left:5px solid #e74c3c;background:#fffaf9}
-
-.streich-info{
-  background:#fff0f0;
-  padding:8px;
-  border-radius:4px;
-  border-left:4px solid var(--accent);
-  margin-top:15px;
-  font-size:.9rem;
-  font-weight:600;
-}
-
-.is-streich{
-  color:var(--accent);
-  text-decoration:line-through;
-  opacity:.7;
-}
-
-/* --- Tooltip --- */
-.info-icon{
-  font-size:.8rem;
-  margin-left:6px;
-  opacity:.75;
-  cursor:help;
-}
-
+/* ---- tooltip ---- */
 .tooltip{
   position:fixed;
   transform:translate(-50%,-100%) scale(.95);
@@ -178,12 +98,7 @@ th,td{
 
 <script>
 (function(){
-  var API_URL = "https://jahresmeisterschaft-muhen.dan-hunziker73.workers.dev?jahr=2025";
-
-  function formatNum(v){
-    var n=Number(v);
-    return isFinite(n)?n.toFixed(2):"0.00";
-  }
+  var API_URL = "https://jahresmeisterschaft-muhen.dan-hunziker73.workers.dev?jahr=2026";
 
   function safeArray(v){
     return Object.prototype.toString.call(v)==="[object Array]"?v:[];
@@ -198,77 +113,26 @@ th,td{
   function renderLiga(ligaNr,raw){
     var teilnehmer=safeArray(raw);
     var html='<div class="liga"><h2>Liga '+ligaNr+'</h2><table><thead><tr>'+
-      '<th class="col-rang">Rang</th><th>Name</th><th class="col-jg">Jg.</th>'+
-      '<th class="col-total">Total <span class="info-icon">ⓘ</span></th>'+
+      '<th class="col-rang">Rang</th>'+
+      '<th>Name</th>'+
+      '<th class="col-jg">Jg.</th>'+
+      '<th class="col-total">Total <span class="max-hint" data-max>max</span></th>'+
       '<th class="col-zusatz">Zusatz</th>'+
       '</tr></thead><tbody>';
 
     for(var i=0;i<teilnehmer.length;i++){
       var t=teilnehmer[i]||{};
-      var sch=safeArray(t.schiessen);
-      var ma=safeArray(t.mannschaft);
-      var au=safeArray(t.auswaerts);
-      var streichPrz=Number(t.streichresultat_prz);
-      var used=false;
-
-      var statusClass="",statusLabel="";
-      if(ligaNr===1&&i>=teilnehmer.length-2){
-        statusClass="absteiger";
-        statusLabel='<span class="status-label text-ab">Abstieg</span>';
-      }
-      if(ligaNr===2&&i<2){
-        statusClass="aufsteiger";
-        statusLabel='<span class="status-label text-auf">Aufstieg</span>';
-      }
-
       var id="liga"+ligaNr+"_"+i;
 
-      html+='<tr class="clickable '+statusClass+'" onclick="toggle(\''+id+'\')">'+
-        '<td><b>'+(t.rang??"-")+'</b>'+statusLabel+'</td>'+
+      html+='<tr class="clickable" onclick="toggle(\''+id+'\')">'+
+        '<td><b>'+(t.rang??"-")+'</b></td>'+
         '<td>'+(t.name??"-")+'</td>'+
         '<td>'+(t.jahrgang??"-")+'</td>'+
-        '<td><b>'+formatNum(t.total)+'</b></td>'+
-        '<td>'+(au.length?'<span class="badge-auswaerts">'+au.length+' Auswärts</span>':"")+'</td>'+
+        '<td><b>'+(Number(t.total)||0).toFixed(2)+'</b></td>'+
+        '<td></td>'+
         '</tr>';
 
-      html+='<tr id="'+id+'" class="details"><td colspan="5"><div class="detail-grid">';
-
-      html+='<div class="detail-box"><h4><span>Meisterschaft</span><span>Pkt (%)</span></h4><ul class="two-col">';
-      for(var j=0;j<sch.length;j++){
-        var s=sch[j]||{};
-        var p=Number(s.prozent);
-        var isStreich=isFinite(streichPrz)&&!used&&Math.abs(p-streichPrz)<0.0001&&streichPrz>0;
-        if(isStreich)used=true;
-
-        html+='<li class="'+(isStreich?'is-streich':'')+'">'+
-          '<span>'+(s.name||"-")+'</span>'+
-          '<span class="item-right">'+
-            (s.punkte||"-")+
-            ' <span class="prz-small">('+formatNum(p)+'%)</span>'+
-          '</span>'+
-        '</li>';
-      }
-      html+='</ul>'+(streichPrz>0?'<div class="streich-info">Streichresultat: '+formatNum(streichPrz)+'%</div>':"")+'</div>';
-
-      html+='<div class="detail-box"><h4><span>Mannschaft</span><span>Pkt</span></h4><ul class="two-col">';
-      for(j=0;j<ma.length;j++){
-        html+='<li><span>Runde '+(j+1)+'</span><span class="item-right">'+(ma[j].punkte||"-")+'</span></li>';
-      }
-      html+='</ul></div>';
-
-      html+='<div class="detail-box"><h4><span>Auswärtsschiessen</span><span>Pkt</span></h4>';
-      if(au.length){
-        html+='<ul class="two-col">';
-        for(j=0;j<au.length;j++){
-          html+='<li><span>'+(au[j].name||"-")+'</span><span class="item-right">'+(au[j].punkte||"-")+'</span></li>';
-        }
-        html+='</ul>';
-      } else {
-        html+='<p style="color:#999;font-size:.9rem">Keine Resultate vorhanden.</p>';
-      }
-      html+='</div>';
-
-      html+='</div></td></tr>';
+      html+='<tr id="'+id+'" class="details"><td colspan="5"></td></tr>';
     }
 
     return html+'</tbody></table></div>';
@@ -278,27 +142,33 @@ th,td{
   xhr.open("GET",API_URL,true);
   xhr.onreadystatechange=function(){
     if(xhr.readyState!==4)return;
-    if(xhr.status!==200){
-      document.getElementById("content").innerHTML='<div class="error-box">Fehler beim Laden</div>';
-      return;
-    }
+    if(xhr.status!==200)return;
 
     var data=JSON.parse(xhr.responseText);
-    var MAX_WERT=data.max;
+    var MAX=data.max;
 
     document.getElementById("content").innerHTML=
       renderLiga(1,data.liga1)+renderLiga(2,data.liga2);
 
     var tooltip=document.getElementById("tooltip");
 
-    document.querySelectorAll(".info-icon").forEach(function(icon){
-      icon.addEventListener("click",function(e){
-        e.stopPropagation();
-        var r=icon.getBoundingClientRect();
-        tooltip.textContent="Maximum: "+MAX_WERT;
+    document.querySelectorAll("[data-max]").forEach(function(el){
+      function show(e){
+        var r=el.getBoundingClientRect();
+        tooltip.textContent="Maximum: "+MAX;
         tooltip.style.left=r.left+r.width/2+"px";
         tooltip.style.top=r.top+"px";
         tooltip.classList.add("show");
+      }
+      function hide(){
+        tooltip.classList.remove("show");
+      }
+
+      el.addEventListener("mouseenter",show);
+      el.addEventListener("mouseleave",hide);
+      el.addEventListener("click",function(e){
+        e.stopPropagation();
+        show();
       });
     });
 
