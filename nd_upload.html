@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Standblatt hochladen</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+:root {
+  --primary: #0f3a5d;
+  --primary-dark: #0a2a45;
+  --bg: #f3f4f6;
+  --card: #ffffff;
+  --text: #1f2937;
+  --text-light: #6b7280;
+  --border: #d1d5db;
+  --accent: #e5e7eb;
+}
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+body {
+  font-family: 'Inter', sans-serif;
+  background: var(--bg);
+  margin: 0;
+  padding: 1.5rem 1rem;
+  color: var(--text);
+}
+
+.container { max-width: 480px; margin: 0 auto; }
+
+.card {
+  background: var(--card);
+  padding: 2rem;
+  border-radius: 20px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+}
+
+h2 { margin: 0 0 1.5rem; text-align: center; color: var(--primary); font-size: 1.5rem; }
+
+.form-group { margin-bottom: 1.2rem; }
+
+label {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-light);
+  margin-bottom: 0.5rem;
+  margin-left: 0.2rem;
+}
+
+input, select {
+  width: 100%;
+  padding: 0.8rem 1rem;
+  border: 1.5px solid var(--border);
+  border-radius: 12px;
+  font-size: 1rem;
+  background: #fff;
+  transition: border-color 0.2s;
+  appearance: none; /* Fix für iOS Select Design */
+}
+
+input:focus, select:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+/* Foto Upload Area */
+.upload-area {
+  border: 2px dashed var(--border);
+  border-radius: 12px;
+  padding: 1.5rem;
+  text-align: center;
+  background: #f9fafb;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.upload-area:active { background: var(--accent); }
+
+#preview {
+  width: 100%;
+  max-height: 200px;
+  object-fit: contain;
+  border-radius: 8px;
+  display: none;
+  margin-top: 1rem;
+}
+
+.upload-icon { font-size: 1.5rem; display: block; margin-bottom: 0.5rem; }
+
+/* Zeile für Punkte */
+.row { display: flex; gap: 1rem; }
+.row .form-group { flex: 1; }
+
+button {
+  width: 100%;
+  padding: 1.1rem;
+  background: var(--primary);
+  color: #fff;
+  border: none;
+  border-radius: 14px;
+  font-size: 1.1rem;
+  font-weight: 700;
+  cursor: pointer;
+  margin-top: 1rem;
+  transition: transform 0.1s, background 0.2s;
+}
+
+button:active { transform: scale(0.98); background: var(--primary-dark); }
+
+button:disabled {
+  background: var(--text-light);
+  cursor: not-allowed;
+}
+
+.footer-note {
+  text-align: center;
+  font-size: 0.75rem;
+  color: var(--text-light);
+  margin-top: 1.5rem;
+}
+</style>
+</head>
+
+<body>
+<div class="container">
+  <div class="card">
+    <h2>Standblatt senden</h2>
+    <form id="uploadForm">
+
+      <div class="form-group">
+        <label>Schütze auswählen *</label>
+        <select id="name" required>
+          <option value="" disabled selected>Namen wählen...</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>Foto Standblatt *</label>
+        <div class="upload-area" onclick="document.getElementById('foto').click()">
+          <span class="upload-icon">📸</span>
+          <span style="font-size: 0.9rem; color: var(--text-light)">(Tippen zum Hochladen)</span>
+          <input type="file" id="foto" accept="image/jpeg,image/png" required style="display:none">
+          <img id="preview">
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="form-group">
+          <label>Erzielt *</label>
+          <input type="number" id="erzielt" placeholder="Punkte" required>
+        </div>
+        <div class="form-group">
+          <label>Stichmaximum *</label>
+          <input type="number" id="maximal" placeholder="z.B. 100" required>
+        </div>
+      </div>
+
+      <button type="submit" id="submitBtn">Standblatt senden</button>
+    </form>
+    <div class="footer-note">Nur für den Vorstand einsehbar.</div>
+  </div>
+</div>
+
+<script>
+const WORKER_URL = "https://github-dropdown-refresh.dan-hunziker73.workers.dev/";
+let teilnehmer = [];
+
+/* --- Teilnehmer laden --- */
+async function loadTeilnehmer() {
+  const res = await fetch("https://raw.githubusercontent.com/danhunziker73-lgtm/sportschuetzen/main/teilnehmer.json?t=" + Date.now());
+  teilnehmer = await res.json();
+  const select = document.getElementById("name");
+  teilnehmer.forEach(p => {
+    const opt = document.createElement("option");
+    opt.value = String(p.lizenz || p.id);
+    opt.textContent = p.name;
+    select.appendChild(opt);
+  });
+}
+loadTeilnehmer();
+
+/* --- Preview & iOS Fix --- */
+document.getElementById("foto").addEventListener("change", e => {
+  const f = e.target.files[0];
+  if (!f) return;
+  const r = new FileReader();
+  r.onload = ev => {
+    const img = document.getElementById("preview");
+    img.src = ev.target.result;
+    img.style.display = "block";
+    document.querySelector(".upload-icon").style.display = "none";
+  };
+  r.readAsDataURL(f);
+});
+
+/* --- Submit mit Lade-Status --- */
+document.getElementById("uploadForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  const btn = document.getElementById("submitBtn");
+  
+  // Feedback für User (wichtig für iPhone/Android)
+  btn.disabled = true;
+  btn.textContent = "Wird gesendet...";
+
+  const selectedId = String(document.getElementById("name").value);
+  const erz = document.getElementById("erzielt").value;
+  const max = document.getElementById("maximal").value;
+  const fotoFile = document.getElementById("foto").files[0];
+
+  const user = teilnehmer.find(t => String(t.lizenz || t.id) === selectedId);
+
+  if (!user) {
+    alert("Teilnehmer nicht gefunden");
+    btn.disabled = false;
+    btn.textContent = "Standblatt senden";
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = async () => {
+    try {
+      const payload = {
+        action: "upload_standblatt",
+        lizenz: selectedId,
+        vorname: user.vorname,
+        nachname: user.nachname,
+        erzielt: erz,
+        maximal: max,
+        foto: reader.result
+      };
+
+      const res = await fetch(WORKER_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+
+      const json = await res.json();
+      if (json.success) {
+        alert("✔ Erfolgreich gesendet");
+        e.target.reset();
+        document.getElementById("preview").style.display = "none";
+        document.querySelector(".upload-icon").style.display = "block";
+      } else {
+        alert("Fehler: " + (json.error || "unbekannt"));
+      }
+    } catch (err) {
+      alert("Netzwerkfehler: " + err.message);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = "Standblatt senden";
+    }
+  };
+  reader.readAsDataURL(fotoFile);
+});
+</script>
+</body>
+</html>
