@@ -18,7 +18,7 @@
   --text: #1f2937;
   --text-light: #6b7280;
   --border: #d1d5db;
-  --accent: #e5e7eb;
+  --error: #dc2626;
 }
 
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -60,9 +60,17 @@ input, select {
   border-radius: 12px;
   font-size: 1rem;
   background: #fff;
-  transition: border-color 0.2s;
-  appearance: none; /* Fix für iOS Select Design */
+  transition: all 0.2s;
+  appearance: none;
 }
+
+/* Entfernt die kleinen Pfeile (Spin-Buttons) bei Zahlenfeldern */
+input[type=number]::-webkit-inner-spin-button, 
+input[type=number]::-webkit-outer-spin-button { 
+  -webkit-appearance: none; 
+  margin: 0; 
+}
+input[type=number] { -moz-appearance: textfield; }
 
 input:focus, select:focus {
   outline: none;
@@ -77,10 +85,7 @@ input:focus, select:focus {
   text-align: center;
   background: #f9fafb;
   cursor: pointer;
-  transition: all 0.2s;
 }
-
-.upload-area:active { background: var(--accent); }
 
 #preview {
   width: 100%;
@@ -93,7 +98,6 @@ input:focus, select:focus {
 
 .upload-icon { font-size: 1.5rem; display: block; margin-bottom: 0.5rem; }
 
-/* Zeile für Punkte */
 .row { display: flex; gap: 1rem; }
 .row .form-group { flex: 1; }
 
@@ -108,21 +112,17 @@ button {
   font-weight: 700;
   cursor: pointer;
   margin-top: 1rem;
-  transition: transform 0.1s, background 0.2s;
 }
 
-button:active { transform: scale(0.98); background: var(--primary-dark); }
+button:disabled { background: var(--text-light); opacity: 0.7; }
 
-button:disabled {
-  background: var(--text-light);
-  cursor: not-allowed;
-}
-
-.footer-note {
-  text-align: center;
+/* Fehlermeldung Style */
+.validation-msg {
+  color: var(--error);
   font-size: 0.75rem;
-  color: var(--text-light);
-  margin-top: 1.5rem;
+  margin-top: 0.4rem;
+  display: none;
+  font-weight: 500;
 }
 </style>
 </head>
@@ -134,14 +134,14 @@ button:disabled {
     <form id="uploadForm">
 
       <div class="form-group">
-        <label>Schütze auswählen *</label>
+        <label>Schütze auswählen</label>
         <select id="name" required>
           <option value="" disabled selected>Namen wählen...</option>
         </select>
       </div>
 
       <div class="form-group">
-        <label>Foto Standblatt *</label>
+        <label>Foto Standblatt</label>
         <div class="upload-area" onclick="document.getElementById('foto').click()">
           <span class="upload-icon">📸</span>
           <span style="font-size: 0.9rem; color: var(--text-light)">(Tippen zum Hochladen)</span>
@@ -152,18 +152,18 @@ button:disabled {
 
       <div class="row">
         <div class="form-group">
-          <label>Erzielt *</label>
+          <label>Erzielt</label>
           <input type="number" id="erzielt" placeholder="Punkte" required>
+          <div id="erzieltError" class="validation-msg">Höher als Maximum!</div>
         </div>
         <div class="form-group">
-          <label>Stichmaximum *</label>
+          <label>Stichmaximum</label>
           <input type="number" id="maximal" placeholder="z.B. 100" required>
         </div>
       </div>
 
       <button type="submit" id="submitBtn">Standblatt senden</button>
     </form>
-    <div class="footer-note">Nur für den Vorstand einsehbar.</div>
   </div>
 </div>
 
@@ -173,19 +173,21 @@ let teilnehmer = [];
 
 /* --- Teilnehmer laden --- */
 async function loadTeilnehmer() {
-  const res = await fetch("https://raw.githubusercontent.com/danhunziker73-lgtm/sportschuetzen/main/teilnehmer.json?t=" + Date.now());
-  teilnehmer = await res.json();
-  const select = document.getElementById("name");
-  teilnehmer.forEach(p => {
-    const opt = document.createElement("option");
-    opt.value = String(p.lizenz || p.id);
-    opt.textContent = p.name;
-    select.appendChild(opt);
-  });
+  try {
+    const res = await fetch("https://raw.githubusercontent.com/danhunziker73-lgtm/sportschuetzen/main/teilnehmer.json?t=" + Date.now());
+    teilnehmer = await res.json();
+    const select = document.getElementById("name");
+    teilnehmer.forEach(p => {
+      const opt = document.createElement("option");
+      opt.value = String(p.lizenz || p.id);
+      opt.textContent = p.name;
+      select.appendChild(opt);
+    });
+  } catch(e) { console.error("Fehler beim Laden der Teilnehmer", e); }
 }
 loadTeilnehmer();
 
-/* --- Preview & iOS Fix --- */
+/* --- Preview --- */
 document.getElementById("foto").addEventListener("change", e => {
   const f = e.target.files[0];
   if (!f) return;
@@ -199,12 +201,38 @@ document.getElementById("foto").addEventListener("change", e => {
   r.readAsDataURL(f);
 });
 
-/* --- Submit mit Lade-Status --- */
+/* --- Live-Check: Erzielt vs Maximum --- */
+function checkPoints() {
+  const erz = parseFloat(document.getElementById("erzielt").value);
+  const max = parseFloat(document.getElementById("maximal").value);
+  const errorMsg = document.getElementById("erzieltError");
+  const inputErz = document.getElementById("erzielt");
+
+  if (erz > max && max > 0) {
+    errorMsg.style.display = "block";
+    inputErz.style.borderColor = "var(--error)";
+    return false;
+  } else {
+    errorMsg.style.display = "none";
+    inputErz.style.borderColor = "var(--border)";
+    return true;
+  }
+}
+
+document.getElementById("erzielt").addEventListener("input", checkPoints);
+document.getElementById("maximal").addEventListener("input", checkPoints);
+
+/* --- Submit --- */
 document.getElementById("uploadForm").addEventListener("submit", async e => {
   e.preventDefault();
-  const btn = document.getElementById("submitBtn");
   
-  // Feedback für User (wichtig für iPhone/Android)
+  // Validierung vor dem Senden
+  if (!checkPoints()) {
+    alert("Bitte korrigiere die Punktzahl (Erzielt darf nicht höher als Maximum sein).");
+    return;
+  }
+
+  const btn = document.getElementById("submitBtn");
   btn.disabled = true;
   btn.textContent = "Wird gesendet...";
 
@@ -214,13 +242,6 @@ document.getElementById("uploadForm").addEventListener("submit", async e => {
   const fotoFile = document.getElementById("foto").files[0];
 
   const user = teilnehmer.find(t => String(t.lizenz || t.id) === selectedId);
-
-  if (!user) {
-    alert("Teilnehmer nicht gefunden");
-    btn.disabled = false;
-    btn.textContent = "Standblatt senden";
-    return;
-  }
 
   const reader = new FileReader();
   reader.onload = async () => {
