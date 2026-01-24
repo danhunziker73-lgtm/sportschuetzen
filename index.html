@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jahresmeisterschaft - Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #0f3a5d;
+            --bg: #f3f4f6;
+            --card: #ffffff;
+            --text: #1f2937;
+            --text-light: #6b7280;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 2rem 1rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .logo-box {
+            background: var(--primary);
+            color: white;
+            width: 60px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 1.5rem;
+            border-radius: 8px;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        h1 { font-size: 2rem; margin: 0; color: var(--primary); }
+        p.subtitle { color: var(--text-light); margin-bottom: 3rem; }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+            width: 100%;
+            max-width: 900px;
+        }
+
+        .nav-card {
+            background: var(--card);
+            padding: 1.5rem;
+            border-radius: 16px;
+            text-decoration: none;
+            color: inherit;
+            display: flex;
+            flex-direction: column;
+            transition: transform 0.2s, box-shadow 0.2s;
+            border: 1px solid rgba(0,0,0,0.05);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        .nav-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 15px rgba(0,0,0,0.1);
+        }
+
+        .nav-card h3 { 
+            margin: 0 0 0.5rem 0; 
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .nav-card p { margin: 0; font-size: 0.9rem; color: var(--text-light); }
+
+        .badge {
+            font-size: 0.7rem;
+            background: #e5e7eb;
+            padding: 2px 8px;
+            border-radius: 10px;
+            text-transform: uppercase;
+        }
+
+        .upload-btn {
+            margin-top: 3rem;
+            background: var(--primary);
+            color: white;
+            padding: 1rem 2rem;
+            border-radius: 12px;
+            text-decoration: none;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(15, 58, 93, 0.3);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="logo-box">LO</div>
+
+    <h1>Jahresmeisterschaft</h1>
+    <p class="subtitle">Zentrale Übersicht & Resultate</p>
+
+    <div class="grid">
+        <a href="aktuell/jm.html" class="nav-card">
+            <h3>Rangliste 2026 <span class="badge">Aktuell</span></h3>
+            <p>Die aktuelle Gesamtrangliste der laufenden Saison inklusive Total (Max) Ansicht.</p>
+        </a>
+
+        <a href="web/2026/gruppe.html" class="nav-card">
+            <h3>Gruppenwettkampf</h3>
+            <p>Übersicht der Gruppenresultate und Auswertungen.</p>
+        </a>
+
+        <a href="web/2026/mannschaft.html" class="nav-card">
+            <h3>Mannschaft</h3>
+            <p>Resultate der Mannschaftsmeisterschaft Runde 1-7.</p>
+        </a>
+
+        <a href="web/2025/JM.html" class="nav-card">
+            <h3>Archiv 2025</h3>
+            <p>Resultate und Ranglisten der vergangenen Saison.</p>
+        </a>
+    </div>
+
+    <a href="upload_web.html" class="upload-btn">Standblatt hochladen</a>
+
+</body>
+</html>
