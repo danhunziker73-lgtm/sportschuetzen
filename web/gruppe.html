@@ -16,111 +16,112 @@
         td.cell { background: #fafafa; cursor: pointer; }
         td.cell:hover { background: #e6eef5; }
         
-        /* Detailbereich Korrektur */
-        .detail { margin-top: 5px; background: #f9f9f9; padding: 15px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.05); display: none; }
+        /* Korrektur: Detail-Layout */
+        .detail { margin-top: 5px; background: #f9f9f9; padding: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); display: none; }
         .player { 
             display: grid; 
-            grid-template-columns: 1fr 45px 45px 55px; /* Name breit, dann 3 fixe Spalten */
-            gap: 10px; 
-            padding: 8px 0; 
+            grid-template-columns: 1fr 40px 40px 50px; /* Fixe Spalten für Punkte verhindern Verschieben */
+            gap: 12px; 
+            padding: 6px 0; 
             border-bottom: 1px solid #eee; 
             align-items: center; 
         }
-        .player-name-wrapper { text-align: left; display: flex; flex-direction: column; }
-        .player-score { text-align: right; font-family: monospace; font-size: 15px; }
-        
-        .stellung { font-size: 10px; font-weight: bold; padding: 2px 8px; border-radius: 10px; width: fit-content; margin-top: 3px; }
+        .name { display: flex; flex-direction: column; align-items: flex-start; text-align: left; }
+        .stellung { font-size: 11px; font-weight: bold; padding: 2px 8px; border-radius: 12px; margin-top: 2px; }
         .liegend { background: #e3f0ff; color: #1e5dbf; }
         .kniend { background: #e6f6ec; color: #1f7a3a; }
-        .total { font-weight: bold; text-align: right; margin-top: 15px; font-size: 16px; border-top: 2px solid #0f3c5c; padding-top: 5px; }
+        .total { font-weight: bold; text-align: right; margin-top: 10px; font-size: 16px; border-top: 1px solid #ccc; padding-top: 5px; }
         
         @media (max-width: 768px) { th, td { padding: 8px; font-size: 14px; } h1 { font-size: 20px; } }
     </style>
 </head>
+
 <body>
-    <h1 id="main-title">Gruppenmeisterschaft</h1>
-    <div class="subtitle" id="sub-title">Lade Daten...</div>
-    <div id="overview"></div>
+<h1 id="main-title">Gruppenmeisterschaft</h1>
+<div class="subtitle" id="sub-title">Lade Daten...</div>
+<div id="overview"></div>
 
 <script>
-    const SHEET_ID = "1VuOv6b8r5m1g_9ZidPR3OPZ7YIwLUm6dYLC9nKmC2mE";
-    const urlParams = new URLSearchParams(window.location.search);
-    const selectedYear = urlParams.get('jahr') || 'aktuell'; 
-    const SHEET_NAME = (selectedYear === 'aktuell') ? "Aktuell_Gruppe" : `${selectedYear}_Gruppe`;
+const SHEET_ID = "1VuOv6b8r5m1g_9ZidPR3OPZ7YIwLUm6dYLC9nKmC2mE";
+const urlParams = new URLSearchParams(window.location.search);
+const selectedYear = urlParams.get('jahr') || 'aktuell'; 
+const SHEET_NAME = (selectedYear === 'aktuell') ? "Aktuell_Gruppe" : `${selectedYear}_Gruppe`;
 
-    let raw = [];
-    let teams = [];
+let raw = [];
+let teams = [];
 
-    window.onload = () => {
-        const displayYear = (selectedYear === 'aktuell') ? "Aktuell" : selectedYear;
-        document.getElementById('main-title').textContent = `Gruppenmeisterschaft ${displayYear}`;
-        document.getElementById('sub-title').textContent = `Übersicht ${displayYear} – auf Punkte klicken für Details`;
-        loadData();
-    };
+window.onload = () => {
+    const displayYear = (selectedYear === 'aktuell') ? "Aktuell" : selectedYear;
+    document.getElementById('main-title').textContent = `Gruppenmeisterschaft ${displayYear}`;
+    document.getElementById('sub-title').textContent = `Übersicht ${displayYear} – auf Punkte klicken für Details`;
+    loadData();
+};
 
-    async function loadData() {
-        const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?sheet=${SHEET_NAME}&tqx=out:json`;
-        try {
-            const response = await fetch(url);
-            const text = await response.text();
-            const json = JSON.parse(text.substring(text.indexOf('{'), text.lastIndexOf('}') + 1));
-            const data = json.table;
+async function loadData() {
+    const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?sheet=${SHEET_NAME}&tqx=out:json`;
+    try {
+        const response = await fetch(url);
+        const text = await response.text();
+        const json = JSON.parse(text.substring(text.indexOf('{'), text.lastIndexOf('}') + 1));
+        const data = json.table;
 
-            raw = data.rows.map(r => {
-                let obj = { name: r.c[0]?.v || "", stellung: r.c[1]?.v || "" };
-                for(let i=1; i<=3; i++) {
-                    obj[`r${i}Team`] = r.c[(i-1)*3+2]?.v || "";
-                    obj[`r${i}P1`] = Number(r.c[(i-1)*3+3]?.v) || 0;
-                    obj[`r${i}P2`] = Number(r.c[(i-1)*3+4]?.v) || 0;
-                    obj[`r${i}Sum`] = obj[`r${i}P1`] + obj[`r${i}P2`];
-                }
-                return obj;
-            });
-            teams = [...new Set(raw.flatMap(r => Object.keys(r).filter(k => k.includes("Team")).map(k => r[k]).filter(Boolean)))].sort();
-            buildTable();
-        } catch (e) {
-            document.getElementById("overview").innerHTML = "<p style='color:red'>Fehler beim Laden der Daten.</p>";
-        }
-    }
-
-    function buildTable() {
-        let html = `<div class="table-wrapper"><table><tr><th></th><th>R1</th><th>R2</th><th>R3</th></tr>`;
-        teams.forEach((team, index) => {
-            html += `<tr><td class="team">${team}</td>`;
-            for(let r=1; r<=3; r++) {
-                const sum = raw.filter(p => p[`r${r}Team`] === team).reduce((s, b) => s + b[`r${r}Sum`], 0);
-                html += `<td class="cell" onclick="toggleDetail('${team.replace(/'/g, "\\'")}', ${r}, ${index})">${sum || "–"}</td>`;
+        raw = data.rows.map(r => {
+            let row = { name: r.c[0]?.v || "", stellung: r.c[1]?.v || "" };
+            for(let i=1; i<=3; i++){
+                row[`r${i}Team`] = r.c[(i-1)*3+2]?.v || "";
+                row[`r${i}Pkt1`] = Number(r.c[(i-1)*3+3]?.v) || 0;
+                row[`r${i}Pkt2`] = Number(r.c[(i-1)*3+4]?.v) || 0;
+                row[`r${i}Sum`] = row[`r${i}Pkt1`] + row[`r${i}Pkt2`];
             }
-            // Colspan auf 4 korrigiert für Gruppe
-            html += `</tr><tr id="detail-${index}"><td colspan="4"><div id="detail-div-${index}" class="detail"></div></td></tr>`;
+            return row;
         });
-        document.getElementById("overview").innerHTML = html + `</table></div>`;
-    }
 
-    function toggleDetail(team, round, index) {
-        const div = document.getElementById(`detail-div-${index}`);
-        if(div.style.display === "block") { div.style.display = "none"; return; }
-        
-        const list = raw.filter(p => p[`r${round}Team`] === team);
-        let total = 0, html = `<h3>${team} – R${round}</h3>`;
-        
-        list.forEach(p => {
-            const s = p[`r${round}Sum`]; total += s;
-            const cls = p.stellung.toLowerCase() === "liegend" ? "liegend" : "kniend";
-            html += `
-                <div class="player">
-                    <div class="player-name-wrapper">
-                        <strong>${p.name}</strong>
-                        <span class="stellung ${cls}">${p.stellung}</span>
-                    </div>
-                    <div class="player-score">${p[`r${round}P1`]}</div>
-                    <div class="player-score">${p[`r${round}P2`]}</div>
-                    <div class="player-score"><strong>${s}</strong></div>
-                </div>`;
-        });
-        div.innerHTML = html + `<div class="total">Gesamt: ${total}</div>`;
-        div.style.display = "block";
+        teams = [...new Set(raw.flatMap(r => Object.keys(r).filter(k => k.includes("Team")).map(k => r[k]).filter(Boolean)))].sort();
+        buildTable();
+    } catch (e) {
+        document.getElementById("overview").innerHTML = "<p style='color:red'>Fehler beim Laden.</p>";
     }
+}
+
+function buildTable() {
+    let html = `<div class="table-wrapper"><table><tr><th></th><th>R1</th><th>R2</th><th>R3</th></tr>`;
+    teams.forEach((team, index) => {
+        html += `<tr><td class="team">${team}</td>`;
+        for(let r=1; r<=3; r++){
+            const sum = raw.filter(p => p[`r${r}Team`] === team).reduce((a, b) => a + b[`r${r}Sum`], 0);
+            html += `<td class="cell" onclick="toggleDetail('${team.replace(/'/g, "\\'")}', ${r}, ${index})">${sum || "–"}</td>`;
+        }
+        // Wichtig: colspan="4" für die Gruppen-Tabelle
+        html += `</tr><tr id="detail-${index}"><td colspan="4"><div id="detail-div-${index}" class="detail"></div></td></tr>`;
+    });
+    document.getElementById("overview").innerHTML = html + `</table></div>`;
+}
+
+function toggleDetail(team, round, index) {
+    const div = document.getElementById(`detail-div-${index}`);
+    if(div.style.display === "block") { div.style.display = "none"; return; }
+
+    const list = raw.filter(p => p[`r${round}Team`] === team);
+    let total = 0;
+    let html = `<h3>${team} – Runde ${round}</h3>`;
+    list.forEach(p => {
+        const sum = p[`r${round}Sum`];
+        total += sum;
+        const cls = p.stellung.toLowerCase() === "liegend" ? "liegend" : "kniend";
+        html += `
+            <div class="player">
+                <div class="name">
+                    <strong>${p.name}</strong>
+                    <span class="stellung ${cls}">${p.stellung}</span>
+                </div>
+                <div style="text-align:right">${p[`r${round}Pkt1`]}</div>
+                <div style="text-align:right">${p[`r${round}Pkt2`]}</div>
+                <div style="text-align:right"><strong>${sum}</strong></div>
+            </div>`;
+    });
+    div.innerHTML = html + `<div class="total">Gesamt: ${total}</div>`;
+    div.style.display = "block";
+}
 </script>
 </body>
 </html>
