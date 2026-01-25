@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gruppenmeisterschaft</title>
     <style>
-        /* Dein Original-Styling */
+        /* Dein bewährtes Styling */
         body { font-family: Arial, sans-serif; background: #f4f6f8; margin: 0; padding: 15px; }
         h1 { margin-bottom: 5px; color: #0f3c5c; }
         .subtitle { color: #666; margin-bottom: 15px; }
@@ -29,43 +29,54 @@
 <body>
 
     <h1 id="main-title">Gruppenmeisterschaft</h1>
-    <div class="subtitle" id="sub-title">Lade Daten...</div>
+    <div class="subtitle" id="sub-title">Daten werden geladen...</div>
     <div id="overview"></div>
 
 <script>
-    // --- KONFIGURATION ---
+    // --- KONFIGURATION & JAHR-LOGIK ---
     const WORKER_URL = "https://gruppe.dan-hunziker73.workers.dev";
     const urlParams = new URLSearchParams(window.location.search);
+    
+    // Wenn kein ?jahr= in der URL, wird automatisch 'aktuell' genutzt
     const selectedYear = urlParams.get('jahr') || 'aktuell'; 
     const YEAR_LABEL = (selectedYear === 'aktuell') ? "Aktuell" : selectedYear;
 
     let raw = [];
     let teams = [];
 
-    // Daten laden beim Start
     window.onload = loadData;
 
     async function loadData() {
+        // UI Texte setzen
         document.getElementById('main-title').textContent = `Gruppenmeisterschaft ${YEAR_LABEL}`;
         document.getElementById('sub-title').textContent = `Übersicht ${YEAR_LABEL} – auf Punkte klicken für Details`;
 
-        // Anfrage an den neuen Worker
+        // Abfrage an Worker (Übergabe von Typ und Jahr)
         const url = `${WORKER_URL}?type=gruppe&jahr=${selectedYear}`;
         
         try {
             const response = await fetch(url);
-            if (!response.ok) throw new Error(`HTTP-Fehler: ${response.status}`);
+            if (!response.ok) throw new Error(`Server-Antwort war nicht ok (${response.status})`);
             
             const json = await response.json();
             
-            // Mapping der Google-Struktur aus dem Worker
-            const rows = json.table ? json.table.rows : [];
+            // Check ob der Worker einen Fehler vom Google-Sheet erhalten hat
+            if (json.error) throw new Error(json.error);
+
+            // Daten aus der Google GViz-Struktur extrahieren
+            const rows = (json.table && json.table.rows) ? json.table.rows : [];
             
+            if (rows.length === 0) {
+                document.getElementById("overview").innerHTML = "<p>Keine Daten für dieses Jahr gefunden.</p>";
+                return;
+            }
+
             raw = rows.map(r => {
                 let row = { 
                     name: r.c[0]?.v || "", 
                     stellung: r.c[1]?.v || "" 
                 };
+                // Die 3 Runden der Gruppenmeisterschaft mappen
                 for(let i=1; i<=3; i++){
                     row[`r${i}Team`] = r.c[(i-1)*3+2]?.v || "";
                     row[`r${i}Pkt1`] = Number(r.c[(i-1)*3+3]?.v) || 0;
@@ -75,7 +86,7 @@
                 return row;
             });
 
-            // Teams extrahieren und sortieren
+            // Alle vorkommenden Team-Namen sammeln
             teams = [...new Set(raw.flatMap(r => 
                 Object.keys(r).filter(k => k.includes("Team")).map(k => r[k]).filter(Boolean)
             ))].sort();
@@ -83,18 +94,19 @@
             buildTable();
             
         } catch (e) {
-            console.error("Ladefehler:", e);
+            console.error("Fehler beim Laden:", e);
             document.getElementById("overview").innerHTML = 
-                `<p style='color:red'>Fehler beim Laden über Worker: ${e.message}</p>`;
+                `<p style='color:red; background:white; padding:15px; border-radius:8px;'><b>Fehler:</b> ${e.message}</p>`;
         }
     }
 
     function buildTable(){
-        let html = `<div class="table-wrapper"><table><tr><th></th><th>R1</th><th>R2</th><th>R3</th></tr>`;
+        let html = `<div class="table-wrapper"><table><tr><th>Gruppe</th><th>R1</th><th>R2</th><th>R3</th></tr>`;
 
         teams.forEach((team, index) => {
             html += `<tr><td class="team">${team}</td>`;
             for(let r=1; r<=3; r++){
+                // Summe aller Schützen eines Teams pro Runde berechnen
                 const sum = raw.filter(p => p[`r${r}Team`] === team).reduce((a, b) => a + b[`r${r}Sum`], 0);
                 html += `<td class="cell" onclick="toggleDetail('${team.replace(/'/g,"\\'")}', ${r}, ${index})">${sum || "–"}</td>`;
             }
@@ -107,10 +119,15 @@
 
     function toggleDetail(team, round, index){
         const div = document.getElementById(`detail-div-${index}`);
+        
+        // Wenn bereits offen, dann schließen
         if(div.style.display === "block"){
             div.style.display = "none";
             return;
         }
+
+        // Alle anderen Details schließen (optional, für bessere Übersicht auf Mobile)
+        document.querySelectorAll('.detail').forEach(d => d.style.display = 'none');
 
         const list = raw.filter(p => p[`r${round}Team`] === team);
         let total = 0;
