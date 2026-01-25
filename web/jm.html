@@ -2,200 +2,335 @@
 <html lang="de">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Jahresmeisterschaft</title>
-<script src="https://www.gstatic.com/charts/loader.js"></script>
-<style>
-:root{ --primary:#0f3a5d; --bg:#f6f7f8; --text:#333; --accent:#e74c3c; }
-body{ font-family:system-ui,-apple-system,sans-serif; background:var(--bg); margin:0; padding:20px; color:var(--text); }
+<title>Jahresmeisterschaft</title> <style>
+:root{
+  --primary:#0f3a5d;
+  --bg:#f6f7f8;
+  --text:#333;
+  --accent:#e74c3c;
+}
+
+body{
+  font-family:system-ui,-apple-system,sans-serif;
+  background:var(--bg);
+  margin:0;
+  padding:20px;
+  color:var(--text);
+}
+
 h1{margin-bottom:5px}
 .subtitle{color:#666;margin-bottom:30px}
+
 .liga{margin-bottom:40px}
-table{ width:100%; border-collapse:collapse; background:#fff; box-shadow:0 4px 12px rgba(0,0,0,.08); border-radius:8px; overflow:hidden; table-layout:fixed; }
+
+table{
+  width:100%;
+  border-collapse:collapse;
+  background:#fff;
+  box-shadow:0 4px 12px rgba(0,0,0,.08);
+  border-radius:8px;
+  overflow:hidden;
+  table-layout:fixed;
+}
+
 thead{background:var(--primary);color:#fff}
-th,td{ padding:12px 15px; text-align:left; border-bottom:1px solid #eee; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.col-rang{width:60px} .col-jg{width:80px} .col-total{width:100px} .col-zusatz{width:120px}
-.clickable{cursor:pointer} .clickable:hover{background:#f0f4f8}
-.details{display:none;background:#fdfdfd} .details td{white-space:normal}
-.detail-grid{ display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:25px; padding:20px; border-top:2px solid var(--primary); }
-.detail-box h4{ display:flex; justify-content:space-between; align-items:flex-end; margin:0 0 10px; padding-bottom:5px; border-bottom:2px solid #ddd; color:var(--primary); }
-.two-col{ list-style:none; padding:0; margin:0; }
-.two-col li{ display:flex; justify-content:space-between; align-items:baseline; padding:4px 0; }
-.item-right{ font-weight:600; font-variant-numeric:tabular-nums; white-space:nowrap; }
-.prz-small{ font-size:.85rem; color:#666; margin-left:4px; }
-.badge-auswaerts{ background:#e8f5e9; color:#2e7d32; padding:2px 6px; border-radius:4px; font-size:.75rem; font-weight:bold; }
-.status-label{ font-size:.65rem; font-weight:bold; text-transform:uppercase; display:block; margin-top:2px; }
-.text-auf{color:#27ae60} .text-ab{color:#c0392b}
+
+th,td{
+  padding:12px 15px;
+  text-align:left;
+  border-bottom:1px solid #eee;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+.col-rang{width:60px}
+.col-jg{width:80px}
+.col-total{width:100px}
+.col-zusatz{width:120px}
+
+.clickable{cursor:pointer}
+.clickable:hover{background:#f0f4f8}
+
+.details{display:none;background:#fdfdfd}
+.details td{white-space:normal}
+
+.detail-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(280px,1fr));
+  gap:25px;
+  padding:20px;
+  border-top:2px solid var(--primary);
+}
+
+.detail-box h4{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-end;
+  margin:0 0 10px;
+  padding-bottom:5px;
+  border-bottom:2px solid #ddd;
+  color:var(--primary);
+}
+
+.two-col{
+  list-style:none;
+  padding:0;
+  margin:0;
+}
+
+.two-col li{
+  display:flex;
+  justify-content:space-between;
+  align-items:baseline;
+  padding:4px 0;
+}
+
+.item-right{
+  font-weight:600;
+  font-variant-numeric:tabular-nums;
+  white-space:nowrap;
+}
+
+.prz-small{
+  font-size:.85rem;
+  color:#666;
+  margin-left:4px;
+}
+
+.badge-auswaerts{
+  background:#e8f5e9;
+  color:#2e7d32;
+  padding:2px 6px;
+  border-radius:4px;
+  font-size:.75rem;
+  font-weight:bold;
+}
+
+.status-label{
+  font-size:.65rem;
+  font-weight:bold;
+  text-transform:uppercase;
+  display:block;
+  margin-top:2px;
+}
+
+.text-auf{color:#27ae60}
+.text-ab{color:#c0392b}
+
 .aufsteiger{border-left:5px solid #2ecc71;background:#fafffa}
 .absteiger{border-left:5px solid #e74c3c;background:#fffaf9}
-.streich-info{ background:#fff0f0; padding:8px; border-radius:4px; border-left:4px solid var(--accent); margin-top:15px; font-size:.9rem; font-weight:600; }
-.is-streich{ color:var(--accent); text-decoration:line-through; opacity:.7; }
-.max-hint{ font-size:.6em; vertical-align:super; margin-left:4px; color:rgba(255,255,255,.6); cursor:pointer; }
-.tooltip{ position:fixed; transform:translate(-50%,-100%) scale(.95); background:#fff; color:#333; padding:6px 10px; font-size:.75rem; border-radius:6px; box-shadow:0 4px 12px rgba(0,0,0,.15); pointer-events:none; opacity:0; transition:opacity .15s ease, transform .15s ease; z-index:9999; }
-.tooltip.show{ opacity:1; transform:translate(-50%,-110%) scale(1); }
+
+.streich-info{
+  background:#fff0f0;
+  padding:8px;
+  border-radius:4px;
+  border-left:4px solid var(--accent);
+  margin-top:15px;
+  font-size:.9rem;
+  font-weight:600;
+}
+
+.is-streich{
+  color:var(--accent);
+  text-decoration:line-through;
+  opacity:.7;
+}
+
+/* --- max hochgestellt --- */
+.max-hint{
+  font-size:.6em;
+  vertical-align:super;
+  margin-left:4px;
+  color:rgba(255,255,255,.6);
+  cursor:pointer;
+}
+
+/* --- Tooltip --- */
+.tooltip{
+  position:fixed;
+  transform:translate(-50%,-100%) scale(.95);
+  background:#fff;
+  color:#333;
+  padding:6px 10px;
+  font-size:.75rem;
+  border-radius:6px;
+  box-shadow:0 4px 12px rgba(0,0,0,.15);
+  pointer-events:none;
+  opacity:0;
+  transition:opacity .15s ease, transform .15s ease;
+  z-index:9999;
+}
+
+.tooltip.show{
+  opacity:1;
+  transform:translate(-50%,-110%) scale(1);
+}
 </style>
 </head>
-<body>
 
-<h1 id="title">Jahresmeisterschaft</h1>
+<body>
+<h1 id="dyn-title">Jahresmeisterschaft</h1>
 <div class="subtitle">Klicken Sie auf einen Schützen für die detaillierte Auswertung</div>
 <div id="content">Lade Daten…</div>
+
 <div id="tooltip" class="tooltip"></div>
 
 <script>
-google.charts.load('current', {'packages':['corechart', 'table']});
-google.charts.setOnLoadCallback(loadData);
+(function(){
+  // --- DYNAMISCHE PARAMETER ---
+  var urlParams = new URLSearchParams(window.location.search);
+  var selectedYear = urlParams.get('jahr') || 'aktuell'; 
+  
+  // Titel im HTML anpassen
+  var displayYear = (selectedYear === 'aktuell') ? 'Aktuell' : selectedYear;
+  document.getElementById("dyn-title").textContent = "Jahresmeisterschaft " + displayYear;
+  document.title = "Jahresmeisterschaft " + displayYear;
 
-const SHEET_ID = "1VuOv6b8r5m1g_9ZidPR3OPZ7YIwLUm6dYLC9nKmC2mE";
-const urlParams = new URLSearchParams(window.location.search);
-const selectedYear = urlParams.get('jahr') || 'aktuell';
-const SHEET_NAME = (selectedYear === 'aktuell') ? "Jahresmeisterschaft" : `JM_${selectedYear}`;
+  // URL für den Worker dynamisch bauen
+  var API_URL = "https://jahresmeisterschaft-muhen.dan-hunziker73.workers.dev?jahr=" + selectedYear;
 
-let MAX_WERT = "-";
+  function formatNum(v){
+    var n=Number(v);
+    return isFinite(n)?n.toFixed(2):"0.00";
+  }
 
-function toggle(id) {
-    var el = document.getElementById(id);
-    if(el) el.style.display = (el.style.display === "table-row") ? "none" : "table-row";
-}
+  function safeArray(v){
+    return Object.prototype.toString.call(v)==="[object Array]"?v:[];
+  }
 
-function loadData() {
-    document.getElementById("title").innerText = "Jahresmeisterschaft " + (selectedYear === 'aktuell' ? "Aktuell" : selectedYear);
-    const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?sheet=${encodeURIComponent(SHEET_NAME)}&tqx=sig:0`;
-    const query = new google.visualization.Query(url);
-    
-    query.send(res => {
-        if(res.isError()) {
-            document.getElementById("content").innerHTML = `<div style="color:red; padding:20px;">Fehler: Blatt "${SHEET_NAME}" nicht gefunden.</div>`;
-            return;
+  window.toggle=function(id){
+    var el=document.getElementById(id);
+    if(!el)return;
+    el.style.display=(el.style.display==="table-row")?"none":"table-row";
+  };
+
+  function renderLiga(ligaNr,raw){
+    var teilnehmer=safeArray(raw);
+
+    var html='<div class="liga"><h2>Liga '+ligaNr+'</h2><table><thead><tr>'+
+      '<th class="col-rang">Rang</th><th>Name</th><th class="col-jg">Jg.</th>'+
+      '<th class="col-total">Total <span class="max-hint">max</span></th>'+
+      '<th class="col-zusatz">Zusatz</th>'+
+      '</tr></thead><tbody>';
+
+    for(var i=0;i<teilnehmer.length;i++){
+      var t=teilnehmer[i]||{};
+      var sch=safeArray(t.schiessen);
+      var ma=safeArray(t.mannschaft);
+      var au=safeArray(t.auswaerts);
+      var streichPrz=Number(t.streichresultat_prz);
+      var used=false;
+
+      var statusClass="",statusLabel="";
+      if(ligaNr===1&&i>=teilnehmer.length-2){
+        statusClass="absteiger";
+        statusLabel='<span class="status-label text-ab">Abstieg</span>';
+      }
+      if(ligaNr===2&&i<2){
+        statusClass="aufsteiger";
+        statusLabel='<span class="status-label text-auf">Aufstieg</span>';
+      }
+
+      var id="liga"+ligaNr+"_"+i;
+
+      html+='<tr class="clickable '+statusClass+'" onclick="toggle(\''+id+'\')">'+
+        '<td><b>'+(t.rang??"-")+'</b>'+statusLabel+'</td>'+
+        '<td>'+(t.name??"-")+'</td>'+
+        '<td>'+(t.jahrgang??"-")+'</td>'+
+        '<td><b>'+formatNum(t.total)+'</b></td>'+
+        '<td>'+(au.length?'<span class="badge-auswaerts">'+au.length+' Auswärts</span>':"")+'</td>'+
+        '</tr>';
+
+      html+='<tr id="'+id+'" class="details"><td colspan="5"><div class="detail-grid">';
+
+      /* Meisterschaft */
+      html+='<div class="detail-box"><h4><span>Meisterschaft</span><span>Pkt (%)</span></h4><ul class="two-col">';
+      for(var j=0;j<sch.length;j++){
+        var s=sch[j]||{};
+        var p=Number(s.prozent);
+        var isStreich=isFinite(streichPrz)&&!used&&Math.abs(p-streichPrz)<0.0001&&streichPrz>0;
+        if(isStreich)used=true;
+
+        html+='<li class="'+(isStreich?'is-streich':'')+'">'+
+          '<span>'+(s.name||"-")+'</span>'+
+          '<span class="item-right">'+
+            (s.punkte||"-")+
+            ' <span class="prz-small">('+formatNum(p)+'%)</span>'+
+          '</span>'+
+        '</li>';
+      }
+      html+='</ul>'+(streichPrz>0?'<div class="streich-info">Streichresultat: '+formatNum(streichPrz)+'%</div>':"")+'</div>';
+
+      /* Mannschaft */
+      html+='<div class="detail-box"><h4><span>Mannschaft</span><span>Pkt</span></h4><ul class="two-col">';
+      for(j=0;j<ma.length;j++){
+        html+='<li><span>Runde '+(j+1)+'</span><span class="item-right">'+(ma[j].punkte||"-")+'</span></li>';
+      }
+      html+='</ul></div>';
+
+      /* Auswärtsschiessen */
+      html+='<div class="detail-box"><h4><span>Auswärtsschiessen</span><span>Pkt</span></h4>';
+      if(au.length){
+        html+='<ul class="two-col">';
+        for(j=0;j<au.length;j++){
+          html+='<li><span>'+(au[j].name||"-")+'</span><span class="item-right">'+(au[j].punkte||"-")+'</span></li>';
         }
-        const dt = res.getDataTable();
-        
-        try { MAX_WERT = dt.getValue(3, 18) || "1000"; } catch(e) { MAX_WERT = "1000"; }
+        html+='</ul>';
+      } else {
+        html+='<p style="color:#999;font-size:.9rem">Keine Resultate vorhanden.</p>';
+      }
+      html+='</div>';
 
-        const liga1 = processLiga(dt, 5, 12); 
-        const liga2 = processLiga(dt, 15, dt.getNumberOfRows() - 1);
-        
-        document.getElementById("content").innerHTML = renderLiga(1, liga1) + renderLiga(2, liga2);
-        initTooltips();
-    });
-}
-
-function processLiga(dt, start, end) {
-    let list = [];
-    const numRows = dt.getNumberOfRows();
-    const jaNeinRow = 0; // Zeile 1
-    const titelRow = 2;  // Zeile 3
-
-    for (let r = start; r <= end; r++) {
-        if (r >= numRows) break;
-        let nachname = dt.getValue(r, 1);
-        if (!nachname) { if(r > 15) break; else continue; }
-
-        let schiessen = [];
-        // Einzelstiche G bis R (Index 6 bis 17)
-        for (let c = 6; c <= 17; c++) {
-            let aktiv = dt.getValue(jaNeinRow, c);
-            if (aktiv && ["ja","x","j"].includes(String(aktiv).toLowerCase())) {
-                let pkt = dt.getValue(r, c);
-                let prz = dt.getValue(r, c + 13); // Prozente T-AE (+13 Spalten)
-                
-                schiessen.push({ 
-                    name: dt.getValue(titelRow, c) || "Stich", 
-                    punkte: pkt !== null ? pkt : "-",
-                    prozent: prz !== null ? prz : 0
-                });
-            }
-        }
-
-        let mannschaft = [];
-        // Mannschaft AH bis AN (Index 33 bis 39)
-        for (let c = 33; c <= 39; c++) {
-            let val = dt.getValue(r, c);
-            if (val !== null && val !== "") {
-                mannschaft.push({ runde: dt.getValue(titelRow, c) || `Runde ${c-32}`, punkte: val });
-            }
-        }
-
-        let auswaerts = [];
-        // Auswärts AP bis BV (Index 41 bis 74)
-        for (let c = 41; c < dt.getNumberOfColumns() && c <= 74; c++) {
-            let val = dt.getValue(r, c);
-            if (val && Number(val) > 0) {
-                auswaerts.push({ name: dt.getValue(titelRow, c) || "Auswärts", punkte: val });
-            }
-        }
-
-        list.push({
-            name: (dt.getValue(r, 2) || "") + " " + (dt.getValue(r, 1) || ""),
-            jahrgang: dt.getValue(r, 3) || "",
-            total: dt.getValue(r, 18) || 0,
-            streichresultat_prz: dt.getValue(r, 31) || 0,
-            schiessen, mannschaft, auswaerts
-        });
+      html+='</div></td></tr>';
     }
-    return list.sort((a,b) => b.total - a.total);
-}
 
-function renderLiga(ligaNr, teilnehmer) {
-    let html = `<div class="liga"><h2>Liga ${ligaNr}</h2><table><thead><tr>` +
-               `<th class="col-rang">Rang</th><th>Name</th><th class="col-jg">Jg.</th>` +
-               `<th class="col-total">Total <span class="max-hint">max</span></th><th class="col-zusatz">Zusatz</th></tr></thead><tbody>`;
+    return html+'</tbody></table></div>';
+  }
 
-    teilnehmer.forEach((t, i) => {
-        const id = `liga${ligaNr}_${i}`;
-        let statusClass = (ligaNr === 1 && i >= teilnehmer.length - 2) ? "absteiger" : 
-                          (ligaNr === 2 && i < 2) ? "aufsteiger" : "";
-        let statusLabel = (statusClass === "absteiger") ? '<span class="status-label text-ab">Abstieg</span>' :
-                          (statusClass === "aufsteiger") ? '<span class="status-label text-auf">Aufstieg</span>' : "";
+  var xhr=new XMLHttpRequest();
+  xhr.open("GET",API_URL,true);
+  xhr.onreadystatechange=function(){
+    if(xhr.readyState!==4)return;
+    if(xhr.status!==200){
+      document.getElementById("content").innerHTML='<div class="error-box">Fehler beim Laden</div>';
+      return;
+    }
 
-        html += `<tr class="clickable ${statusClass}" onclick="toggle('${id}')">` +
-                `<td><b>${i+1}</b>${statusLabel}</td><td>${t.name}</td><td>${t.jahrgang}</td>` +
-                `<td><b>${Number(t.total).toFixed(2)}</b></td><td>${t.auswaerts.length ? `<span class="badge-auswaerts">${t.auswaerts.length} Auswärts</span>` : ""}</td></tr>`;
+    var data=JSON.parse(xhr.responseText);
+    var MAX_WERT=data.max;
 
-        html += `<tr id="${id}" class="details"><td colspan="5"><div class="detail-grid">`;
-        
-        // Box 1: Meisterschaft
-        html += `<div class="detail-box"><h4><span>Meisterschaft</span><span>Pkt (%)</span></h4><ul class="two-col">`;
-        let streichUsed = false;
-        t.schiessen.forEach(s => {
-            let isStreich = false;
-            if(!streichUsed && t.streichresultat_prz > 0 && Math.abs(s.prozent - t.streichresultat_prz) < 0.001) {
-                isStreich = true;
-                streichUsed = true;
-            }
-            html += `<li class="${isStreich ? 'is-streich' : ''}"><span>${s.name}</span>` +
-                    `<span class="item-right">${s.punkte} <span class="prz-small">(${Number(s.prozent).toFixed(2)}%)</span></span></li>`;
-        });
-        html += `</ul>${t.streichresultat_prz > 0 ? `<div class="streich-info">Streichresultat: ${Number(t.streichresultat_prz).toFixed(2)}%</div>` : ""}</div>`;
+    document.getElementById("content").innerHTML=
+      renderLiga(1,data.liga1)+renderLiga(2,data.liga2);
 
-        // Box 2: Mannschaft
-        html += `<div class="detail-box"><h4><span>Mannschaft</span><span>Pkt</span></h4><ul class="two-col">`;
-        t.mannschaft.forEach(m => {
-            html += `<li><span>${m.runde}</span><span class="item-right">${m.punkte}</span></li>`;
-        });
-        html += `</ul></div>`;
+    var tooltip=document.getElementById("tooltip");
 
-        // Box 3: Auswärts
-        html += `<div class="detail-box"><h4><span>Auswärtsschiessen</span><span>Pkt</span></h4><ul class="two-col">`;
-        if(t.auswaerts.length) {
-            t.auswaerts.forEach(a => html += `<li><span>${a.name}</span><span class="item-right">${a.punkte}</span></li>`);
-        } else { html += `<p style="color:#999;font-size:.9rem">Keine Resultate.</p>`; }
-        html += `</ul></div></div></td></tr>`;
+    document.querySelectorAll(".max-hint").forEach(function(el){
+      function show(){
+        var r=el.getBoundingClientRect();
+        tooltip.textContent="Maximum: "+MAX_WERT;
+        tooltip.style.left=r.left+r.width/2+"px";
+        tooltip.style.top=r.top+"px";
+        tooltip.classList.add("show");
+      }
+      function hide(){
+        tooltip.classList.remove("show");
+      }
+
+      el.addEventListener("mouseenter",show);
+      el.addEventListener("mouseleave",hide);
+      el.addEventListener("click",function(e){
+        e.stopPropagation();
+        show();
+      });
     });
-    return html + `</tbody></table></div>`;
-}
 
-function initTooltips() {
-    var tooltip = document.getElementById("tooltip");
-    document.querySelectorAll(".max-hint").forEach(el => {
-        el.onmouseenter = (e) => {
-            tooltip.textContent = "Maximum: " + MAX_WERT;
-            tooltip.style.left = e.pageX + "px"; tooltip.style.top = e.pageY + "px";
-            tooltip.classList.add("show");
-        };
-        el.onmouseleave = () => tooltip.classList.remove("show");
+    document.addEventListener("click",function(){
+      tooltip.classList.remove("show");
     });
-}
+  };
+  xhr.send();
+})();
 </script>
 </body>
 </html>
