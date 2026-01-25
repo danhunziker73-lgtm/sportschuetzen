@@ -1,137 +1,144 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Jahresmeisterschaft</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jahresmeisterschaft Detail</title>
+    <style>
+        body { font-family: Arial, sans-serif; background: #f4f6f8; margin: 0; padding: 15px; color: #333; }
+        h1, h2 { color: #0f3c5c; margin-bottom: 5px; }
+        .subtitle { color: #666; margin-bottom: 20px; }
+        .liga-container { margin-bottom: 40px; }
+        .table-wrapper { overflow-x: auto; background: white; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        table { width: 100%; border-collapse: collapse; min-width: 600px; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #eee; }
+        th { background: #0f3c5c; color: white; font-size: 14px; }
+        .rang { width: 40px; font-weight: bold; text-align: center; }
+        .total { font-weight: bold; color: #0f3c5c; text-align: right; }
+        tr:hover { background: #f1f5f9; cursor: pointer; }
+        
+        /* Modal für Details */
+        .modal { display: none; position: fixed; z-index: 100; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); }
+        .modal-content { background: white; margin: 5% auto; padding: 20px; width: 90%; max-width: 600px; border-radius: 12px; max-height: 80vh; overflow-y: auto; }
+        .detail-grid { display: grid; grid-template-columns: 1fr auto; gap: 10px; margin-top: 15px; }
+        .detail-row { border-bottom: 1px solid #eee; padding: 5px 0; display: flex; justify-content: space-between; }
+        .close { float: right; font-size: 28px; cursor: pointer; }
+        .cat-title { background: #eee; padding: 5px 10px; font-weight: bold; margin-top: 15px; border-radius: 4px; }
+    </style>
+</head>
+<body>
 
-<script src="https://www.gstatic.com/charts/loader.js"></script>
+    <h1 id="main-title">Jahresmeisterschaft</h1>
+    <p class="subtitle" id="sub-title">Lade Resultate...</p>
 
-<style>
-body { font-family: Arial, sans-serif; background: #f4f6f8; margin: 0; padding: 15px; }
-h1 { margin-bottom: 5px; color: #0f3c5c; }
-.subtitle { color: #666; margin-bottom: 15px; }
+    <div id="content">
+        <div class="liga-container">
+            <h2>Liga 1</h2>
+            <div class="table-wrapper"><table id="table-liga1"><thead><tr><th>Rang</th><th>Name</th><th>Jg</th><th style="text-align:right">Total</th></tr></thead><tbody></tbody></table></div>
+        </div>
+        <div class="liga-container">
+            <h2>Liga 2</h2>
+            <div class="table-wrapper"><table id="table-liga2"><thead><tr><th>Rang</th><th>Name</th><th>Jg</th><th style="text-align:right">Total</th></tr></thead><tbody></tbody></table></div>
+        </div>
+    </div>
 
-/* Die Tabelle braucht einen Wrapper für horizontales Scrollen am Handy */
-.table-wrapper { 
-    overflow-x: auto; 
-    margin-bottom: 20px; 
-    box-shadow: 0 2px 6px rgba(0,0,0,0.08); 
-    border-radius: 4px;
-}
-
-table { 
-    width: 100%; 
-    border-collapse: collapse; 
-    background: white; 
-    font-size: 14px; 
-    min-width: 800px; /* Garantiert, dass die Tabelle bei vielen Stichen nicht gequetscht wird */
-}
-
-th, td { padding: 10px 8px; text-align: center; border-bottom: 1px solid #e0e0e0; }
-th { background: #0f3c5c; color: white; white-space: nowrap; font-weight: bold; }
-
-/* Fixiert die Namensspalte beim seitlichen Scrollen */
-td.name-cell { 
-    font-weight: bold; 
-    text-align: left; 
-    color: #0f3c5c; 
-    position: sticky; 
-    left: 0; 
-    background: white; 
-    z-index: 2; 
-    border-right: 2px solid #eee; 
-}
-
-/* Zebra-Look für bessere Lesbarkeit */
-tr:nth-child(even) td { background: #fafafa; }
-tr:nth-child(even) td.name-cell { background: #fafafa; }
-
-/* Hebt die Total-Spalte (letzte Spalte) hervor */
-.total-cell { 
-    font-weight: bold; 
-    background: #f0f4f8 !important; 
-    color: #0d2a41; 
-}
-
-@media (max-width: 768px) { 
-    th, td { padding: 8px 5px; font-size: 13px; } 
-    h1 { font-size: 20px; } 
-}
-</style>
+    <div id="detailModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <h2 id="modalName">Name</h2>
+            <div id="modalDetails"></div>
+        </div>
+    </div>
 
 <script>
-google.charts.load('current', {'packages':['table']});
-google.charts.setOnLoadCallback(loadData);
+    const SHEET_ID = "1VuOv6b8r5m1g_9ZidPR3OPZ7YIwLUm6dYLC9nKmC2mE";
+    const urlParams = new URLSearchParams(window.location.search);
+    const selectedYear = urlParams.get('jahr') || 'aktuell'; 
+    const SHEET_NAME = (selectedYear === 'aktuell') ? "Jahresmeisterschaft" : `JM_${selectedYear}`;
 
-const SHEET_ID = "1VuOv6b8r5m1g_9ZidPR3OPZ7YIwLUm6dYLC9nKmC2mE";
+    async function loadData() {
+        const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?sheet=${SHEET_NAME}&tqx=out:json`;
+        try {
+            const response = await fetch(url);
+            const text = await response.text();
+            const json = JSON.parse(text.substring(text.indexOf('{'), text.lastIndexOf('}') + 1));
+            const data = json.table.rows.map(r => r.c.map(cell => cell ? cell.v : null));
 
-// Jahr aus URL holen
-const urlParams = new URLSearchParams(window.location.search);
-const selectedYear = urlParams.get('jahr') || 'aktuell'; 
-
-// Namenslogik: "Jahresmeisterschaft" (aktuell) oder "JM_2025" (archiv)
-const SHEET_NAME = (selectedYear === 'aktuell') 
-    ? "Jahresmeisterschaft" 
-    : `JM_${selectedYear}`;
-
-const YEAR_LABEL = (selectedYear === 'aktuell') ? "Aktuell" : selectedYear;
-
-function loadData() {
-    document.querySelector('h1').textContent = `Jahresmeisterschaft ${YEAR_LABEL}`;
-    document.querySelector('.subtitle').textContent = `Rangliste ${YEAR_LABEL} – Übersicht aller Stiche`;
-
-    const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?sheet=${SHEET_NAME}`;
-    const query = new google.visualization.Query(url);
-    
-    query.send(res => {
-        if(res.isError()){
-            document.getElementById("overview").innerHTML = 
-                `<p style='color:red; padding:20px;'>Blatt "${SHEET_NAME}" wurde im Google Sheet nicht gefunden. Bitte Namen prüfen.</p>`;
-            return;
+            processJM(data);
+        } catch (e) {
+            document.getElementById('sub-title').innerHTML = "<span style='color:red'>Fehler beim Laden.</span>";
         }
-
-        const data = res.getDataTable();
-        buildTable(data);
-    });
-}
-
-function buildTable(data) {
-    const numCols = data.getNumberOfColumns();
-    const numRows = data.getNumberOfRows();
-    
-    let html = `<div class="table-wrapper"><table><thead><tr>`;
-    
-    // Header aus Google Sheet Labels generieren
-    for (let c = 0; c < numCols; c++) {
-        html += `<th>${data.getColumnLabel(c) || ""}</th>`;
-    }
-    html += `</tr></thead><tbody>`;
-
-    // Zeileninhalt
-    for (let r = 0; r < numRows; r++) {
-        html += `<tr>`;
-        for (let c = 0; c < numCols; c++) {
-            let val = data.getFormattedValue(r, c); // getFormattedValue behält Formatierung aus Sheet bei
-            
-            let className = "";
-            if (c === 0) className = "name-cell"; // Erste Spalte (Name)
-            if (c === numCols - 1) className = "total-cell"; // Letzte Spalte (Total/Rang)
-            
-            html += `<td class="${className}">${val}</td>`;
-        }
-        html += `</tr>`;
     }
 
-    html += `</tbody></table></div>`;
-    document.getElementById("overview").innerHTML = html;
-}
+    function processJM(data) {
+        const jaNeinRow = data[0];
+        const titelRow = data[2];
+
+        function buildTeilnehmer(row) {
+            const schiessen = [];
+            for (let i = 0; i < 12; i++) {
+                if (jaNeinRow[6 + i] === "ja" || jaNeinRow[6 + i] === "x") {
+                    schiessen.push({ name: titelRow[6 + i], punkte: row[6 + i] || 0 });
+                }
+            }
+            // Mannschaft & Auswärts (analog zu deinem Script)
+            const mannschaft = [];
+            for (let i = 0; i < 7; i++) {
+                mannschaft.push({ name: titelRow[33 + i], punkte: row[33 + i] || 0 });
+            }
+
+            return {
+                name: `${row[2] || ""} ${row[1] || ""}`.trim(),
+                jg: row[3],
+                total: parseFloat(row[18]) || 0,
+                details: { schiessen, mannschaft }
+            };
+        }
+
+        const liga1 = [];
+        for (let r = 5; r <= 12; r++) {
+            if (data[r] && data[r][1]) liga1.push(buildTeilnehmer(data[r]));
+        }
+        
+        const liga2 = [];
+        for (let r = 15; r < data.length; r++) {
+            if (data[r] && data[r][1]) liga2.push(buildTeilnehmer(data[r]));
+            else if (r > 15) break;
+        }
+
+        renderTable('table-liga1', liga1.sort((a,b) => b.total - a.total));
+        renderTable('table-liga2', liga2.sort((a,b) => b.total - a.total));
+        document.getElementById('sub-title').innerText = `Saison ${selectedYear === 'aktuell' ? 'Aktuell' : selectedYear}`;
+    }
+
+    function renderTable(id, list) {
+        const tbody = document.querySelector(`#${id} tbody`);
+        tbody.innerHTML = list.map((t, i) => `
+            <tr onclick='showDetails(${JSON.stringify(t)})'>
+                <td class="rang">${i+1}</td>
+                <td>${t.name}</td>
+                <td>${t.jg || ""}</td>
+                <td class="total">${t.total.toFixed(2)}</td>
+            </tr>
+        `).join('');
+    }
+
+    function showDetails(t) {
+        document.getElementById('modalName').innerText = t.name;
+        let html = `<div class="cat-title">Einzelstiche</div>`;
+        t.details.schiessen.forEach(s => {
+            html += `<div class="detail-row"><span>${s.name}</span><strong>${s.punkte}</strong></div>`;
+        });
+        html += `<div class="cat-title">Mannschaft</div>`;
+        t.details.mannschaft.forEach(m => {
+            html += `<div class="detail-row"><span>${m.name}</span><strong>${m.punkte}</strong></div>`;
+        });
+        document.getElementById('modalDetails').innerHTML = html;
+        document.getElementById('detailModal').style.display = "block";
+    }
+
+    function closeModal() { document.getElementById('detailModal').style.display = "none"; }
+    window.onload = loadData;
 </script>
-</head>
-
-<body>
-    <h1>Jahresmeisterschaft</h1>
-    <div class="subtitle">Lade Rangliste...</div>
-    <div id="overview"></div>
 </body>
 </html>
