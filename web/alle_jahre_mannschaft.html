@@ -1,0 +1,65 @@
+// Konfiguration
+const SHEET_ID = "1VuOv6b8r5m1g_9ZidPR3OPZ7YIwLUm6dYLC9nKmC2mE";
+
+// 1. Jahr aus der URL holen (z.B. ?jahr=2025). Wenn nichts da ist, nimm "aktuell"
+const urlParams = new URLSearchParams(window.location.search);
+const selectedYear = urlParams.get('jahr') || 'aktuell'; 
+
+// 2. Tabellenblatt-Name dynamisch generieren
+// Wenn selectedYear "aktuell" ist -> "Aktuell_Mannschaft"
+// Sonst (z.B. 2025) -> "2025_Mannschaft"
+const SHEET_NAME = (selectedYear === 'aktuell') 
+    ? "Aktuell_Mannschaft" 
+    : `${selectedYear}_Mannschaft`;
+
+let raw = [];
+let teams = [];
+
+window.onload = () => {
+    // Titel dynamisch setzen
+    const displayYear = (selectedYear === 'aktuell') ? "Aktuell" : selectedYear;
+    document.querySelector('h1').textContent = `Mannschaftsmeisterschaft ${displayYear}`;
+    loadData();
+};
+
+async function loadData() {
+    const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?sheet=${SHEET_NAME}&tqx=out:json`;
+    
+    try {
+        const response = await fetch(url);
+        if (!response.ok) throw new Error("Netzwerk-Antwort war nicht ok");
+        
+        const text = await response.text();
+        const start = text.indexOf('{');
+        const end = text.lastIndexOf('}') + 1;
+        const jsonResponse = JSON.parse(text.substring(start, end));
+        const data = jsonResponse.table;
+
+        raw = data.rows.map(r => {
+            return {
+                name: r.c[0] ? r.c[0].v : "",
+                r1Team: r.c[1] ? r.c[1].v : "", r1Pkt: r.c[2] ? Number(r.c[2].v) : 0,
+                r2Team: r.c[3] ? r.c[3].v : "", r2Pkt: r.c[4] ? Number(r.c[4].v) : 0,
+                r3Team: r.c[5] ? r.c[5].v : "", r3Pkt: r.c[6] ? Number(r.c[6].v) : 0,
+                r4Team: r.c[7] ? r.c[7].v : "", r4Pkt: r.c[8] ? Number(r.c[8].v) : 0,
+                r5Team: r.c[9] ? r.c[9].v : "", r5Pkt: r.c[10] ? Number(r.c[10].v) : 0,
+                r6Team: r.c[11] ? r.c[11].v : "", r6Pkt: r.c[12] ? Number(r.c[12].v) : 0,
+                r7Team: r.c[13] ? r.c[13].v : "", r7Pkt: r.c[14] ? Number(r.c[14].v) : 0
+            };
+        });
+
+        teams = [...new Set(raw.flatMap(r => 
+            Object.keys(r).filter(k => k.includes("Team")).map(k => r[k]).filter(Boolean)
+        ))].sort();
+
+        buildTable();
+        document.querySelector('.subtitle').textContent = `Übersicht ${displayYear} – auf Punkte klicken für Details`;
+        
+    } catch (error) {
+        console.error("Fehler beim Laden:", error);
+        document.getElementById("overview").innerHTML = 
+            `<div style="color:red; background:white; padding:10px; border:1px solid red;">
+                <b>Fehler:</b> Blatt "${SHEET_NAME}" wurde nicht gefunden oder ist nicht freigegeben.
+            </div>`;
+    }
+}
