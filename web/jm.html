@@ -2,10 +2,10 @@
 <html lang="de">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Jahresmeisterschaft</title>
 <script src="https://www.gstatic.com/charts/loader.js"></script>
 <style>
-/* Dein exaktes Design */
 :root{ --primary:#0f3a5d; --bg:#f6f7f8; --text:#333; --accent:#e74c3c; }
 body{ font-family:system-ui,-apple-system,sans-serif; background:var(--bg); margin:0; padding:20px; color:var(--text); }
 h1{margin-bottom:5px}
@@ -43,10 +43,10 @@ th,td{ padding:12px 15px; text-align:left; border-bottom:1px solid #eee; overflo
 <div id="tooltip" class="tooltip"></div>
 
 <script>
-google.charts.load('current');
+google.charts.load('current', {'packages':['corechart', 'table']});
 google.charts.setOnLoadCallback(loadData);
 
-const SHEET_ID = "1ye7nbT1lLLYzilwNhw6NnslwvUrtxFuT-ZZJRrG2sT0";
+const SHEET_ID = "1VuOv6b8r5m1g_9ZidPR3OPZ7YIwLUm6dYLC9nKmC2mE";
 const urlParams = new URLSearchParams(window.location.search);
 const selectedYear = urlParams.get('jahr') || 'aktuell';
 const SHEET_NAME = (selectedYear === 'aktuell') ? "Jahresmeisterschaft" : `JM_${selectedYear}`;
@@ -58,23 +58,22 @@ function toggle(id) {
     if(el) el.style.display = (el.style.display === "table-row") ? "none" : "table-row";
 }
 
-async function loadData() {
-    document.getElementById("title").innerText = "Jahresmeisterschaft " + (selectedYear === 'aktuell' ? "" : selectedYear);
-    const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?sheet=${SHEET_NAME}`;
+function loadData() {
+    document.getElementById("title").innerText = "Jahresmeisterschaft " + (selectedYear === 'aktuell' ? "Aktuell" : selectedYear);
+    const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?sheet=${encodeURIComponent(SHEET_NAME)}&tqx=sig:0`;
     const query = new google.visualization.Query(url);
     
     query.send(res => {
         if(res.isError()) {
-            document.getElementById("content").innerHTML = "Fehler beim Laden der Daten.";
+            document.getElementById("content").innerHTML = `<div style="color:red; padding:20px;">Fehler: Blatt "${SHEET_NAME}" nicht gefunden.</div>`;
             return;
         }
         const dt = res.getDataTable();
         
-        // Max Wert aus S4 (Spalte 18, Zeile 3)
-        MAX_WERT = dt.getValue(3, 18) || "1000";
+        try { MAX_WERT = dt.getValue(3, 18) || "1000"; } catch(e) { MAX_WERT = "1000"; }
 
-        const liga1 = processLiga(dt, 5, 12); // Zeile 6-13
-        const liga2 = processLiga(dt, 15, dt.getNumberOfRows()-1); // Ab Zeile 16
+        const liga1 = processLiga(dt, 5, 12); 
+        const liga2 = processLiga(dt, 15, dt.getNumberOfRows() - 1);
         
         document.getElementById("content").innerHTML = renderLiga(1, liga1) + renderLiga(2, liga2);
         initTooltips();
@@ -83,40 +82,54 @@ async function loadData() {
 
 function processLiga(dt, start, end) {
     let list = [];
-    const jaNeinRow = 0;
-    const titelRow = 2;
+    const numRows = dt.getNumberOfRows();
+    const jaNeinRow = 0; // Zeile 1
+    const titelRow = 2;  // Zeile 3
 
     for (let r = start; r <= end; r++) {
-        if (!dt.getValue(r, 1)) { if(r > 15) break; else continue; }
+        if (r >= numRows) break;
+        let nachname = dt.getValue(r, 1);
+        if (!nachname) { if(r > 15) break; else continue; }
 
         let schiessen = [];
+        // Einzelstiche G bis R (Index 6 bis 17)
         for (let c = 6; c <= 17; c++) {
-            if (["ja","x"].includes(String(dt.getValue(jaNeinRow, c)).toLowerCase())) {
+            let aktiv = dt.getValue(jaNeinRow, c);
+            if (aktiv && ["ja","x","j"].includes(String(aktiv).toLowerCase())) {
+                let pkt = dt.getValue(r, c);
+                let prz = dt.getValue(r, c + 13); // Prozente T-AE (+13 Spalten)
+                
                 schiessen.push({ 
-                    name: dt.getValue(titelRow, c), 
-                    punkte: dt.getValue(r, c) || 0,
-                    prozent: dt.getValue(r, c + 13) || 0 // Prozente liegen 13 Spalten weiter (G->T)
+                    name: dt.getValue(titelRow, c) || "Stich", 
+                    punkte: pkt !== null ? pkt : "-",
+                    prozent: prz !== null ? prz : 0
                 });
             }
         }
 
         let mannschaft = [];
+        // Mannschaft AH bis AN (Index 33 bis 39)
         for (let c = 33; c <= 39; c++) {
             let val = dt.getValue(r, c);
-            if (val) mannschaft.push({ punkte: val });
+            if (val !== null && val !== "") {
+                mannschaft.push({ runde: dt.getValue(titelRow, c) || `Runde ${c-32}`, punkte: val });
+            }
         }
 
         let auswaerts = [];
-        for (let c = 41; c <= 74; c++) { // AP bis BV
+        // Auswärts AP bis BV (Index 41 bis 74)
+        for (let c = 41; c < dt.getNumberOfColumns() && c <= 74; c++) {
             let val = dt.getValue(r, c);
-            if (val > 0) auswaerts.push({ name: dt.getValue(titelRow, c), punkte: val });
+            if (val && Number(val) > 0) {
+                auswaerts.push({ name: dt.getValue(titelRow, c) || "Auswärts", punkte: val });
+            }
         }
 
         list.push({
-            name: dt.getValue(r, 2) + " " + dt.getValue(r, 1),
-            jahrgang: dt.getValue(r, 3),
+            name: (dt.getValue(r, 2) || "") + " " + (dt.getValue(r, 1) || ""),
+            jahrgang: dt.getValue(r, 3) || "",
             total: dt.getValue(r, 18) || 0,
-            streichresultat_prz: dt.getValue(r, 31),
+            streichresultat_prz: dt.getValue(r, 31) || 0,
             schiessen, mannschaft, auswaerts
         });
     }
@@ -130,22 +143,26 @@ function renderLiga(ligaNr, teilnehmer) {
 
     teilnehmer.forEach((t, i) => {
         const id = `liga${ligaNr}_${i}`;
-        let statusClass = "";
-        let statusLabel = "";
-        if(ligaNr === 1 && i >= teilnehmer.length - 2) { statusClass = "absteiger"; statusLabel = '<span class="status-label text-ab">Abstieg</span>'; }
-        if(ligaNr === 2 && i < 2) { statusClass = "aufsteiger"; statusLabel = '<span class="status-label text-auf">Aufstieg</span>'; }
+        let statusClass = (ligaNr === 1 && i >= teilnehmer.length - 2) ? "absteiger" : 
+                          (ligaNr === 2 && i < 2) ? "aufsteiger" : "";
+        let statusLabel = (statusClass === "absteiger") ? '<span class="status-label text-ab">Abstieg</span>' :
+                          (statusClass === "aufsteiger") ? '<span class="status-label text-auf">Aufstieg</span>' : "";
 
         html += `<tr class="clickable ${statusClass}" onclick="toggle('${id}')">` +
                 `<td><b>${i+1}</b>${statusLabel}</td><td>${t.name}</td><td>${t.jahrgang}</td>` +
                 `<td><b>${Number(t.total).toFixed(2)}</b></td><td>${t.auswaerts.length ? `<span class="badge-auswaerts">${t.auswaerts.length} Auswärts</span>` : ""}</td></tr>`;
 
-        // Details
         html += `<tr id="${id}" class="details"><td colspan="5"><div class="detail-grid">`;
         
         // Box 1: Meisterschaft
         html += `<div class="detail-box"><h4><span>Meisterschaft</span><span>Pkt (%)</span></h4><ul class="two-col">`;
+        let streichUsed = false;
         t.schiessen.forEach(s => {
-            let isStreich = t.streichresultat_prz && Math.abs(s.prozent - t.streichresultat_prz) < 0.001;
+            let isStreich = false;
+            if(!streichUsed && t.streichresultat_prz > 0 && Math.abs(s.prozent - t.streichresultat_prz) < 0.001) {
+                isStreich = true;
+                streichUsed = true;
+            }
             html += `<li class="${isStreich ? 'is-streich' : ''}"><span>${s.name}</span>` +
                     `<span class="item-right">${s.punkte} <span class="prz-small">(${Number(s.prozent).toFixed(2)}%)</span></span></li>`;
         });
@@ -153,8 +170,8 @@ function renderLiga(ligaNr, teilnehmer) {
 
         // Box 2: Mannschaft
         html += `<div class="detail-box"><h4><span>Mannschaft</span><span>Pkt</span></h4><ul class="two-col">`;
-        t.mannschaft.forEach((m, idx) => {
-            html += `<li><span>Runde ${idx+1}</span><span class="item-right">${m.punkte}</span></li>`;
+        t.mannschaft.forEach(m => {
+            html += `<li><span>${m.runde}</span><span class="item-right">${m.punkte}</span></li>`;
         });
         html += `</ul></div>`;
 
@@ -162,9 +179,7 @@ function renderLiga(ligaNr, teilnehmer) {
         html += `<div class="detail-box"><h4><span>Auswärtsschiessen</span><span>Pkt</span></h4><ul class="two-col">`;
         if(t.auswaerts.length) {
             t.auswaerts.forEach(a => html += `<li><span>${a.name}</span><span class="item-right">${a.punkte}</span></li>`);
-        } else {
-            html += `<p style="color:#999;font-size:.9rem">Keine Resultate.</p>`;
-        }
+        } else { html += `<p style="color:#999;font-size:.9rem">Keine Resultate.</p>`; }
         html += `</ul></div></div></td></tr>`;
     });
     return html + `</tbody></table></div>`;
