@@ -69,19 +69,21 @@
         }
     }
 
-    function buildTable() {
-        let html = `<div class="table-wrapper"><table><tr><th></th><th>R1</th><th>R2</th><th>R3</th></tr>`;
-        teams.forEach((team, index) => {
-            html += `<tr><td class="team">${team}</td>`;
-            for(let r=1; r<=3; r++) {
-                const sum = raw.filter(p => p[`r${r}Team`] === team).reduce((s, b) => s + b[`r${r}Sum`], 0);
-                html += `<td class="cell" onclick="toggleDetail('${team.replace(/'/g, "\\'")}', ${r}, ${index})">${sum || "–"}</td>`;
-            }
-            html += `</tr><tr id="detail-${index}"><td colspan="4"><div id="detail-div-${index}" class="detail"></div></td></tr>`;
-        });
-        document.getElementById("overview").innerHTML = html + `</table></div>`;
-    }
+  function buildTable() {
+    // Kopfzeile: 4 Spalten (Leer, R1, R2, R3)
+    let html = `<div class="table-wrapper"><table><tr><th></th><th>R1</th><th>R2</th><th>R3</th></tr>`;
 
+    teams.forEach((team, index) => {
+        html += `<tr><td class="team">${team}</td>`;
+        for(let r=1; r<=3; r++) {
+            const sum = raw.filter(p => p[`r${r}Team`] === team).reduce((s, b) => s + b[`r${r}Sum`], 0);
+            html += `<td class="cell" onclick="toggleDetail('${team.replace(/'/g, "\\'")}', ${r}, ${index})">${sum || "–"}</td>`;
+        }
+        // KORREKTUR: colspan auf 4 gesetzt, damit es bündig abschließt
+        html += `</tr><tr id="detail-${index}"><td colspan="4"><div id="detail-div-${index}" class="detail"></div></td></tr>`;
+    });
+    document.getElementById("overview").innerHTML = html + `</table></div>`;
+}
     function toggleDetail(team, round, index) {
         const div = document.getElementById(`detail-div-${index}`);
         if(div.style.display === "block") { div.style.display = "none"; return; }
