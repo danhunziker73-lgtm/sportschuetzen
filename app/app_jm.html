@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jahresmeisterschaft</title>
+    <style>
+        :root { --primary: #0f3a5d; --bg: #f3f4f6; --text: #333; --accent: #e74c3c; }
+        body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 15px; color: var(--text); }
+        h2 { color: var(--primary); margin-top: 25px; border-bottom: 2px solid #ddd; padding-bottom: 5px; }
+        .subtitle { color: #666; font-size: 0.85rem; margin-bottom: 15px; }
+        
+        table { width: 100%; border-collapse: collapse; background: #fff; box-shadow: 0 4px 12px rgba(0,0,0,.08); border-radius: 8px; overflow: hidden; margin-bottom: 20px; }
+        thead { background: var(--primary); color: #fff; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #eee; font-size: 0.9rem; }
+        
+        .clickable { cursor: pointer; }
+        .clickable:active { background: #f0f4f8; }
+        .details { display: none; background: #fdfdfd; }
+        .detail-grid { padding: 15px; border-top: 2px solid var(--primary); display: grid; gap: 15px; }
+        .detail-box h4 { margin: 0 0 8px; border-bottom: 1px solid #ddd; color: var(--primary); display: flex; justify-content: space-between; }
+        
+        .two-col { list-style: none; padding: 0; margin: 0; font-size: 0.85rem; }
+        .two-col li { display: flex; justify-content: space-between; padding: 3px 0; }
+        .is-streich { color: var(--accent); text-decoration: line-through; opacity: .7; }
+        .status-label { font-size: 0.65rem; font-weight: bold; text-transform: uppercase; display: block; }
+        .text-auf { color: #27ae60; } .text-ab { color: #c0392b; }
+        .aufsteiger { border-left: 5px solid #2ecc71; }
+        .absteiger { border-left: 5px solid #e74c3c; }
+    </style>
+</head>
+<body>
+    <div id="content">Lade Rangliste...</div>
+
+    <script>
+        const API_URL = "https://jahresmeisterschaft-muhen.dan-hunziker73.workers.dev?jahr=aktuell";
+
+        async function loadData() {
+            try {
+                const res = await fetch(API_URL);
+                const data = await res.json();
+                document.getElementById("content").innerHTML = renderLiga(1, data.liga1) + renderLiga(2, data.liga2);
+            } catch (e) {
+                document.getElementById("content").innerHTML = "Fehler beim Laden.";
+            }
+        }
+
+        function toggle(id) {
+            const el = document.getElementById(id);
+            el.style.display = (el.style.display === "table-row") ? "none" : "table-row";
+        }
+
+        function renderLiga(ligaNr, teilnehmer) {
+            if (!teilnehmer) return "";
+            let html = `<h2>Liga ${ligaNr}</h2><div class="subtitle">Tippen für Details</div><table>
+                <thead><tr><th style="width:50px">Rang</th><th>Name</th><th style="width:70px">Total</th></tr></thead><tbody>`;
+
+            teilnehmer.forEach((t, i) => {
+                let statusClass = "", statusLabel = "";
+                if(ligaNr===1 && i>=teilnehmer.length-2) { statusClass="absteiger"; statusLabel='<span class="status-label text-ab">Abstieg</span>'; }
+                if(ligaNr===2 && i<2) { statusClass="aufsteiger"; statusLabel='<span class="status-label text-auf">Aufstieg</span>'; }
+
+                const id = `det_${ligaNr}_${i}`;
+                html += `<tr class="clickable ${statusClass}" onclick="toggle('${id}')">
+                    <td><b>${t.rang || '-'}</b>${statusLabel}</td>
+                    <td>${t.name}<br><small>${t.jahrgang}</small></td>
+                    <td><b>${Number(t.total).toFixed(2)}</b></td>
+                </tr>
+                <tr id="${id}" class="details">
+                    <td colspan="3">
+                        <div class="detail-grid">
+                            <div class="detail-box">
+                                <h4>Meisterschaft <span>%</span></h4>
+                                <ul class="two-col">
+                                    ${(t.schiessen || []).map(s => `<li class="${(s.prozent == t.streichresultat_prz) ? 'is-streich' : ''}">
+                                        <span>${s.name}</span><span>${Number(s.prozent).toFixed(2)}</span></li>`).join('')}
+                                </ul>
+                            </div>
+                            <div class="detail-box">
+                                <h4>Mannschaft <span>Pkt</span></h4>
+                                <ul class="two-col">${(t.mannschaft || []).map((m, ri) => `<li><span>Runde ${ri+1}</span><span>${m.punkte}</span></li>`).join('')}</ul>
+                            </div>
+                        </div>
+                    </td>
+                </tr>`;
+            });
+            return html + "</tbody></table>";
+        }
+        loadData();
+    </script>
+</body>
+</html>
