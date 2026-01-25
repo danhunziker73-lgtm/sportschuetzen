@@ -16,11 +16,11 @@
         td.cell { background: #fafafa; cursor: pointer; }
         td.cell:hover { background: #e6eef5; }
         
-        /* Detailbereich Layout */
+        /* Detail-Layout Fix */
         .detail { margin-top: 5px; background: #f9f9f9; padding: 15px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.05); display: none; }
         .player { 
             display: grid; 
-            grid-template-columns: 1fr 45px 45px 55px; /* Name/Stellung links, dann 3 Spalten für Zahlen */
+            grid-template-columns: 1fr 45px 45px 60px; /* Name/Stellung (links), P1, P2, Summe (rechts) */
             gap: 10px; 
             padding: 8px 0; 
             border-bottom: 1px solid #eee; 
@@ -28,15 +28,27 @@
         }
         .name-row { 
             display: flex; 
-            flex-direction: row; 
             align-items: center; 
-            gap: 10px; 
-            text-align: left;
-            flex-wrap: wrap; 
+            justify-content: flex-start; /* Alles nach links */
+            gap: 8px; 
+            overflow: hidden;
+        }
+        .name-row strong { 
+            white-space: nowrap; 
+            overflow: hidden; 
+            text-overflow: ellipsis; 
         }
         .player-score { text-align: right; font-family: sans-serif; font-size: 15px; }
         
-        .stellung { font-size: 11px; font-weight: bold; padding: 2px 8px; border-radius: 12px; white-space: nowrap; }
+        .stellung { 
+            font-size: 10px; 
+            font-weight: bold; 
+            padding: 2px 8px; 
+            border-radius: 12px; 
+            white-space: nowrap; 
+            flex-shrink: 0; /* Verhindert das Zusammenquetschen */
+            text-transform: uppercase;
+        }
         .liegend { background: #e3f0ff; color: #1e5dbf; }
         .kniend { background: #e6f6ec; color: #1f7a3a; }
         
@@ -87,7 +99,7 @@
             teams = [...new Set(raw.flatMap(r => Object.keys(r).filter(k => k.includes("Team")).map(k => r[k]).filter(Boolean)))].sort();
             buildTable();
         } catch (e) {
-            document.getElementById("overview").innerHTML = "<p style='color:red'>Fehler beim Laden der Daten. Prüfen Sie das Blatt '" + SHEET_NAME + "'.</p>";
+            document.getElementById("overview").innerHTML = "<p style='color:red'>Fehler beim Laden. Blatt '" + SHEET_NAME + "' prüfen.</p>";
         }
     }
 
