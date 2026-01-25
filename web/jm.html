@@ -269,11 +269,12 @@ th,td{
       }
       html+='</ul></div>';
 
-      /* Auswärtsschiessen */
+   /* Auswärtsschiessen - Hier werden Siggenthal, Vindonissa etc. gelistet */
       html+='<div class="detail-box"><h4><span>Auswärtsschiessen</span><span>Pkt</span></h4>';
       if(au.length){
         html+='<ul class="two-col">';
         for(j=0;j<au.length;j++){
+          // Hier wird der Name (z.B. Siggenthal) direkt aus dem JSON-Objekt genommen
           html+='<li><span>'+(au[j].name||"-")+'</span><span class="item-right">'+(au[j].punkte||"-")+'</span></li>';
         }
         html+='</ul>';
@@ -281,7 +282,6 @@ th,td{
         html+='<p style="color:#999;font-size:.9rem">Keine Resultate vorhanden.</p>';
       }
       html+='</div>';
-
       html+='</div></td></tr>';
     }
 
