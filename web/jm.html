@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Jahresmeisterschaft</title>
+
+<script src="https://www.gstatic.com/charts/loader.js"></script>
+
+<style>
+body { font-family: Arial, sans-serif; background: #f4f6f8; margin: 0; padding: 15px; }
+h1 { margin-bottom: 5px; color: #0f3c5c; }
+.subtitle { color: #666; margin-bottom: 15px; }
+
+/* Die Tabelle braucht einen Wrapper für horizontales Scrollen am Handy */
+.table-wrapper { 
+    overflow-x: auto; 
+    margin-bottom: 20px; 
+    box-shadow: 0 2px 6px rgba(0,0,0,0.08); 
+    border-radius: 4px;
+}
+
+table { 
+    width: 100%; 
+    border-collapse: collapse; 
+    background: white; 
+    font-size: 14px; 
+    min-width: 800px; /* Garantiert, dass die Tabelle bei vielen Stichen nicht gequetscht wird */
+}
+
+th, td { padding: 10px 8px; text-align: center; border-bottom: 1px solid #e0e0e0; }
+th { background: #0f3c5c; color: white; white-space: nowrap; font-weight: bold; }
+
+/* Fixiert die Namensspalte beim seitlichen Scrollen */
+td.name-cell { 
+    font-weight: bold; 
+    text-align: left; 
+    color: #0f3c5c; 
+    position: sticky; 
+    left: 0; 
+    background: white; 
+    z-index: 2; 
+    border-right: 2px solid #eee; 
+}
+
+/* Zebra-Look für bessere Lesbarkeit */
+tr:nth-child(even) td { background: #fafafa; }
+tr:nth-child(even) td.name-cell { background: #fafafa; }
+
+/* Hebt die Total-Spalte (letzte Spalte) hervor */
+.total-cell { 
+    font-weight: bold; 
+    background: #f0f4f8 !important; 
+    color: #0d2a41; 
+}
+
+@media (max-width: 768px) { 
+    th, td { padding: 8px 5px; font-size: 13px; } 
+    h1 { font-size: 20px; } 
+}
+</style>
+
+<script>
+google.charts.load('current', {'packages':['table']});
+google.charts.setOnLoadCallback(loadData);
+
+const SHEET_ID = "1VuOv6b8r5m1g_9ZidPR3OPZ7YIwLUm6dYLC9nKmC2mE";
+
+// Jahr aus URL holen
+const urlParams = new URLSearchParams(window.location.search);
+const selectedYear = urlParams.get('jahr') || 'aktuell'; 
+
+// Namenslogik: "Jahresmeisterschaft" (aktuell) oder "JM_2025" (archiv)
+const SHEET_NAME = (selectedYear === 'aktuell') 
+    ? "Jahresmeisterschaft" 
+    : `JM_${selectedYear}`;
+
+const YEAR_LABEL = (selectedYear === 'aktuell') ? "Aktuell" : selectedYear;
+
+function loadData() {
+    document.querySelector('h1').textContent = `Jahresmeisterschaft ${YEAR_LABEL}`;
+    document.querySelector('.subtitle').textContent = `Rangliste ${YEAR_LABEL} – Übersicht aller Stiche`;
+
+    const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?sheet=${SHEET_NAME}`;
+    const query = new google.visualization.Query(url);
+    
+    query.send(res => {
+        if(res.isError()){
+            document.getElementById("overview").innerHTML = 
+                `<p style='color:red; padding:20px;'>Blatt "${SHEET_NAME}" wurde im Google Sheet nicht gefunden. Bitte Namen prüfen.</p>`;
+            return;
+        }
+
+        const data = res.getDataTable();
+        buildTable(data);
+    });
+}
+
+function buildTable(data) {
+    const numCols = data.getNumberOfColumns();
+    const numRows = data.getNumberOfRows();
+    
+    let html = `<div class="table-wrapper"><table><thead><tr>`;
+    
+    // Header aus Google Sheet Labels generieren
+    for (let c = 0; c < numCols; c++) {
+        html += `<th>${data.getColumnLabel(c) || ""}</th>`;
+    }
+    html += `</tr></thead><tbody>`;
+
+    // Zeileninhalt
+    for (let r = 0; r < numRows; r++) {
+        html += `<tr>`;
+        for (let c = 0; c < numCols; c++) {
+            let val = data.getFormattedValue(r, c); // getFormattedValue behält Formatierung aus Sheet bei
+            
+            let className = "";
+            if (c === 0) className = "name-cell"; // Erste Spalte (Name)
+            if (c === numCols - 1) className = "total-cell"; // Letzte Spalte (Total/Rang)
+            
+            html += `<td class="${className}">${val}</td>`;
+        }
+        html += `</tr>`;
+    }
+
+    html += `</tbody></table></div>`;
+    document.getElementById("overview").innerHTML = html;
+}
+</script>
+</head>
+
+<body>
+    <h1>Jahresmeisterschaft</h1>
+    <div class="subtitle">Lade Rangliste...</div>
+    <div id="overview"></div>
+</body>
+</html>
