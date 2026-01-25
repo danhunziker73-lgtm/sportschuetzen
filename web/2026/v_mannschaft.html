@@ -1,116 +1,60 @@
-<!DOCTYPE html>
-<html lang="de">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mannschaftsmeisterschaft</title>
-    <style>
-        /* Deine Styles bleiben gleich */
-        body { font-family: Arial, sans-serif; background: #f4f6f8; margin: 0; padding: 15px; }
-        h1 { margin-bottom: 5px; }
-        .subtitle { color: #666; margin-bottom: 15px; }
-        .table-wrapper { overflow-x: auto; margin-bottom: 20px; }
-        table { width: 100%; min-width: 600px; border-collapse: collapse; background: white; box-shadow: 0 2px 6px rgba(0,0,0,0.08); }
-        th, td { padding: 10px; text-align: center; border-bottom: 1px solid #e0e0e0; }
-        th { background: #0f3c5c; color: white; }
-        td.team { font-weight: bold; text-align: left; color: #0f3c5c; max-width: 180px; word-wrap: break-word; }
-        td.cell { cursor: pointer; background: #fafafa; }
-        td.cell:hover { background: #e6eef5; }
-        .detail { margin-top: 5px; background: #f9f9f9; padding: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); display: none; }
-        .player { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #eee; }
-        .total { font-weight: bold; text-align: right; margin-top: 10px; font-size: 16px; }
-    </style>
-</head>
-<body>
+const SHEET_ID = "1VuOv6b8r5m1g_9ZidPR3OPZ7YIwLUm6dYLC9nKmC2mE";
+const SHEET_NAME = "2025_Mannschaft"; 
+const YEAR = SHEET_NAME.substring(0,4);
 
-<h1>Mannschaftsmeisterschaft</h1>
-<div class="subtitle">Lade Daten...</div>
-<div id="overview"></div>
+let raw = [];
+let teams = [];
 
-<script>
-    const SHEET_ID = "1VuOv6b8r5m1g_9ZidPR3OPZ7YIwLUm6dYLC9nKmC2mE";
-    const SHEET_NAME = "2025_Mannschaft";
-    const YEAR = SHEET_NAME.substring(0,4);
+window.onload = () => {
+    document.querySelector('h1').textContent = `Mannschaftsmeisterschaft ${YEAR}`;
+    loadData();
+};
 
-    let raw = [];
-    let teams = [];
-
-    // Initialisierung beim Laden der Seite
-    window.onload = () => {
-        document.querySelector('h1').textContent = `Mannschaftsmeisterschaft ${YEAR}`;
-        loadData();
-    };
-
-    async function loadData() {
-        const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?sheet=${SHEET_NAME}`;
+async function loadData() {
+    const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?sheet=${SHEET_NAME}&tqx=out:json`;
+    
+    try {
+        const response = await fetch(url);
+        if (!response.ok) throw new Error("Netzwerk-Antwort war nicht ok");
         
-        try {
-            const response = await fetch(url);
-            const text = await response.text();
-            // Google's JSON-Antwort bereinigen (entfernt / google.visualization.Query.setResponse(...); /)
-            const jsonText = text.match(/google\.visualization\.Query\.setResponse\(([\s\S\w]+)\)/)[1];
-            const data = JSON.parse(jsonText).table;
+        const text = await response.text();
+        
+        // Google schickt Daten in einem Format wie: /*-google-serialization-json*/ google.visualization.Query.setResponse({...});
+        // Wir extrahieren nur den JSON-Teil:
+        const start = text.indexOf('{');
+        const end = text.lastIndexOf('}') + 1;
+        const jsonResponse = JSON.parse(text.substring(start, end));
+        
+        const data = jsonResponse.table;
 
-            // Daten für die Verarbeitung aufbereiten
-            raw = data.rows.map(r => {
-                let rowObj = { name: r.c[0]?.v || "" };
-                for(let i=1; i<=7; i++) {
-                    rowObj[`r${i}Team`] = r.c[(i-1)*2+1]?.v || "";
-                    rowObj[`r${i}Pkt`]  = Number(r.c[(i-1)*2+2]?.v) || 0;
-                }
-                return rowObj;
-            });
-
-            // Eindeutige Teamliste erstellen
-            teams = [...new Set(raw.flatMap(r => 
-                Object.keys(r).filter(k => k.includes("Team")).map(k => r[k]).filter(Boolean)
-            ))].sort();
-
-            document.querySelector('.subtitle').textContent = `Übersicht ${YEAR} – auf Punkte klicken für Details`;
-            buildTable();
-        } catch (error) {
-            console.error("Fehler:", error);
-            document.getElementById("overview").innerHTML = "<p style='color:red'>Fehler beim Laden der Daten.</p>";
-        }
-    }
-
-    function buildTable() {
-        let html = `<div class="table-wrapper"><table><tr><th></th>`;
-        for(let r=1; r<=7; r++) html += `<th>R${r}</th>`;
-        html += `</tr>`;
-
-        teams.forEach((team, index) => {
-            html += `<tr><td class="team">${team}</td>`;
-            for(let r=1; r<=7; r++) {
-                const sum = raw.filter(p => p[`r${r}Team`] === team).reduce((a, b) => a + (b[`r${r}Pkt`] || 0), 0);
-                html += `<td class="cell" onclick="toggleDetail('${team}', ${r}, ${index})">${sum || "–"}</td>`;
-            }
-            html += `</tr><tr id="detail-${index}"><td colspan="8"><div id="detail-div-${index}" class="detail"></div></td></tr>`;
+        raw = data.rows.map(r => {
+            return {
+                name: r.c[0] ? r.c[0].v : "",
+                r1Team: r.c[1] ? r.c[1].v : "", r1Pkt: r.c[2] ? Number(r.c[2].v) : 0,
+                r2Team: r.c[3] ? r.c[3].v : "", r2Pkt: r.c[4] ? Number(r.c[4].v) : 0,
+                r3Team: r.c[5] ? r.c[5].v : "", r3Pkt: r.c[6] ? Number(r.c[6].v) : 0,
+                r4Team: r.c[7] ? r.c[7].v : "", r4Pkt: r.c[8] ? Number(r.c[8].v) : 0,
+                r5Team: r.c[9] ? r.c[9].v : "", r5Pkt: r.c[10] ? Number(r.c[10].v) : 0,
+                r6Team: r.c[11] ? r.c[11].v : "", r6Pkt: r.c[12] ? Number(r.c[12].v) : 0,
+                r7Team: r.c[13] ? r.c[13].v : "", r7Pkt: r.c[14] ? Number(r.c[14].v) : 0
+            };
         });
 
-        html += `</table></div>`;
-        document.getElementById("overview").innerHTML = html;
-    }
+        teams = [...new Set(raw.flatMap(r => 
+            Object.keys(r).filter(k => k.includes("Team")).map(k => r[k]).filter(Boolean)
+        ))].sort();
 
-    function toggleDetail(team, round, index) {
-        const div = document.getElementById(`detail-div-${index}`);
-        if(div.style.display === "block") {
-            div.style.display = "none";
-            return;
-        }
-
-        const list = raw.filter(p => p[`r${round}Team`] === team);
-        let total = 0;
-        let html = `<h3>${team} – Runde ${round}</h3>`;
-        list.forEach(p => {
-            const pts = p[`r${round}Pkt`] || 0;
-            total += pts;
-            html += `<div class="player"><div>${p.name}</div><div>${pts}</div></div>`;
-        });
-        html += `<div class="total">Total: ${total}</div>`;
-        div.innerHTML = html;
-        div.style.display = "block";
+        buildTable();
+        document.querySelector('.subtitle').textContent = `Übersicht ${YEAR} – auf Punkte klicken für Details`;
+        
+    } catch (error) {
+        console.error("Fehler beim Laden:", error);
+        document.getElementById("overview").innerHTML = 
+            `<div style="color:red; background:white; padding:10px; border:1px solid red;">
+                <b>Fehler:</b> Die Daten konnten nicht geladen werden. <br>
+                Bitte stelle sicher, dass das Google Sheet für "Jeden mit dem Link" freigegeben ist.
+            </div>`;
     }
-</script>
-</body>
-</html>
+}
+
+// buildTable und toggleDetail bleiben gleich
