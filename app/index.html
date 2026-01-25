@@ -1,1 +1,93 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Schiessverein Muhen</title>
+    <style>
+        /* Grundstyling wie oben, plus Navigation */
+        nav { position: fixed; bottom: 0; width: 100%; background: #fff; display: flex; border-top: 1px solid #ccc; z-index: 1000; }
+        nav button { flex: 1; padding: 15px; border: none; background: none; font-size: 0.8rem; cursor: pointer; }
+        nav button.active { color: #0f3a5d; font-weight: bold; border-top: 3px solid #0f3a5d; }
+        .page { display: none; padding: 20px; padding-bottom: 80px; }
+        .active-page { display: block; }
+    </style>
+</head>
+<body>
 
+<header style="background:#0f3a5d; color:white; padding:15px; text-align:center;">
+    <h1 id="main-title" style="margin:0; font-size:1.2rem;">Vereins-App</h1>
+</header>
+
+<main id="content">
+    <section id="page-home" class="page active-page">
+        <h2>Nächste Termine</h2>
+        <div id="termine-list">Lade Termine...</div>
+    </section>
+
+    <section id="page-jm" class="page">
+        <h2>Jahresmeisterschaft</h2>
+        <div id="jm-content">Lade Rangliste...</div>
+    </section>
+
+    <section id="page-teams" class="page">
+        <h2>Gruppe & Mannschaft</h2>
+        <div id="teams-content">Lade Teamdaten...</div>
+    </section>
+
+    <section id="page-upload" class="page">
+        <h2>Standblatt Upload</h2>
+        <form id="uploadForm">
+            <input type="file" id="fileInput" accept="image/*" capture="camera">
+            <button type="submit" style="margin-top:10px; padding:10px; background:#0f3a5d; color:white; border:none; border-radius:5px;">Senden</button>
+        </form>
+        <div id="uploadStatus"></div>
+    </section>
+</main>
+
+<nav>
+    <button onclick="nav('page-home', 'Home')" class="nav-btn active">Home</button>
+    <button onclick="nav('page-jm', 'Ranglisten')" class="nav-btn">Ranglisten</button>
+    <button onclick="nav('page-teams', 'Teams')" class="nav-btn">Teams</button>
+    <button onclick="nav('page-upload', 'Upload')" class="nav-btn">Upload</button>
+</nav>
+
+<script>
+    function nav(id, title) {
+        // Seiten umschalten
+        document.querySelectorAll('.page').forEach(p => p.classList.remove('active-page'));
+        document.getElementById(id).classList.add('active-page');
+        
+        // Titel im Header ändern
+        document.getElementById('main-title').textContent = title;
+
+        // Button-Styling
+        document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+        event.currentTarget.classList.add('active');
+
+        // Spezifische Daten laden
+        if(id === 'page-jm') loadJahresmeisterschaft();
+        if(id === 'page-teams') loadTeams();
+    }
+
+    async function loadJahresmeisterschaft() {
+        // Deine bestehende Fetch-Logik für den Worker
+    }
+
+    async function loadTeams() {
+        // Fetch-Logik für das ZWEITE Sheet (über den Worker)
+    }
+
+    // Upload Logik
+    document.getElementById('uploadForm').onsubmit = async (e) => {
+        e.preventDefault();
+        const file = document.getElementById('fileInput').files[0];
+        if(!file) return alert("Bitte Bild wählen");
+        
+        document.getElementById('uploadStatus').innerText = "Wird hochgeladen...";
+        // Hier kommt der Fetch-POST zum Worker rein
+    };
+</script>
+
+</body>
+</html>
