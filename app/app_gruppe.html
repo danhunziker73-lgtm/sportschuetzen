@@ -1,0 +1,40 @@
+// 1. Google Charts Zeilen ganz oben im Script entfernen!
+
+const WORKER_URL = "https://jahresmeisterschaft-muhen.dan-hunziker73.workers.dev"; // Deine Worker URL
+
+async function loadData() {
+  // Titel dynamisch setzen
+  document.querySelector('h1').textContent = `Gruppenmeisterschaft ${YEAR_LABEL}`;
+  document.querySelector('.subtitle').textContent = `Übersicht ${YEAR_LABEL} – auf Gruppe oder Punkte klicken für Details`;
+
+  // NEU: Worker anstatt Google Visualization
+  const url = `${WORKER_URL}?type=gruppe&jahr=${selectedYear}`;
+  
+  try {
+    const response = await fetch(url);
+    const json = await response.json();
+    
+    // Wir nehmen an, der Worker liefert die Zeilen direkt als Array
+    // Wenn dein Worker das gviz-Format liefert, mappen wir es hier:
+    raw = json.rows.map(r => {
+      let row = { name: r.c[0]?.v || "", stellung: r.c[1]?.v || "" };
+      for(let i=1; i<=3; i++){
+        row[`r${i}Team`] = r.c[(i-1)*3+2]?.v || "";
+        row[`r${i}Pkt1`] = Number(r.c[(i-1)*3+3]?.v) || 0;
+        row[`r${i}Pkt2`] = Number(r.c[(i-1)*3+4]?.v) || 0;
+        row[`r${i}Sum`] = row[`r${i}Pkt1`] + row[`r${i}Pkt2`];
+      }
+      return row;
+    });
+
+    // Teams extrahieren (bleibt gleich)
+    teams = [...new Set(raw.flatMap(r => 
+      Object.keys(r).filter(k => k.includes("Team")).map(k => r[k]).filter(Boolean)
+    ))].sort();
+    
+    buildTable();
+  } catch (e) {
+    document.getElementById("overview").innerHTML = 
+      `<p style='color:red'>Fehler beim Laden über Worker: ${e.message}</p>`;
+  }
+}
