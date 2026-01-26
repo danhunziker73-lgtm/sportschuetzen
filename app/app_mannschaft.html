@@ -38,8 +38,8 @@
     window.onload = loadData;
 
     async function loadData() {
-        document.getElementById('main-title').textContent = `Mannschaftsmeisterschaft ${YEAR_LABEL}`;
-        document.getElementById('sub-title').textContent = `Übersicht ${YEAR_LABEL} – auf Punkte klicken für Details`;
+        document.getElementById('main-title').textContent = `Meisterschaft`;
+        document.getElementById('sub-title').textContent = `Übersicht – auf Punkte klicken für Details`;
 
         // Aufruf über den Worker mit Typ "mannschaft"
         const url = `${WORKER_URL}?type=mannschaft&jahr=${selectedYear}`;
