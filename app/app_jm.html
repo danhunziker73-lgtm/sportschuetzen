@@ -181,7 +181,7 @@ const year=params.get("jahr")||"aktuell";
 document.getElementById("dyn-title").textContent=
   "Jahresmeisterschaft "+(year==="aktuell"?"Aktuell":year);
 
-const API_URL="https://jahresmeisterschaft-muhen.dan-hunziker73.workers.dev?jahr="+year;
+const API_URL="https://jahresmeisterschaft-muhen.dan-hunziker73.workers.dev?jahr=current";
 
 /* --- Helpers --- */
 const fmt=v=>isFinite(v)?Number(v).toFixed(2):"0.00";
