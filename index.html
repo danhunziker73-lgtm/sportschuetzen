@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Sportschützen Muhen App</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root { 
+            --primary: #0f3a5d; 
+            --bg: #f3f4f6; 
+            --card: #ffffff; 
+            --text: #1f2937; 
+            --text-light: #6b7280; 
+            --border: #d1d5db; 
+        }
+        
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { font-family: 'Inter', sans-serif; background: var(--bg); margin: 0; padding-bottom: 80px; color: var(--text); overflow-x: hidden; }
+        header { background: var(--primary); color: white; padding: 15px; text-align: center; position: sticky; top: 0; z-index: 1000; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+
+        /* NAVIGATION */
+        .bottom-nav { 
+            position: fixed; bottom: 0; width: 100%; height: 75px;
+            background: #ffffff; display: flex; justify-content: space-around; align-items: center;
+            border-top: 1px solid #e5e7eb; z-index: 2000; padding: 0 10px;
+        }
+        .nav-item { 
+            background: none; border: none; color: var(--text-light); 
+            font-size: 0.7rem; font-weight: 600; display: flex; flex-direction: column; 
+            align-items: center; cursor: pointer; flex: 1; transition: 0.2s;
+        }
+        .nav-item span { font-size: 1.4rem; margin-bottom: 2px; }
+        .nav-item.active { color: var(--primary); }
+        .nav-home { 
+            position: relative; top: -18px; background: var(--primary) !important; 
+            color: white !important; width: 65px; height: 65px; border-radius: 50%; 
+            box-shadow: 0 4px 12px rgba(15, 58, 93, 0.4); justify-content: center;
+            flex: none !important; border: 4px solid var(--bg) !important;
+        }
+        .nav-home span { font-size: 1.8rem; margin-bottom: 0; }
+
+        /* LAYOUT */
+        .page { display: none; padding: 15px; max-width: 600px; margin: 0 auto; animation: fadeIn 0.3s ease; }
+        .active-page { display: block; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .card { background: var(--card); padding: 1.5rem; border-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 15px; }
+        iframe { width: 100%; height: calc(100vh - 170px); border: none; border-radius: 12px; background: #fff; }
+
+        /* TERMINE TIMELINE */
+        .termine-list { display: flex; flex-direction: column; gap: 14px; }
+        .termin-row { display: flex; gap: 14px; align-items: flex-start; }
+        .termin-date { min-width: 62px; text-align: center; font-weight: 700; color: var(--primary); line-height: 1.1; }
+        .termin-date small { display: block; font-size: .7rem; font-weight: 600; color: var(--text-light); text-transform: uppercase; }
+        .termin-content { flex: 1; border-bottom: 1px solid #f0f0f0; padding-bottom: 10px; }
+        .termin-title { font-weight: 600; font-size: .95rem; margin-bottom: 2px; }
+        .termin-meta { font-size: .8rem; color: var(--text-light); }
+
+        /* UPLOAD FORM */
+        .form-group { margin-bottom: 1.2rem; text-align: left; }
+        label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 0.5rem; color: var(--text-light); }
+        input, select { width: 100%; padding: 0.8rem; border: 1.5px solid var(--border); border-radius: 12px; font-size: 1rem; }
+        .upload-area { border: 2px dashed var(--border); border-radius: 12px; padding: 2rem; text-align: center; background: #f9fafb; cursor: pointer; }
+        #preview { width: 100%; max-height: 200px; object-fit: contain; display: none; margin-top: 10px; border-radius: 8px; }
+        .btn-main { width: 100%; padding: 1.1rem; background: var(--primary); color: #fff; border: none; border-radius: 14px; font-size: 1.1rem; font-weight: 700; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+<header><h1 id="main-title">Vereins-App</h1></header>
+
+<main>
+    <section id="page-home" class="page active-page">
+        <div class="card" style="text-align:center;">
+            <img src="https://raw.githubusercontent.com/danhunziker73-lgtm/sportschuetzen/main/icons/Logo_MUHEN.png" style="height:100px; margin-bottom:10px;">
+            <h2>Sportschützen Muhen</h2>
+            <p>Willkommen in deiner digitalen Vereins-App.</p>
+        </div>
+        <div class="card">
+            <h3>Termine & News</h3>
+            <div id="termine" class="termine-list">Lade Termine...</div>
+        </div>
+    </section>
+
+    <section id="page-jm" class="page"><iframe src="app/app_jm.html"></iframe></section>
+    <section id="page-gruppe" class="page"><iframe src="app/app_gruppe.html"></iframe></section>
+    <section id="page-mannschaft" class="page"><iframe src="app/app_mannschaft.html"></iframe></section>
+
+    <section id="page-upload" class="page">
+        <div class="card">
+            <h2 style="margin-top:0;">Standblatt Upload</h2>
+            <form id="uploadForm">
+                <div class="form-group">
+                    <label>Schütze auswählen</label>
+                    <select id="name" required>
+                        <option value="" disabled selected>Namen wählen...</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Foto Standblatt</label>
+                    <div class="upload-area" onclick="document.getElementById('foto').click()">
+                        <span id="upload-hint">📸 Foto aufnehmen</span>
+                        <input type="file" id="foto" accept="image/*" required style="display:none">
+                        <img id="preview">
+                    </div>
+                </div>
+                <div style="display:flex; gap:10px; margin-bottom:20px;">
+                    <div style="flex:1;">
+                        <label>Erzielt</label>
+                        <input type="number" id="erzielt" placeholder="Pkt" required>
+                    </div>
+                    <div style="flex:1;">
+                        <label>Maximum</label>
+                        <input type="number" id="maximal" placeholder="100" required>
+                    </div>
+                </div>
+                <button type="submit" id="submitBtn" class="btn-main">Jetzt senden</button>
+            </form>
+        </div>
+    </section>
+</main>
+
+<nav class="bottom-nav">
+    <button class="nav-item" onclick="nav('page-jm', 'Jahresmeisterschaft', this)"><span>🏆</span>JM</button>
+    <button class="nav-item" onclick="nav('page-gruppe', 'Gruppe', this)"><span>👥</span>Gruppe</button>
+    <button class="nav-item nav-home active" onclick="nav('page-home', 'Vereins-App', this)"><span>🏠</span></button>
+    <button class="nav-item" onclick="nav('page-mannschaft', 'Mannschaft', this)"><span>🎯</span>Mannschaft</button>
+    <button class="nav-item" onclick="nav('page-upload', 'Upload', this)"><span>📤</span>Upload</button>
+</nav>
+
+<script>
+    const WORKER_TERMINE_URL = "https://termine.dan-hunziker73.workers.dev";
+    const WORKER_UPLOAD_URL = "https://github-dropdown-refresh.dan-hunziker73.workers.dev/";
+    let teilnehmer = [];
+
+    // NAVIGATION
+    function nav(id, title, btn) {
+        document.querySelectorAll('.page').forEach(p => p.classList.remove('active-page'));
+        document.getElementById(id).classList.add('active-page');
+        document.getElementById('main-title').textContent = title;
+        document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        window.scrollTo(0,0);
+    }
+
+    // TERMINE LADEN
+    async function loadTermine() {
+        const wrap = document.getElementById("termine");
+        try {
+            const res = await fetch(WORKER_TERMINE_URL);
+            const data = await res.json();
+            wrap.innerHTML = "";
+            let lastDate = "";
+            data.forEach(t => {
+                const parts = t.datum.split(", ");
+                const weekday = parts[0] ? parts[0].substring(0, 2) : "";
+                const dateParts = parts[1] ? parts[1].split(" ") : [""];
+                const day = dateParts[0] || "";
+                const month = dateParts[1] ? dateParts[1].substring(0, 3) : "";
+                const showDate = t.datum !== lastDate;
+                lastDate = t.datum;
+
+                wrap.innerHTML += `
+                <div class="termin-row">
+                    <div class="termin-date">${showDate ? `${day} ${month}<small>${weekday}</small>` : ""}</div>
+                    <div class="termin-content">
+                        <div class="termin-title">${t.titel}</div>
+                        <div class="termin-meta">📍 ${t.ort} ${t.start ? ` · 🕒 ${t.start}` : ""}</div>
+                    </div>
+                </div>`;
+            });
+        } catch (e) { wrap.innerHTML = "Termine konnten nicht geladen werden."; }
+    }
+
+    // TEILNEHMER LADEN (Upload-Bereich)
+    async function loadTeilnehmer() {
+        try {
+            const res = await fetch("https://raw.githubusercontent.com/danhunziker73-lgtm/sportschuetzen/main/teilnehmer.json?t=" + Date.now());
+            teilnehmer = await res.json();
+            const select = document.getElementById("name");
+            teilnehmer.forEach(p => {
+                const opt = document.createElement("option");
+                opt.value = String(p.lizenz || p.id);
+                opt.textContent = p.name;
+                select.appendChild(opt);
+            });
+        } catch(e) { console.error("Fehler Teilnehmer", e); }
+    }
+
+    // FOTO VORSCHAU
+    document.getElementById("foto").addEventListener("change", e => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = ev => {
+            const img = document.getElementById("preview");
+            img.src = ev.target.result;
+            img.style.display = "block";
+            document.getElementById("upload-hint").style.display = "none";
+        };
+        reader.readAsDataURL(file);
+    });
+
+    // UPLOAD LOGIK
+    document.getElementById("uploadForm").onsubmit = async (e) => {
+        e.preventDefault();
+        const btn = document.getElementById("submitBtn");
+        btn.disabled = true; btn.textContent = "Wird gesendet...";
+
+        const selectedId = document.getElementById("name").value;
+        const user = teilnehmer.find(t => String(t.lizenz || t.id) === selectedId);
+        const reader = new FileReader();
+        
+        reader.onload = async () => {
+            try {
+                const res = await fetch(WORKER_UPLOAD_URL, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        action: "upload_standblatt",
+                        lizenz: selectedId,
+                        vorname: user ? user.vorname : "",
+                        nachname: user ? user.nachname : "",
+                        erzielt: document.getElementById("erzielt").value,
+                        maximal: document.getElementById("maximal").value,
+                        foto: reader.result
+                    })
+                });
+                if (res.ok) { alert("✔ Gesendet!"); location.reload(); } 
+                else { alert("Fehler beim Senden."); }
+            } catch (err) { alert("Netzwerkfehler."); }
+            finally { btn.disabled = false; btn.textContent = "Jetzt senden"; }
+        };
+        reader.readAsDataURL(document.getElementById("foto").files[0]);
+    };
+
+    window.onload = () => { loadTeilnehmer(); loadTermine(); };
+</script>
+</body>
+</html>
