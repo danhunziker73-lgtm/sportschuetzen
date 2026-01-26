@@ -63,6 +63,50 @@
         #preview { width: 100%; max-height: 200px; object-fit: contain; display: none; margin-top: 10px; border-radius: 8px; }
         .btn-main { width: 100%; padding: 1.1rem; background: var(--primary); color: #fff; border: none; border-radius: 14px; font-size: 1.1rem; font-weight: 700; cursor: pointer; }
         .btn-main:disabled { opacity: 0.6; }
+
+        /* --- Termine Timeline Light --- */
+.termine-list{
+  display:flex;
+  flex-direction:column;
+  gap:14px;
+}
+
+.termin-row{
+  display:flex;
+  gap:14px;
+  align-items:flex-start;
+}
+
+.termin-date{
+  min-width:62px;
+  text-align:center;
+  font-weight:700;
+  color:var(--primary);
+  line-height:1.1;
+}
+
+.termin-date small{
+  display:block;
+  font-size:.7rem;
+  font-weight:600;
+  color:var(--text-light);
+}
+
+.termin-content{
+  flex:1;
+}
+
+.termin-title{
+  font-weight:600;
+  font-size:.95rem;
+  margin-bottom:2px;
+}
+
+.termin-meta{
+  font-size:.8rem;
+  color:var(--text-light);
+}
+
     </style>
 </head>
 <body>
@@ -78,7 +122,7 @@
         </div>
         <div class="card">
             <h3>Termine & News</h3>
-            <div id="news-content">Lade aktuelle Informationen...</div>
+            <div id="termine" class="termine-list"></div>
         </div>
     </section>
 
@@ -227,6 +271,51 @@
         };
         reader.readAsDataURL(document.getElementById("foto").files[0]);
     };
+
+    <script>
+const termineData = [
+  { datum:"2026-03-12", titel:"Generalversammlung", ort:"Muhen", start:"19:30", ende:"22:00" },
+  { datum:"2026-04-14", titel:"Freundschaftsschiessen Muhen – Gretzenbach", ort:"Muhen" },
+  { datum:"2026-04-14", titel:"1. Training", ort:"Muhen" },
+  { datum:"2026-05-12", titel:"Verbandsschiessen", ort:"Muhen", start:"17:30", ende:"20:30" }
+];
+
+function formatDate(d){
+  const dt=new Date(d);
+  return {
+    day:dt.toLocaleDateString("de-CH",{day:"2-digit",month:"2-digit"}),
+    weekday:dt.toLocaleDateString("de-CH",{weekday:"short"})
+  };
+}
+
+(function renderTermine(){
+  const wrap=document.getElementById("termine");
+  let lastDate="";
+  termineData.forEach(t=>{
+    const f=formatDate(t.datum);
+    const showDate=t.datum!==lastDate;
+    lastDate=t.datum;
+
+    wrap.innerHTML+=`
+    <div class="termin-row">
+      ${showDate?`
+      <div class="termin-date">
+        ${f.day}
+        <small>${f.weekday}</small>
+      </div>`:`<div class="termin-date"></div>`}
+
+      <div class="termin-content">
+        <div class="termin-title">${t.titel}</div>
+        <div class="termin-meta">
+          📍 ${t.ort}
+          ${t.start?` · 🕒 ${t.start}${t.ende?"–"+t.ende:""}`:""}
+        </div>
+      </div>
+    </div>`;
+  });
+})();
+</script>
+
 </script>
 
 </body>
