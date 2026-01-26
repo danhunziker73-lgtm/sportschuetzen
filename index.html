@@ -49,12 +49,59 @@
 
         /* TERMINE TIMELINE */
         .termine-list { display: flex; flex-direction: column; gap: 14px; }
-        .termin-row { display: flex; gap: 14px; align-items: flex-start; }
-        .termin-date { min-width: 62px; text-align: center; font-weight: 700; color: var(--primary); line-height: 1.1; }
-        .termin-date small { display: block; font-size: .7rem; font-weight: 600; color: var(--text-light); text-transform: uppercase; }
-        .termin-content { flex: 1; border-bottom: 1px solid #f0f0f0; padding-bottom: 10px; }
-        .termin-title { font-weight: 600; font-size: .95rem; margin-bottom: 2px; }
-        .termin-meta { font-size: .8rem; color: var(--text-light); }
+        .termin-row { 
+    display: flex; 
+    gap: 15px; 
+    align-items: flex-start; 
+    margin-bottom: 12px;
+    padding: 8px 0;
+}
+
+.termin-date { 
+    min-width: 75px; 
+    text-align: center; 
+    background: #f8fafc; /* Dezenter Hintergrund für das Datum */
+    padding: 5px;
+    border-radius: 10px;
+    border: 1px solid #e2e8f0;
+}
+
+.date-main { 
+    display: block; 
+    font-size: 0.85rem; 
+    font-weight: 700; 
+    color: var(--primary); 
+    line-height: 1.2;
+}
+
+.date-weekday { 
+    display: block; 
+    font-size: 0.65rem; 
+    font-weight: 600; 
+    color: var(--text-light); 
+    text-transform: uppercase;
+    margin-top: 2px;
+}
+
+.termin-content { 
+    flex: 1; 
+    padding-top: 2px;
+}
+
+/* Style für provisorische Termine */
+.is-provisorisch {
+    opacity: 0.7; /* Leicht ausgegraut */
+}
+
+.badge-prov {
+    font-size: 0.65rem;
+    background: #fef3c7; /* Hellgelb */
+    color: #92400e;
+    padding: 2px 6px;
+    border-radius: 4px;
+    margin-left: 5px;
+    font-weight: 700;
+}
 
         /* UPLOAD FORM */
         .form-group { margin-bottom: 1.2rem; text-align: left; }
@@ -150,40 +197,48 @@ async function loadTermine() {
         const res = await fetch(WORKER_TERMINE_URL);
         const data = await res.json();
         wrap.innerHTML = "";
-        let lastFullDate = "";
 
         data.forEach(t => {
-            let currentDatum = t.datum || lastFullDate;
-            lastFullDate = currentDatum;
-            if (!currentDatum) return;
+            const status = (t.status || "").toLowerCase();
+            const datumRaw = (t.datum || "").trim();
 
-            let weekday = "";
-            let datePart = currentDatum;
-
-            // Falls das Datum ein Komma hat (z.B. "Samstag, 13. Juni")
-            if (currentDatum.includes(",")) {
-                const parts = currentDatum.split(", ");
-                weekday = parts[0].substring(0, 2); // "Sa"
-                datePart = parts[1]; // "13. Juni 2026"
-                // Wir kürzen das Jahr evtl. weg für die mobile Ansicht
-                datePart = datePart.replace(". 2026", ".").replace(" 2026", "");
+            // FILTER: Wenn Datum leer ODER Status abgesagt -> Überspringen
+            if (datumRaw === "" || status === "abgesagt") {
+                return; 
             }
 
-            const isNewDayInTable = t.datum !== "";
+            const isProv = status === "provisorisch";
+            
+            // Datum zerlegen (Erwartet: "Dienstag, 13. Juni 2026")
+            let weekday = "";
+            let datePart = datumRaw;
+            if (datumRaw.includes(",")) {
+                const parts = datumRaw.split(", ");
+                weekday = parts[0].substring(0, 2); // "Di"
+                datePart = parts[1].replace(" 2026", "").replace(". 2026", "."); // Jahr weg
+            }
 
             wrap.innerHTML += `
-            <div class="termin-row">
+            <div class="termin-row ${isProv ? 'is-provisorisch' : ''}">
                 <div class="termin-date">
-                    ${isNewDayInTable ? `${datePart}<small>${weekday}</small>` : ""}
+                    <span class="date-main">${datePart}</span>
+                    <span class="date-weekday">${weekday}</span>
                 </div>
                 <div class="termin-content">
-                    <div class="termin-title">${t.titel}</div>
+                    <div class="termin-title">
+                        ${t.titel}
+                        ${isProv ? '<span class="badge-prov">Prov.</span>' : ''}
+                    </div>
                     <div class="termin-meta">
                         📍 ${t.ort} ${t.start ? ` · 🕒 ${t.start}` : ""}
                     </div>
                 </div>
             </div>`;
         });
+
+        if (wrap.innerHTML === "") {
+            wrap.innerHTML = "<div style='text-align:center; color:gray;'>Keine aktuellen Termine.</div>";
+        }
     } catch (e) {
         wrap.innerHTML = "Fehler beim Laden.";
     }
