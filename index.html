@@ -3,6 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <link rel="apple-touch-icon" href="icons/icon-512.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-512.png">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-transferred">
+<meta name="apple-mobile-web-app-capable" content="yes">
     <title>Sportschützen Muhen App</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
@@ -49,58 +53,66 @@
 
         /* TERMINE TIMELINE */
         .termine-list { display: flex; flex-direction: column; gap: 14px; }
-        .termin-row { 
-    display: flex; 
-    gap: 15px; 
-    align-items: flex-start; 
-    margin-bottom: 12px;
-    padding: 8px 0;
+.termin-row {
+    display: grid;
+    grid-template-columns: 80px 1fr; /* Festes Maß für Datum, Rest für Text */
+    gap: 12px;
+    align-items: center;
+    padding: 12px 0;
+    border-bottom: 1px solid #eee;
 }
 
-.termin-date { 
-    min-width: 75px; 
-    text-align: center; 
-    background: #f8fafc; /* Dezenter Hintergrund für das Datum */
-    padding: 5px;
-    border-radius: 10px;
-    border: 1px solid #e2e8f0;
+/* Datum-Kachel-Look */
+.termin-date {
+    background: #f0f4f8;
+    border-radius: 12px;
+    padding: 6px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 60px;
 }
 
-.date-main { 
-    display: block; 
-    font-size: 0.85rem; 
-    font-weight: 700; 
-    color: var(--primary); 
-    line-height: 1.2;
+.date-main {
+    font-size: 0.9rem;
+    font-weight: 800;
+    color: var(--primary);
+    white-space: nowrap;
 }
 
-.date-weekday { 
-    display: block; 
-    font-size: 0.65rem; 
-    font-weight: 600; 
-    color: var(--text-light); 
-    text-transform: uppercase;
-    margin-top: 2px;
-}
-
-.termin-content { 
-    flex: 1; 
-    padding-top: 2px;
-}
-
-/* Style für provisorische Termine */
-.is-provisorisch {
-    opacity: 0.7; /* Leicht ausgegraut */
-}
-
-.badge-prov {
+.date-weekday {
     font-size: 0.65rem;
-    background: #fef3c7; /* Hellgelb */
-    color: #92400e;
-    padding: 2px 6px;
+    color: #888;
+    text-transform: uppercase;
+    font-weight: 600;
+}
+
+/* Titel & Info Bereich */
+.termin-content {
+    display: flex;
+    flex-direction: column;
+}
+
+.termin-title {
+    font-weight: 600;
+    font-size: 0.95rem;
+    line-height: 1.2;
+    margin-bottom: 4px;
+    display: block; /* Verhindert das Schieben */
+}
+
+/* Prov. Badge als dezentes Label unter dem Titel */
+.badge-prov {
+    display: inline-block;
+    font-size: 0.6rem;
+    background: #fff3cd;
+    color: #856404;
+    padding: 1px 6px;
     border-radius: 4px;
-    margin-left: 5px;
-    font-weight: 700;
+    border: 1px solid #ffeeba;
+    width: fit-content;
+    margin-top: 2px;
 }
 
         /* UPLOAD FORM */
@@ -218,22 +230,21 @@ async function loadTermine() {
                 datePart = parts[1].replace(" 2026", "").replace(". 2026", "."); // Jahr weg
             }
 
-            wrap.innerHTML += `
-            <div class="termin-row ${isProv ? 'is-provisorisch' : ''}">
-                <div class="termin-date">
-                    <span class="date-main">${datePart}</span>
-                    <span class="date-weekday">${weekday}</span>
-                </div>
-                <div class="termin-content">
-                    <div class="termin-title">
-                        ${t.titel}
-                        ${isProv ? '<span class="badge-prov">Prov.</span>' : ''}
-                    </div>
-                    <div class="termin-meta">
-                        📍 ${t.ort} ${t.start ? ` · 🕒 ${t.start}` : ""}
-                    </div>
-                </div>
-            </div>`;
+        // Ändere diesen Teil innerhalb deiner data.forEach Schleife:
+wrap.innerHTML += `
+<div class="termin-row ${isProv ? 'is-provisorisch' : ''}">
+    <div class="termin-date">
+        <span class="date-main">${datePart}</span>
+        <span class="date-weekday">${weekday}</span>
+    </div>
+    <div class="termin-content">
+        <span class="termin-title">${t.titel}</span>
+        ${isProv ? '<span class="badge-prov">Provisorisch</span>' : ''}
+        <div class="termin-meta">
+            📍 ${t.ort} ${t.start ? ` · 🕒 ${t.start}` : ""}
+        </div>
+    </div>
+</div>`;
         });
 
         if (wrap.innerHTML === "") {
