@@ -144,34 +144,50 @@
     }
 
     // TERMINE LADEN
-    async function loadTermine() {
-        const wrap = document.getElementById("termine");
-        try {
-            const res = await fetch(WORKER_TERMINE_URL);
-            const data = await res.json();
-            wrap.innerHTML = "";
-            let lastDate = "";
-            data.forEach(t => {
-                const parts = t.datum.split(", ");
-                const weekday = parts[0] ? parts[0].substring(0, 2) : "";
-                const dateParts = parts[1] ? parts[1].split(" ") : [""];
-                const day = dateParts[0] || "";
-                const month = dateParts[1] ? dateParts[1].substring(0, 3) : "";
-                const showDate = t.datum !== lastDate;
-                lastDate = t.datum;
+async function loadTermine() {
+    const wrap = document.getElementById("termine");
+    try {
+        const res = await fetch(WORKER_TERMINE_URL);
+        const data = await res.json();
+        wrap.innerHTML = "";
+        let lastFullDate = "";
 
-                wrap.innerHTML += `
-                <div class="termin-row">
-                    <div class="termin-date">${showDate ? `${day} ${month}<small>${weekday}</small>` : ""}</div>
-                    <div class="termin-content">
-                        <div class="termin-title">${t.titel}</div>
-                        <div class="termin-meta">📍 ${t.ort} ${t.start ? ` · 🕒 ${t.start}` : ""}</div>
+        data.forEach(t => {
+            let currentDatum = t.datum || lastFullDate;
+            lastFullDate = currentDatum;
+            if (!currentDatum) return;
+
+            let weekday = "";
+            let datePart = currentDatum;
+
+            // Falls das Datum ein Komma hat (z.B. "Samstag, 13. Juni")
+            if (currentDatum.includes(",")) {
+                const parts = currentDatum.split(", ");
+                weekday = parts[0].substring(0, 2); // "Sa"
+                datePart = parts[1]; // "13. Juni 2026"
+                // Wir kürzen das Jahr evtl. weg für die mobile Ansicht
+                datePart = datePart.replace(". 2026", ".").replace(" 2026", "");
+            }
+
+            const isNewDayInTable = t.datum !== "";
+
+            wrap.innerHTML += `
+            <div class="termin-row">
+                <div class="termin-date">
+                    ${isNewDayInTable ? `${datePart}<small>${weekday}</small>` : ""}
+                </div>
+                <div class="termin-content">
+                    <div class="termin-title">${t.titel}</div>
+                    <div class="termin-meta">
+                        📍 ${t.ort} ${t.start ? ` · 🕒 ${t.start}` : ""}
                     </div>
-                </div>`;
-            });
-        } catch (e) { wrap.innerHTML = "Termine konnten nicht geladen werden."; }
+                </div>
+            </div>`;
+        });
+    } catch (e) {
+        wrap.innerHTML = "Fehler beim Laden.";
     }
-
+}
     // TEILNEHMER LADEN (Upload-Bereich)
     async function loadTeilnehmer() {
         try {
