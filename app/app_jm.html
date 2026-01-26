@@ -48,8 +48,10 @@ th,td{
 .col-name{
   width:auto;
   font-weight:600;
+  line-height:1.25;
   white-space:normal;
-  line-height:1.2;
+  word-break:break-word;
+  overflow-wrap:anywhere;
 }
 .col-total{width:75px;text-align:right;font-variant-numeric:tabular-nums}
 .col-zusatz{width:85px;text-align:right}
@@ -176,10 +178,8 @@ th,td{
 (function(){
 
 /* --- Jahr / API --- */
-const params=new URLSearchParams(location.search);
-const year=params.get("jahr")||"aktuell";
-document.getElementById("dyn-title").textContent=
-  "Jahresmeisterschaft "+(year==="aktuell"?"Aktuell":year);
+/* --- Titel (ohne Jahrgang) --- */
+document.getElementById("dyn-title").textContent = "Jahresmeisterschaft";
 
 const API_URL="https://jahresmeisterschaft-muhen.dan-hunziker73.workers.dev?jahr=current";
 
