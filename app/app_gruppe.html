@@ -48,8 +48,8 @@
 
     async function loadData() {
         // UI Texte setzen
-        document.getElementById('main-title').textContent = `Gruppenmeisterschaft ${YEAR_LABEL}`;
-        document.getElementById('sub-title').textContent = `Übersicht ${YEAR_LABEL} – auf Punkte klicken für Details`;
+        document.getElementById('main-title').textContent = `Meisterschaft`;
+        document.getElementById('sub-title').textContent = `Übersicht – auf Punkte klicken für Details`;
 
         // Abfrage an Worker (Übergabe von Typ und Jahr)
         const url = `${WORKER_URL}?type=gruppe&jahr=${selectedYear}`;
