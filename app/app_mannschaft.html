@@ -3,57 +3,108 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
- 
+
     <style>
-        body { font-family: Arial, sans-serif; background: #f4f6f8; margin: 0; padding: 15px; }
-        h1 { margin-bottom: 5px; color: #0f3c5c; }
-        .subtitle { color: #666; margin-bottom: 15px; }
-        .table-wrapper { overflow-x: auto; margin-bottom: 20px; }
-        table { width: 100%; min-width: 600px; border-collapse: collapse; background: white; box-shadow: 0 2px 6px rgba(0,0,0,0.08); }
+        body {
+            font-family: Arial, sans-serif;
+            background: #f4f6f8;
+            margin: 0;
+            padding: 15px;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 15px;
+        }
+
+        .table-wrapper {
+            overflow-x: auto;
+            margin-bottom: 20px;
+        }
+
+        table {
+            width: auto;
+            border-collapse: collapse;
+            background: white;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+            table-layout: fixed;
+        }
+
         th, td {
-    padding: 6px 4px;              /* enger horizontal */
-    text-align: center;
-    border-bottom: 1px solid #e0e0e0;
-    white-space: nowrap;           /* verhindert Aufblähen */
-}
-th {
-    font-size: 12px;
-    color: white;        /* Blau wie vorher */
-    background: #0f3c5c;   /* leicht blau hinterlegt */
-    padding: 4px 2px;      /* enger */
-}
+            border-bottom: 1px solid #e0e0e0;
+            white-space: nowrap;
+            text-align: center;
+            padding: 6px 6px;
+        }
 
-table {
-    width: auto;          /* WICHTIG */
-    table-layout: fixed;  /* WICHTIG */
-}
+        th {
+            font-size: 12px;
+            color: white;
+            background: #0f3c5c;
+        }
 
-        
-        td.team { font-weight: bold; text-align: left; color: #0f3c5c; max-width: 180px; word-wrap: break-word; }
-th:not(:first-child),
-td.cell {
-    width: 34px;
-    min-width: 34px;
-    max-width: 34px;
-    padding: 2px 2px;
-}
-        td.cell:hover { background: #e6eef5; }
-        .detail { margin-top: 5px; background: #f9f9f9; padding: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); display: none; }
-        .player { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #eee; }
-        .total { font-weight: bold; text-align: right; margin-top: 10px; font-size: 16px; }
+        /* Team-Spalte – bleibt wie gewünscht */
+        th:first-child,
+        td.team {
+            width: 180px;
+            text-align: left;
+            font-weight: bold;
+            color: #0f3c5c;
+            padding-left: 8px;
+        }
+
+        /* R1–R7 normal geschrieben + kompakt */
+        th:not(:first-child),
+        td.cell {
+            width: 36px;
+            min-width: 36px;
+            max-width: 36px;
+            font-size: 13px;
+        }
+
+        /* R1 näher an Team-Spalte */
+        th:nth-child(2),
+        td:nth-child(2) {
+            padding-left: 2px;
+        }
+
+        td.cell:hover {
+            background: #e6eef5;
+            cursor: pointer;
+        }
+
+        .detail {
+            margin-top: 5px;
+            background: #f9f9f9;
+            padding: 10px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+            display: none;
+        }
+
+        .player {
+            display: flex;
+            justify-content: space-between;
+            padding: 6px 0;
+            border-bottom: 1px solid #eee;
+        }
+
+        .total {
+            font-weight: bold;
+            text-align: right;
+            margin-top: 10px;
+            font-size: 16px;
+        }
     </style>
 </head>
+
 <body>
-    <h1 id="main-title">Mannschaftsmeisterschaft</h1>
     <div class="subtitle" id="sub-title">Lade Daten...</div>
     <div id="overview"></div>
 
 <script>
-    // --- KONFIGURATION ---
-    const WORKER_URL = "https://gruppe.dan-hunziker73.workers.dev"; // Dein gesetzter Worker
+    const WORKER_URL = "https://gruppe.dan-hunziker73.workers.dev";
     const urlParams = new URLSearchParams(window.location.search);
-    const selectedYear = urlParams.get('jahr') || 'aktuell'; 
-    const YEAR_LABEL = (selectedYear === 'aktuell') ? "Aktuell" : selectedYear;
+    const selectedYear = urlParams.get('jahr') || 'aktuell';
 
     let raw = [];
     let teams = [];
@@ -61,83 +112,89 @@ td.cell {
     window.onload = loadData;
 
     async function loadData() {
-      //  document.getElementById('main-title').textContent = `Meisterschaft`;
-        document.getElementById('sub-title').textContent = `Übersicht – auf Punkte klicken für Details`;
+        document.getElementById('sub-title').textContent =
+            'Übersicht – auf Punkte klicken für Details';
 
-        // Aufruf über den Worker mit Typ "mannschaft"
         const url = `${WORKER_URL}?type=mannschaft&jahr=${selectedYear}`;
-        
+
         try {
             const response = await fetch(url);
-            if (!response.ok) throw new Error(`HTTP-Fehler: ${response.status}`);
-            
-            const json = await response.json();
-            
-            // Falls der Worker einen Fehler meldet
-            if (json.error) throw new Error(json.error);
+            if (!response.ok) throw new Error(response.status);
 
-            // Daten aus GViz-Struktur extrahieren
-            const rows = (json.table && json.table.rows) ? json.table.rows : [];
+            const json = await response.json();
+            const rows = json.table?.rows || [];
 
             raw = rows.map(r => {
-                let rowObj = { name: r.c[0]?.v || "" };
-                for(let i=1; i<=7; i++) {
-                    // Spalten-Index: Name(0), R1Team(1), R1Pkt(2), R2Team(3), R2Pkt(4)...
-                    rowObj[`r${i}Team`] = r.c[(i-1)*2+1]?.v || "";
-                    rowObj[`r${i}Pkt`]  = Number(r.c[(i-1)*2+2]?.v) || 0;
+                let o = { name: r.c[0]?.v || "" };
+                for (let i = 1; i <= 7; i++) {
+                    o[`r${i}Team`] = r.c[(i - 1) * 2 + 1]?.v || "";
+                    o[`r${i}Pkt`]  = Number(r.c[(i - 1) * 2 + 2]?.v) || 0;
                 }
-                return rowObj;
+                return o;
             });
 
-            // Teams extrahieren (alle rXTeam Werte sammeln)
-            teams = [...new Set(raw.flatMap(r => 
-                Object.keys(r).filter(k => k.includes("Team")).map(k => r[k]).filter(Boolean)
-            ))].sort();
+            teams = [...new Set(
+                raw.flatMap(r =>
+                    Object.keys(r)
+                        .filter(k => k.includes("Team"))
+                        .map(k => r[k])
+                        .filter(Boolean)
+                )
+            )].sort();
 
             buildTable();
         } catch (e) {
-            console.error("Fehler:", e);
-            document.getElementById("overview").innerHTML = `<p style='color:red'>Fehler beim Laden über Worker: ${e.message}</p>`;
+            document.getElementById("overview").innerHTML =
+                "<p style='color:red'>Fehler beim Laden</p>";
         }
     }
 
     function buildTable() {
         let html = `<div class="table-wrapper"><table><tr><th></th>`;
-        for(let r=1; r<=7; r++) html += `<th>R${r}</th>`;
+        for (let r = 1; r <= 7; r++) html += `<th>R${r}</th>`;
         html += `</tr>`;
 
         teams.forEach((team, index) => {
             html += `<tr><td class="team">${team}</td>`;
-            for(let r=1; r<=7; r++) {
-                const sum = raw.filter(p => p[`r${r}Team`] === team).reduce((a, b) => a + (b[`r${r}Pkt`] || 0), 0);
-                html += `<td class="cell" onclick="toggleDetail('${team.replace(/'/g, "\\'")}', ${r}, ${index})">${sum || "–"}</td>`;
+            for (let r = 1; r <= 7; r++) {
+                const sum = raw
+                    .filter(p => p[`r${r}Team`] === team)
+                    .reduce((a, b) => a + b[`r${r}Pkt`], 0);
+
+                html += `<td class="cell"
+                    onclick="toggleDetail('${team.replace(/'/g,"\\'")}',${r},${index})">
+                    ${sum || "–"}
+                </td>`;
             }
-            html += `</tr><tr id="detail-${index}"><td colspan="8"><div id="detail-div-${index}" class="detail"></div></td></tr>`;
+            html += `</tr>
+                <tr>
+                    <td colspan="8">
+                        <div id="detail-div-${index}" class="detail"></div>
+                    </td>
+                </tr>`;
         });
+
         document.getElementById("overview").innerHTML = html + `</table></div>`;
     }
 
     function toggleDetail(team, round, index) {
-        const div = document.getElementById(`detail-div-${index}`);
-        if(div.style.display === "block") { 
-            div.style.display = "none"; 
-            return; 
-        }
-
-        // Andere Details schließen für bessere Übersicht
         document.querySelectorAll('.detail').forEach(d => d.style.display = 'none');
+        const div = document.getElementById(`detail-div-${index}`);
 
         const list = raw.filter(p => p[`r${round}Team`] === team);
-        let total = 0, html = `<h3>${team} – Runde ${round}</h3>`;
-        
+        let total = 0;
+        let html = `<h3>${team} – Runde ${round}</h3>`;
+
         list.forEach(p => {
-            const pts = p[`r${round}Pkt`] || 0; 
-            total += pts;
-            html += `<div class="player"><div>${p.name}</div><div><strong>${pts}</strong></div></div>`;
+            total += p[`r${round}Pkt`];
+            html += `<div class="player">
+                        <div>${p.name}</div>
+                        <div><strong>${p[`r${round}Pkt`]}</strong></div>
+                     </div>`;
         });
-        
+
         div.innerHTML = html + `<div class="total">Total: ${total}</div>`;
-        div.style.display = "block";
+        div.style.display = 'block';
     }
 </script>
 </body>
