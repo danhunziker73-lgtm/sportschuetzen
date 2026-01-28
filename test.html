@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        :root { --primary: #0f3a5d; --bg: #f3f4f6; --card: #ffffff; }
+        body { font-family: sans-serif; background: var(--bg); margin: 0; padding: 20px; padding-bottom: 100px; }
+        
+        h3 { color: var(--primary); border-bottom: 2px solid #ddd; padding-bottom: 5px; }
+
+        /* VORSCHLAG 1: SEGMENTED CONTROL (TABS) */
+        .segmented-control {
+            display: flex;
+            background: #e5e7eb;
+            padding: 4px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+        }
+        .segment {
+            flex: 1;
+            text-align: center;
+            padding: 8px 0;
+            font-size: 0.8rem;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 10px;
+        }
+        .segment.active { background: white; box-shadow: 0 2px 5px rgba(0,0,0,0.1); color: var(--primary); }
+
+        /* VORSCHLAG 2: DASHBOARD CARDS (GRID) */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+        .dash-card {
+            background: var(--card);
+            padding: 20px;
+            border-radius: 15px;
+            text-align: center;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+        }
+        .dash-card span { font-size: 2rem; display: block; margin-bottom: 5px; }
+        .dash-card label { font-weight: bold; font-size: 0.85rem; }
+
+        /* VORSCHLAG 3: FLOATING ACTION BUTTON (FAB) */
+        .fab-container {
+            position: fixed;
+            bottom: 90px;
+            right: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 10px;
+        }
+        .fab-sub {
+            background: white;
+            padding: 8px 15px;
+            border-radius: 20px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            font-size: 0.8rem;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .fab-main {
+            width: 60px;
+            height: 60px;
+            background: var(--primary);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.5rem;
+            box-shadow: 0 4px 15px rgba(15,58,93,0.4);
+        }
+
+        /* BOTTOM NAV PLACEHOLDER */
+        .nav-mock {
+            position: fixed; bottom: 0; left: 0; width: 100%;
+            height: 60px; background: white; border-top: 1px solid #ddd;
+            display: flex; justify-content: space-around; align-items: center;
+        }
+    </style>
+</head>
+<body>
+
+    <h3>1. Segmented Tabs (Sport-Bereich)</h3>
+    <div class="segmented-control">
+        <div class="segment active">JM</div>
+        <div class="segment">Gruppe</div>
+        <div class="segment">Mannschaft</div>
+        <div class="segment">GLC</div>
+    </div>
+
+    <h3>2. Dashboard Cards (Home)</h3>
+    <div class="dashboard-grid">
+        <div class="dash-card"><span>🏆</span><label>JM</label></div>
+        <div class="dash-card"><span>👥</span><label>Gruppe</label></div>
+        <div class="dash-card"><span>🎯</span><label>Mannschaft</label></div>
+        <div class="dash-card"><span>🚩</span><label>Grenzlandcup</label></div>
+    </div>
+
+    <h3>3. Floating Action Menu</h3>
+    <p style="font-size: 0.8rem; color: #666;">(Siehe unten rechts im Bild)</p>
+    
+    <div class="fab-container">
+        <div class="fab-sub">🏆 Jahresmeisterschaft</div>
+        <div class="fab-sub">🚩 Grenzlandcup</div>
+        <div class="fab-main">🏆</div>
+    </div>
+
+    <div class="nav-mock">
+        <span>🏠</span>
+        <span>📤</span>
+        <span>⚙️</span>
+    </div>
+
+</body>
+</html>
