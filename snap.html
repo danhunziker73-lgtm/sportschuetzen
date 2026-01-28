@@ -1,0 +1,57 @@
+<style>
+    /* Carousel Container */
+    .stage-container {
+        display: flex;
+        overflow-x: auto;
+        scroll-snap-type: x mandatory;
+        gap: 15px;
+        padding: 10px 0 20px 0;
+        scrollbar-width: none; /* Hide scrollbar Firefox */
+    }
+    .stage-container::-webkit-scrollbar { display: none; } /* Hide scrollbar Chrome/Safari */
+
+    .stage-card {
+        flex: 0 0 80%; /* Karte nimmt 80% der Breite ein */
+        scroll-snap-align: center;
+        background: var(--card);
+        border-radius: 20px;
+        padding: 20px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        text-align: center;
+        border: 1px solid #eee;
+    }
+    .stage-card span { font-size: 2.5rem; display: block; margin-bottom: 10px; }
+    .stage-card h3 { margin: 0; font-size: 1.1rem; color: var(--primary); }
+    .stage-card p { font-size: 0.8rem; color: var(--text-light); margin: 5px 0 15px; }
+    
+    .btn-stage {
+        padding: 8px 20px;
+        background: var(--primary);
+        color: white;
+        border-radius: 10px;
+        border: none;
+        font-weight: bold;
+        font-size: 0.8rem;
+    }
+</style>
+
+<div class="stage-container">
+    <div class="stage-card">
+        <span>🏆</span>
+        <h3>Jahresmeisterschaft</h3>
+        <p>Aktuelle Rangliste & Resultate</p>
+        <button class="btn-stage" onclick="nav('page-jm', 'JM', this)">Öffnen</button>
+    </div>
+    <div class="stage-card">
+        <span>🚩</span>
+        <h3>Grenzlandcup</h3>
+        <p>Regionen-Wettkampf 2026</p>
+        <button class="btn-stage" onclick="nav('page-glc', 'Grenzlandcup', this)">Ansehen</button>
+    </div>
+    <div class="stage-card">
+        <span>👥</span>
+        <h3>Gruppen</h3>
+        <p>Status der Gruppenmeisterschaft</p>
+        <button class="btn-stage" onclick="nav('page-gruppe', 'Gruppe', this)">Details</button>
+    </div>
+</div>
