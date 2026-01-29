@@ -19,3 +19,20 @@ td.cell{
 /*  padding:6px 8px;
   font-size:14px;
 }
+/* In deiner gruppe.css oder app_gruppe.html */
+.gruppe-table-row {
+    display: grid;
+    /* 5 Spalten: Name, Liegend, Kniend, Total, Status */
+    grid-template-columns: 1fr 50px 50px 60px 40px; 
+    gap: 8px;
+    align-items: center;
+    padding: 10px;
+    border-bottom: 1px solid #eee;
+}
+
+.pos-label {
+    font-size: 0.7rem;
+    color: var(--text-light);
+    text-transform: uppercase;
+    font-weight: bold;
+}
