@@ -25,9 +25,27 @@
         /* --- Detail Ansicht --- */
         .detail { margin-top: 5px; background: #f9f9f9; padding: 15px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.05); display: none; }
         
-        /* Spalten-Layout für die Spielerzeile */
-        .player { display: grid; grid-template-columns: 1fr 40px 40px 50px; gap: 10px; padding: 10px 0; border-bottom: 1px solid #eee; align-items: center; }
+        /* Spalten-Layout für die Spielerzeile & Total-Zeile */
+        .player, .total-row { 
+            display: grid; 
+            grid-template-columns: 1fr 40px 40px 50px; 
+            gap: 10px; 
+            padding: 10px 0; 
+            align-items: center; 
+        }
         
+        .player { border-bottom: 1px solid #eee; }
+
+        /* Gesamt-Container für die Fluchtung */
+        .total-container {
+            margin-top: 10px;
+            border-top: 2px solid #0f3c5c; /* Kräftigere Trennlinie */
+            color: #0f3c5c;
+        }
+        
+        .total-label { font-weight: bold; font-size: 16px; text-align: left; }
+        .total-value { font-weight: 800; font-size: 16px; text-align: center; }
+
         /* Name und Stellung in einer Zeile */
         .name-container { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; text-align: left; }
         .name-label { font-weight: bold; font-size: 14px; white-space: nowrap; }
@@ -35,8 +53,6 @@
         .stellung { font-size: 10px; font-weight: 800; padding: 2px 8px; border-radius: 10px; text-transform: uppercase; white-space: nowrap; }
         .liegend { background: #e3f0ff; color: #1e5dbf; border: 1px solid #bcd9ff; }
         .kniend { background: #e6f6ec; color: #1f7a3a; border: 1px solid #c3e6cb; }
-        
-        .total { font-weight: bold; text-align: right; margin-top: 15px; font-size: 16px; color: #0f3c5c; }
 
         /* --- Spinner --- */
         #pull-spinner {
@@ -165,11 +181,19 @@
                     </div>
                     <div>${p[`r${round}Pkt1`]}</div>
                     <div>${p[`r${round}Pkt2`]}</div>
-                    <div><strong>${sum}</strong></div>
+                    <div style="text-align:center;"><strong>${sum}</strong></div>
                 </div>`;
         });
         
-        html += `<div class="total">Gesamt: ${total}</div>`;
+        // Die neue Total-Zeile, die exakt fluchtet
+        html += `
+            <div class="total-container">
+                <div class="total-row">
+                    <div class="total-label">Gesamt:</div>
+                    <div></div> <div></div> <div class="total-value">${total}</div>
+                </div>
+            </div>`;
+
         div.innerHTML = html;
         div.style.display = "block";
     }
