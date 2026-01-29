@@ -27,37 +27,47 @@ td.cell{
     display: none; 
 }
 
-.player { 
-    display: grid; 
-    /* Name/Stellung, Pkt1, Pkt2, Total */
-    grid-template-columns: 1fr 40px 40px 50px; 
-    gap: 12px; 
-    padding: 10px 0; 
-    border-bottom: 1px solid #eee; 
-    align-items: center; 
+/* ===============================
+   GRUPPE – Detail Ansicht
+   =============================== */
+.player {
+    display: grid;
+    /* Name/Stellung bekommt den meisten Platz, dann 3 Spalten für Punkte */
+    grid-template-columns: 1fr 45px 45px 55px;
+    gap: 8px;
+    padding: 10px 0;
+    border-bottom: 1px solid #eee;
+    align-items: center;
 }
 
-.name { 
-    display: flex; 
-    flex-direction: column; /* Name oben, Badge darunter für Mobil-Optimierung */
-    align-items: flex-start; 
-    gap: 4px; 
-    font-weight: 600;
+.name-container {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
 }
 
-/* Die Badges für Liegend / Kniend */
-.stellung { 
-    font-size: 10px; 
+.name-text {
+    font-weight: bold;
+    color: var(--text);
+    font-size: 14px;
+}
+
+/* Die Badges */
+.stellung {
+    font-size: 9px;
+    letter-spacing: 0.5px;
     text-transform: uppercase;
-    font-weight: bold; 
-    padding: 2px 8px; 
-    border-radius: 10px; 
-    white-space: nowrap; 
+    font-weight: 800;
+    padding: 2px 8px;
+    border-radius: 10px;
 }
 
 .liegend { background: #e3f0ff; color: #1e5dbf; border: 1px solid #bcd9ff; }
 .kniend { background: #e6f6ec; color: #1f7a3a; border: 1px solid #c3e6cb; }
 
+.pkt-val { text-align: center; color: #666; font-size: 13px; }
+.pkt-sum { text-align: right; font-weight: bold; color: var(--primary); font-size: 14px; }
 .total { 
     font-weight: bold; 
     text-align: right; 
