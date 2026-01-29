@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mannschaftsmeisterschaft</title>
     <style>
-        /* --- BASE CSS INTEGRATION --- */
+        /* BASE CSS nach deinen Vorgaben */
         :root {
             --primary: #0f3c5c;
             --bg: #f4f6f8;
@@ -23,7 +23,6 @@
         }
 
         .subtitle { color: #666; margin-bottom: 15px; font-size: 14px; }
-
         .table-wrapper { overflow-x: auto; margin-bottom: 20px; }
 
         table {
@@ -33,7 +32,7 @@
             box-shadow: 0 2px 6px rgba(0,0,0,.08);
             border-radius: 6px;
             overflow: hidden;
-            table-layout: fixed; /* Wichtig für exakte Spaltenbreiten */
+            table-layout: fixed;
         }
 
         thead th {
@@ -45,8 +44,8 @@
             text-align: center;
         }
 
-        /* --- SPALTENDEFINITION --- */
-        .col-team { width: auto; text-align: left; padding-left: 10px; font-weight: bold; color: var(--primary); }
+        /* Spaltenbreiten exakt wie Screenshot */
+        .col-team { width: auto; text-align: left; padding-left: 12px; font-weight: bold; color: var(--primary); }
         .col-round { width: 35px; text-align: center; font-variant-numeric: tabular-nums; }
 
         td {
@@ -59,12 +58,12 @@
         .cell { cursor: pointer; }
         .cell:hover { background: var(--hover); }
 
-        /* --- DETAIL BEREICH (Alpha/Beta Look) --- */
+        /* --- DETAIL BEREICH (Exakt nach Screenshot image_d412c5.png) --- */
         .detail { display: none; background: #f9f9f9; }
         
-        .detail-content {
-            padding: 15px 20px;
-            text-align: center;
+        .detail-box {
+            padding: 15px 12px;
+            text-align: left; /* Wichtig: Content linksbündig */
         }
 
         .detail-header {
@@ -72,6 +71,12 @@
             color: var(--primary);
             margin-bottom: 15px;
             font-size: 16px;
+            text-align: center; /* Titel bleibt mittig */
+        }
+
+        .player-list {
+            max-width: 100%;
+            margin: 0 auto;
         }
 
         .player-row {
@@ -79,28 +84,26 @@
             justify-content: space-between;
             padding: 8px 0;
             border-bottom: 1px solid #eee;
-            max-width: 400px; /* Hält die Detailansicht zentriert und kompakt */
-            margin: 0 auto;
         }
 
-        .player-name { text-align: left; flex: 1; }
-        .player-score { text-align: right; font-weight: bold; width: 60px; }
+        /* Namen linksbündig, Punkte rechtsbündig */
+        .p-name { text-align: left; color: var(--text); padding-left: 20px; }
+        .p-score { text-align: right; font-weight: normal; padding-right: 5px; }
 
-        /* --- GESAMT ZEILE (Bündig mit Player Scores) --- */
-        .total-wrapper {
-            max-width: 400px;
-            margin: 10px auto 0;
-            border-top: 2px solid var(--primary);
-            padding-top: 10px;
+        /* Die Gesamt-Zeile mit der markanten Linie oben */
+        .total-row {
             display: flex;
             justify-content: space-between;
-            align-items: center;
+            margin-top: 5px;
+            padding-top: 10px;
+            border-top: 2px solid var(--primary); /* Die Linie aus dem Bild */
+            color: var(--primary);
         }
 
-        .total-label { font-weight: bold; font-size: 16px; color: var(--primary); }
-        .total-val { font-weight: 900; font-size: 18px; color: #000; }
+        .total-label { font-weight: bold; font-size: 16px; padding-left: 5px; }
+        .total-value { font-weight: 900; font-size: 18px; padding-right: 5px; color: #000; }
 
-        /* Spinner */
+        /* Pull-to-Refresh Spinner */
         #pull-spinner {
             position: fixed; top: -50px; left: 50%; transform: translateX(-50%);
             width: 42px; height: 42px; background: var(--primary); border-radius: 50%;
@@ -121,16 +124,16 @@
     const urlParams = new URLSearchParams(window.location.search);
     const selectedYear = urlParams.get('jahr') || 'aktuell';
 
-    // Pull-to-Refresh
+    // Pull-to-Refresh Logik
     let touchStart = 0;
     document.addEventListener('touchstart', e => { touchStart = e.touches[0].pageY; }, {passive: true});
-    document.addEventListener('touchend', e => {
-        if (window.scrollY <= 0 && (e.changedTouches[0].pageY - touchStart) > 130) location.reload();
-        else document.getElementById('pull-spinner').style.top = '-50px';
-    }, {passive: true});
     document.addEventListener('touchmove', e => {
         let dist = e.touches[0].pageY - touchStart;
         if (window.scrollY <= 0 && dist > 0) document.getElementById('pull-spinner').style.top = Math.min(dist/2.5, 60) + 'px';
+    }, {passive: true});
+    document.addEventListener('touchend', e => {
+        if (window.scrollY <= 0 && (e.changedTouches[0].pageY - touchStart) > 130) location.reload();
+        else document.getElementById('pull-spinner').style.top = '-50px';
     }, {passive: true});
 
     let raw = [];
@@ -177,24 +180,23 @@
 
     function toggleDetail(team, round, index) {
         const div = document.getElementById(`detail-div-${index}`);
-        if(div.style.display === "table-row" || div.style.display === "block") { div.style.display = 'none'; return; }
+        if(div.style.display === "block") { div.style.display = 'none'; return; }
         document.querySelectorAll('.detail').forEach(d => d.style.display = 'none');
 
         const list = raw.filter(p => p[`r${round}Team`] === team);
         let total = 0;
-        let html = `<div class="detail-content"><div class="detail-header">${team} – Runde ${round}</div>`;
+        let html = `<div class="detail-box"><div class="detail-header">${team} – Runde ${round}</div><div class="player-list">`;
 
         list.forEach(p => {
             const pkt = p[`r${round}Pkt`];
             total += pkt;
-            html += `<div class="player-row"><div class="player-name">${p.name}</div><div class="player-score">${pkt}</div></div>`;
+            html += `<div class="player-row"><div class="p-name">${p.name}</div><div class="p-score">${pkt}</div></div>`;
         });
 
-        html += `
-            <div class="total-wrapper">
-                <div class="total-label">Gesamt:</div>
-                <div class="total-val">${total}</div>
-            </div></div>`;
+        html += `</div><div class="total-row">
+                    <div class="total-label">Gesamt:</div>
+                    <div class="total-value">${total}</div>
+                 </div></div>`;
 
         div.innerHTML = html;
         div.style.display = 'block';
