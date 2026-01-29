@@ -48,11 +48,11 @@ table{
 }
 
 /* --- Header (blauer Balken) --- */
-thead,
-tr:first-child{
+thead{
   background:var(--primary);
   color:#fff;
 }
+
 
 /* Einheitliche Header-Höhe */
 th{
