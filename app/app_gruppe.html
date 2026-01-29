@@ -3,18 +3,14 @@
 <head>
     <link rel="stylesheet" href="base.css">
     <link rel="stylesheet" href="gruppe.css">
-
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 </head>
 
 <body>
-
     <div class="subtitle" id="sub-title">Daten werden geladen...</div>
     <div id="overview"></div>
 
-
-    
 <script>
     const WORKER_URL = "https://gruppe.dan-hunziker73.workers.dev";
     const urlParams = new URLSearchParams(window.location.search);
@@ -26,9 +22,7 @@
     window.onload = loadData;
 
     async function loadData() {
-        document.getElementById('sub-title').textContent =
-            'Übersicht – auf Punkte klicken für Details';
-
+        document.getElementById('sub-title').textContent = 'Übersicht – auf Punkte klicken für Details';
         const url = `${WORKER_URL}?type=gruppe&jahr=${selectedYear}`;
 
         try {
@@ -41,7 +35,7 @@
             raw = rows.map(r => {
                 let row = {
                     name: r.c[0]?.v || "",
-                    stellung: r.c[1]?.v || ""
+                    stellung: r.c[1]?.v || "" // WICHTIG: Hier kommt "Liegend" oder "Kniend" rein
                 };
                 for (let i = 1; i <= 3; i++) {
                     row[`r${i}Team`] = r.c[(i - 1) * 3 + 2]?.v || "";
@@ -63,8 +57,7 @@
 
             buildTable();
         } catch {
-            document.getElementById("overview").innerHTML =
-                "<p style='color:red'>Fehler beim Laden</p>";
+            document.getElementById("overview").innerHTML = "<p style='color:red'>Fehler beim Laden</p>";
         }
     }
 
@@ -105,36 +98,45 @@
                 </tr>`;
         });
 
-        html += `
-            </tbody>
-        </table>
-        </div>`;
-
+        html += `</tbody></table></div>`;
         document.getElementById("overview").innerHTML = html;
     }
 
     function toggleDetail(team, round, index) {
-        document.querySelectorAll('.detail').forEach(d => d.style.display = 'none');
         const div = document.getElementById(`detail-div-${index}`);
+        
+        // Einfaches Auf- und Zuklappen
+        if (div.style.display === 'block') {
+            div.style.display = 'none';
+            return;
+        }
+
+        // Alle anderen schließen
+        document.querySelectorAll('.detail').forEach(d => d.style.display = 'none');
 
         const list = raw.filter(p => p[`r${round}Team`] === team);
         let total = 0;
         let html = `<h3>${team} – Runde ${round}</h3>`;
 
         list.forEach(p => {
-            const sum = p[`r${round}Sum`];
+            const p1 = p[`r${round}Pkt1`];
+            const p2 = p[`r${round}Pkt2`];
+            const sum = p1 + p2;
             total += sum;
-            const cls = p.stellung.toLowerCase() === "liegend" ? "liegend" : "kniend";
+            
+            // Stellung erkennen für Farb-Badge
+            const stellungText = p.stellung || "";
+            const cls = stellungText.toLowerCase().includes("liegend") ? "liegend" : "kniend";
 
             html += `
                 <div class="player">
                     <div class="name">
                         ${p.name}
-                        <span class="stellung ${cls}">${p.stellung}</span>
+                        <span class="stellung ${cls}">${stellungText}</span>
                     </div>
-                    <div>${p[`r${round}Pkt1`]}</div>
-                    <div>${p[`r${round}Pkt2`]}</div>
-                    <div><strong>${sum}</strong></div>
+                    <div class="pkt">${p1}</div>
+                    <div class="pkt">${p2}</div>
+                    <div class="pkt-sum"><strong>${sum}</strong></div>
                 </div>`;
         });
 
@@ -142,6 +144,5 @@
         div.style.display = "block";
     }
 </script>
-
 </body>
 </html>
