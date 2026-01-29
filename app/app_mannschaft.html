@@ -23,7 +23,6 @@
           color: var(--text);
         }
 
-        h1 { margin: 0 0 5px; color: var(--primary); font-size: 22px; }
         .subtitle { color: #666; margin-bottom: 15px; font-size: 14px; }
         .table-wrapper { overflow-x: auto; margin-bottom: 20px; }
 
@@ -43,35 +42,31 @@
           font-weight: 600;
           padding: 10px 6px;
           text-align: center;
-          white-space: nowrap;
-          line-height: 1.2;
         }
-
-        thead th:empty::before { content: "\00a0"; }
 
         td {
           padding: 8px 6px;
           text-align: center;
           border-bottom: 1px solid var(--line);
-          white-space: nowrap;
           font-size: 14px;
         }
 
-        td.team, td.name {
+        td.team {
           font-weight: bold;
           text-align: left;
           color: var(--primary);
-          white-space: normal;
         }
 
-        .clickable, td.cell { cursor: pointer; }
-        td.cell:hover, .clickable:active { background: var(--hover); }
+        .cell { cursor: pointer; }
+        .cell:hover { background: var(--hover); }
 
-        .detail, .details { display: none; background: #f9f9f9; }
-        .detail td, .details td { padding: 0; }
-        .detail-box { padding: 12px 15px; box-shadow: inset 0 1px 0 #ddd; }
+        /* --- DETAIL BEREICH --- */
+        .detail { display: none; background: #f9f9f9; }
+        .detail-box { padding: 12px 15px; }
+        
+        h3 { font-size: 16px; margin-top: 0; color: var(--primary); text-align: center; }
 
-        .player, .two-col li {
+        .player {
           display: flex;
           justify-content: space-between;
           padding: 6px 0;
@@ -79,53 +74,47 @@
           font-size: 14px;
         }
 
-        .total {
+        /* Die Gesamtzeile mit Strich wie bei Gruppe */
+        .total-row {
+          display: flex;
+          justify-content: space-between;
+          margin-top: 5px;
+          padding-top: 10px;
+          border-top: 2px solid var(--primary); /* Fester Strich oben */
           font-weight: bold;
-          text-align: left; /* Geändert von right auf left */
-          margin-top: 10px;
           font-size: 16px;
         }
 
-        @media (max-width:768px) {
-          h1 { font-size: 20px; }
-          th, td { font-size: 13px; padding: 7px 5px; }
-        }
-
         /* ===============================
-           MANNSCHAFT OVERRIDES – 1:1
+           MANNSCHAFT OVERRIDES
            =============================== */
         table { width: auto; table-layout: fixed; }
-        td.team { width: 140px; padding-right: 6px; }
+        td.team { width: 140px; }
         th:not(:first-child), td.cell {
           width: 32px;
           min-width: 32px;
           max-width: 32px;
           padding: 2px 2px;
-          font-size: 14px;
           font-variant-numeric: tabular-nums;
         }
 
         /* ===============================
-           PULL-TO-REFRESH SPINNER
+           SPINNER
            =============================== */
         #pull-spinner {
           position: fixed; top: -50px; left: 50%; transform: translateX(-50%);
           width: 42px; height: 42px; background: var(--primary); border-radius: 50%;
-          display: flex; align-items: center; justify-content: center;
-          box-shadow: 0 4px 12px rgba(0,0,0,0.2); z-index: 9999; transition: top 0.15s ease-out;
+          display: flex; align-items: center; justify-content: center; z-index: 9999; transition: top 0.15s;
         }
-        .spinner-icon {
-          width: 18px; height: 18px; border: 3px solid rgba(255,255,255,0.3);
-          border-top-color: #fff; border-radius: 50%; animation: spin-base 0.8s infinite linear;
-        }
-        @keyframes spin-base { to { transform: rotate(360deg); } }
+        .spinner-icon { width: 18px; height: 18px; border: 3px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.8s infinite linear; }
+        @keyframes spin { to { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
 
-    <div id="pull-spinner"><div class="spinner-icon"></div></div>
-    <div class="subtitle" id="sub-title">Lade Daten...</div>
-    <div id="overview"></div>
+<div id="pull-spinner"><div class="spinner-icon"></div></div>
+<div class="subtitle" id="sub-title">Lade Daten...</div>
+<div id="overview"></div>
 
 <script>
     const WORKER_URL = "https://gruppe.dan-hunziker73.workers.dev";
@@ -135,31 +124,23 @@
     let raw = [];
     let teams = [];
 
-    // --- Spinner / Refresh Logic ---
+    // Pull-to-Refresh
     let touchStart = 0;
-    const spinner = document.getElementById('pull-spinner');
     document.addEventListener('touchstart', e => { touchStart = e.touches[0].pageY; }, {passive: true});
     document.addEventListener('touchmove', e => {
-        let distance = e.touches[0].pageY - touchStart;
-        if (window.scrollY <= 0 && distance > 0) spinner.style.top = Math.min(distance / 2.5, 60) + 'px';
+        let dist = e.touches[0].pageY - touchStart;
+        if (window.scrollY <= 0 && dist > 0) document.getElementById('pull-spinner').style.top = Math.min(dist/2.5, 60) + 'px';
     }, {passive: true});
     document.addEventListener('touchend', e => {
         if (window.scrollY <= 0 && (e.changedTouches[0].pageY - touchStart) > 130) location.reload();
-        else spinner.style.top = '-50px';
+        else document.getElementById('pull-spinner').style.top = '-50px';
     }, {passive: true});
 
-    window.onload = loadData;
-
     async function loadData() {
-        document.getElementById('sub-title').textContent = 'Übersicht – auf Punkte klicken für Details';
-        const url = `${WORKER_URL}?type=mannschaft&jahr=${selectedYear}`;
-
         try {
-            const response = await fetch(url);
-            if (!response.ok) throw new Error(response.status);
+            const response = await fetch(`${WORKER_URL}?type=mannschaft&jahr=${selectedYear}`);
             const json = await response.json();
             const rows = json.table?.rows || [];
-
             raw = rows.map(r => {
                 let o = { name: r.c[0]?.v || "" };
                 for (let i = 1; i <= 7; i++) {
@@ -168,11 +149,11 @@
                 }
                 return o;
             });
-
             teams = [...new Set(raw.flatMap(r => Object.keys(r).filter(k => k.includes("Team")).map(k => r[k]).filter(Boolean)))].sort();
+            document.getElementById('sub-title').textContent = 'Übersicht – auf Punkte klicken für Details';
             buildTable();
         } catch {
-            document.getElementById("overview").innerHTML = "<p style='color:red'>Fehler beim Laden</p>";
+            document.getElementById("overview").innerHTML = "Fehler beim Laden";
         }
     }
 
@@ -180,14 +161,13 @@
         let html = `<div class="table-wrapper"><table><thead><tr><th></th>`;
         for (let r = 1; r <= 7; r++) html += `<th>R${r}</th>`;
         html += `</tr></thead><tbody>`;
-
         teams.forEach((team, index) => {
             html += `<tr><td class="team">${team}</td>`;
             for (let r = 1; r <= 7; r++) {
                 const sum = raw.filter(p => p[`r${r}Team`] === team).reduce((a, b) => a + b[`r${r}Pkt`], 0);
                 html += `<td class="cell" onclick="toggleDetail('${team.replace(/'/g,"\\'")}',${r},${index})">${sum || "–"}</td>`;
             }
-            html += `</tr><tr><td colspan="8"><div id="detail-div-${index}" class="detail"></div></td></tr>`;
+            html += `</tr><tr><td colspan="8" style="padding:0; border:0;"><div id="detail-div-${index}" class="detail"></div></td></tr>`;
         });
         document.getElementById("overview").innerHTML = html + `</tbody></table></div>`;
     }
@@ -198,16 +178,17 @@
         const list = raw.filter(p => p[`r${round}Team`] === team);
         let total = 0;
         let html = `<div class="detail-box"><h3>${team} – Runde ${round}</h3>`;
-
         list.forEach(p => {
             total += p[`r${round}Pkt`];
             html += `<div class="player"><div>${p.name}</div><div><strong>${p[`r${round}Pkt`]}</strong></div></div>`;
         });
-
-        // Hier wurde das Div angepasst, damit "Total" linksbündig auf Höhe der Namen steht
-        div.innerHTML = html + `<div class="total">Total: ${total}</div></div>`;
+        // Gesamtzeile: Label links, Wert rechts bündig mit den Player-Strong-Werten
+        html += `<div class="total-row"><div>Gesamt:</div><div>${total}</div></div></div>`;
+        div.innerHTML = html;
         div.style.display = 'block';
     }
+
+    window.onload = loadData;
 </script>
 </body>
 </html>
