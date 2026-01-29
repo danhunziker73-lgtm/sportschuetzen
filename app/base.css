@@ -169,6 +169,39 @@ td.cell:hover,
   z-index:9999;
 }
 
+/* ===============================
+   PULL-TO-REFRESH SPINNER (NEU)
+   =============================== */
+#pull-spinner {
+    position: fixed;
+    top: -50px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 42px;
+    height: 42px;
+    background: var(--primary);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    z-index: 9999;
+    transition: top 0.15s ease-out;
+}
+
+.spinner-icon {
+    width: 18px;
+    height: 18px;
+    border: 3px solid rgba(255,255,255,0.3);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin-base 0.8s infinite linear;
+}
+
+@keyframes spin-base {
+    to { transform: rotate(360deg); }
+}
+
 .tooltip.show{
   opacity:1;
 }
