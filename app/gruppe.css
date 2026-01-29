@@ -1,0 +1,21 @@
+/* ===============================
+   GRUPPE – Overrides
+   =============================== */
+
+/* Gruppe darf volle Breite nutzen */
+table{
+  width:100%;
+  table-layout:auto;
+}
+
+/* Erste Spalte (Gruppe / Muhen 1) */
+td.team{
+  width:140px;      /* IDENTISCH zu Mannschaft */
+}
+
+/* R1–R3 normal breit */
+th:not(:first-child),
+td.cell{
+  padding:6px 8px;
+  font-size:14px;
+}
