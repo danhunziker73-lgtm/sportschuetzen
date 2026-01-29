@@ -63,9 +63,14 @@
     }
 
     function buildTable() {
-        let html = `<div class="table-wrapper"><table><tr><th></th>`;
-        for (let r = 1; r <= 7; r++) html += `<th>R${r}</th>`;
-        html += `</tr>`;
+    let html = `<div class="table-wrapper"><table>
+  <thead>
+    <tr>
+      <th></th>`;
+for (let r = 1; r <= 7; r++) html += `<th>R${r}</th>`;
+html += `</tr>
+  </thead>
+  <tbody>`;
 
         teams.forEach((team, index) => {
             html += `<tr><td class="team">${team}</td>`;
@@ -87,7 +92,9 @@
                 </tr>`;
         });
 
-        document.getElementById("overview").innerHTML = html + `</table></div>`;
+        document.getElementById("overview").innerHTML =
+         html + `</tbody></table></div>`;
+
     }
 
     function toggleDetail(team, round, index) {
