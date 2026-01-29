@@ -6,7 +6,7 @@
     
     <link rel="apple-touch-icon" href="icons/icon-512.png">
     <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-512.png">
-    <meta name="apple-mobile-web-app-title" content="Schützen Muhen">
+    <meta name="apple-mobile-web-app-title" content="Sportschützen Muhen">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     
@@ -103,10 +103,46 @@
         .upload-area { border: 2px dashed var(--border); border-radius: 12px; padding: 2rem; text-align: center; background: #f9fafb; cursor: pointer; }
         #preview { width: 100%; max-height: 200px; object-fit: contain; display: none; margin-top: 10px; border-radius: 8px; }
         .btn-main { width: 100%; padding: 1.1rem; background: var(--primary); color: #fff; border: none; border-radius: 14px; font-size: 1.1rem; font-weight: 700; cursor: pointer; }
+
+        /* Pull-to-Refresh Spinner Styles */
+#pull-spinner {
+    position: fixed;
+    top: -50px; /* Startet außerhalb des Sichtfelds */
+    left: 50%;
+    transform: translateX(-50%);
+    width: 40px;
+    height: 40px;
+    background: var(--primary);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.2);
+    z-index: 3000;
+    transition: transform 0.1s linear;
+}
+
+.spinner-icon {
+    width: 20px;
+    height: 20px;
+    border: 3px solid rgba(255,255,255,0.3);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin 0.8s infinite linear;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+
+        
     </style>
 </head>
 <body>
-
+<div id="pull-spinner">
+    <div class="spinner-icon"></div>
+</div>
 <header><h1 id="main-title">Vereins-App</h1></header>
 
 <main>
@@ -173,18 +209,47 @@
     const WORKER_UPLOAD_URL = "https://github-dropdown-refresh.dan-hunziker73.workers.dev/";
     let teilnehmer = [];
 
-    // PULL-TO-REFRESH LOGIK
+ // OPTIMIERTES PULL-TO-REFRESH MIT SPINNER
     let touchStart = 0;
-    document.addEventListener('touchstart', e => { touchStart = e.touches[0].pageY; }, {passive: true});
-    document.addEventListener('touchend', e => {
-        const touchEnd = e.changedTouches[0].pageY;
-        // Wenn mehr als 150px nach unten gewischt wurde und Scroll-Position oben ist
-        if (touchEnd - touchStart > 150 && window.scrollY === 0) {
-            if (navigator.vibrate) navigator.vibrate(50);
-            location.reload();
+    const spinner = document.getElementById('pull-spinner');
+    const refreshThreshold = 130; // Pixel, die gezogen werden müssen
+
+    document.addEventListener('touchstart', e => { 
+        touchStart = e.touches[0].pageY; 
+    }, {passive: true});
+
+    document.addEventListener('touchmove', e => {
+        const touchMove = e.touches[0].pageY;
+        const distance = touchMove - touchStart;
+
+        // Wenn wir ganz oben sind und nach unten ziehen
+        if (window.scrollY <= 0 && distance > 0) {
+            // Spinner sanft ins Bild schieben (max. 100px von oben)
+            const moveY = Math.min(distance / 2, 100); 
+            spinner.style.top = `${moveY - 40}px`;
+            
+            // Bei Erreichen des Schwellenwerts Spinner hervorheben (Scale-Effekt)
+            if (distance > refreshThreshold) {
+                spinner.style.transform = 'translateX(-50%) scale(1.2)';
+            } else {
+                spinner.style.transform = 'translateX(-50%) scale(1.0)';
+            }
         }
     }, {passive: true});
 
+    document.addEventListener('touchend', e => {
+        const touchEnd = e.changedTouches[0].pageY;
+        const distance = touchEnd - touchStart;
+
+        if (window.scrollY <= 0 && distance > refreshThreshold) {
+            // Seite neu laden
+            if (navigator.vibrate) navigator.vibrate(50);
+            location.reload();
+        } else {
+            // Spinner wieder verstecken
+            spinner.style.top = '-50px';
+        }
+    }, {passive: true});
     // NAVIGATION
     function nav(id, title, btn) {
         document.querySelectorAll('.page').forEach(p => p.classList.remove('active-page'));
