@@ -14,12 +14,15 @@
 
     <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
     <script>
-      window.OneSignalDeferred = window.OneSignalDeferred || [];
-      OneSignalDeferred.push(async function(OneSignal) {
-        await OneSignal.init({
-          appId: "d255c422-92e1-422e-b62b-6cead884627a",
-        });
-      });
+     window.OneSignalDeferred = window.OneSignalDeferred || [];
+OneSignalDeferred.push(async function(OneSignal) {
+    await OneSignal.init({
+        appId: "d255c422-92e1-422e-b62b-6cead884627a",
+        // WICHTIG: Pfade für GitHub Pages Unterordner anpassen
+        serviceWorkerPath: "OneSignalSDKWorker.js", 
+        serviceWorkerParam: { scope: "/sportschuetzen/" } 
+    });
+});
     </script>
 
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
@@ -153,7 +156,7 @@
             <p>Willkommen in deiner digitalen Vereins-App.</p>
         </div>
         <div class="card">
-            <h3>Termine & News</h3>
+            <h3>Termine</h3>
             <div id="termine" class="termine-list">Lade Termine...</div>
         </div>
     </section>
