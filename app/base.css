@@ -49,16 +49,22 @@ table{
 
 /* --- Header (blauer Balken) --- */
 /* --- Header (blauer Balken) --- */
-thead th{
-  background:var(--primary);
-  color:#fff;
-  font-size:13px;
-  font-weight:600;
-  padding:10px 6px;
-  text-align:center;
-  white-space:nowrap;
+/* In base.css suchen und ersetzen: */
+thead th {
+    background: var(--primary);
+    color: #fff;
+    font-size: 13px;
+    font-weight: 600;
+    padding: 10px 6px;      /* Einmaliger, fester Wert */
+    text-align: center;
+    white-space: nowrap;
+    line-height: 1.2;       /* Verhindert Kollaps bei leerem Inhalt */
 }
 
+/* Verhindert, dass leere <th>-Zellen in sich zusammenfallen */
+thead th:empty::before {
+    content: "\00a0";      /* Fügt ein unsichtbares Leerzeichen ein */
+}
 
 
 /* Einheitliche Header-Höhe */
