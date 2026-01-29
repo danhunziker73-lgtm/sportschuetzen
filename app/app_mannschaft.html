@@ -3,145 +3,160 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mannschaftsmeisterschaft</title>
     <style>
-        /* BASE CSS nach deinen Vorgaben */
+        /* ===============================
+           BASE – 1:1 übernommen
+           =============================== */
         :root {
-            --primary: #0f3c5c;
-            --bg: #f4f6f8;
-            --text: #333;
-            --line: #e0e0e0;
-            --hover: #e6eef5;
+          --primary: #0f3c5c;
+          --bg: #f4f6f8;
+          --text: #333;
+          --line: #e0e0e0;
+          --hover: #e6eef5;
         }
 
         body {
-            font-family: Arial, system-ui, -apple-system, sans-serif;
-            background: var(--bg);
-            margin: 0;
-            padding: 15px;
-            color: var(--text);
+          font-family: Arial, system-ui, -apple-system, sans-serif;
+          background: var(--bg);
+          margin: 0;
+          padding: 15px;
+          color: var(--text);
         }
 
+        h1 { margin: 0 0 5px; color: var(--primary); font-size: 22px; }
         .subtitle { color: #666; margin-bottom: 15px; font-size: 14px; }
         .table-wrapper { overflow-x: auto; margin-bottom: 20px; }
 
         table {
-            width: 100%;
-            border-collapse: collapse;
-            background: #fff;
-            box-shadow: 0 2px 6px rgba(0,0,0,.08);
-            border-radius: 6px;
-            overflow: hidden;
-            table-layout: fixed;
+          width: 100%;
+          border-collapse: collapse;
+          background: #fff;
+          box-shadow: 0 2px 6px rgba(0,0,0,.08);
+          border-radius: 6px;
+          overflow: hidden;
         }
 
         thead th {
-            background: var(--primary);
-            color: #fff;
-            font-size: 13px;
-            font-weight: 600;
-            padding: 10px 4px;
-            text-align: center;
+          background: var(--primary);
+          color: #fff;
+          font-size: 13px;
+          font-weight: 600;
+          padding: 10px 6px;
+          text-align: center;
+          white-space: nowrap;
+          line-height: 1.2;
         }
 
-        /* Spaltenbreiten exakt wie Screenshot */
-        .col-team { width: auto; text-align: left; padding-left: 12px; font-weight: bold; color: var(--primary); }
-        .col-round { width: 35px; text-align: center; font-variant-numeric: tabular-nums; }
+        thead th:empty::before { content: "\00a0"; }
 
         td {
-            padding: 10px 4px;
-            border-bottom: 1px solid var(--line);
-            font-size: 14px;
-            white-space: nowrap;
+          padding: 8px 6px;
+          text-align: center;
+          border-bottom: 1px solid var(--line);
+          white-space: nowrap;
+          font-size: 14px;
         }
 
-        .cell { cursor: pointer; }
-        .cell:hover { background: var(--hover); }
-
-        /* --- DETAIL BEREICH (Exakt nach Screenshot image_d412c5.png) --- */
-        .detail { display: none; background: #f9f9f9; }
-        
-        .detail-box {
-            padding: 15px 12px;
-            text-align: left; /* Wichtig: Content linksbündig */
+        td.team, td.name {
+          font-weight: bold;
+          text-align: left;
+          color: var(--primary);
+          white-space: normal;
         }
 
-        .detail-header {
-            font-weight: bold;
-            color: var(--primary);
-            margin-bottom: 15px;
-            font-size: 16px;
-            text-align: center; /* Titel bleibt mittig */
+        .clickable, td.cell { cursor: pointer; }
+        td.cell:hover, .clickable:active { background: var(--hover); }
+
+        .detail, .details { display: none; background: #f9f9f9; }
+        .detail td, .details td { padding: 0; }
+        .detail-box { padding: 12px 15px; box-shadow: inset 0 1px 0 #ddd; }
+
+        .player, .two-col li {
+          display: flex;
+          justify-content: space-between;
+          padding: 6px 0;
+          border-bottom: 1px solid #eee;
+          font-size: 14px;
         }
 
-        .player-list {
-            max-width: 100%;
-            margin: 0 auto;
+        .total {
+          font-weight: bold;
+          text-align: right;
+          margin-top: 10px;
+          font-size: 16px;
         }
 
-        .player-row {
-            display: flex;
-            justify-content: space-between;
-            padding: 8px 0;
-            border-bottom: 1px solid #eee;
+        @media (max-width:768px) {
+          h1 { font-size: 20px; }
+          th, td { font-size: 13px; padding: 7px 5px; }
         }
 
-        /* Namen linksbündig, Punkte rechtsbündig */
-        .p-name { text-align: left; color: var(--text); padding-left: 20px; }
-        .p-score { text-align: right; font-weight: normal; padding-right: 5px; }
-
-        /* Die Gesamt-Zeile mit der markanten Linie oben */
-        .total-row {
-            display: flex;
-            justify-content: space-between;
-            margin-top: 5px;
-            padding-top: 10px;
-            border-top: 2px solid var(--primary); /* Die Linie aus dem Bild */
-            color: var(--primary);
+        /* ===============================
+           MANNSCHAFT OVERRIDES – 1:1
+           =============================== */
+        table { width: auto; table-layout: fixed; }
+        td.team { width: 140px; padding-right: 6px; }
+        th:not(:first-child), td.cell {
+          width: 32px;
+          min-width: 32px;
+          max-width: 32px;
+          padding: 2px 2px;
+          font-size: 14px;
+          font-variant-numeric: tabular-nums;
         }
 
-        .total-label { font-weight: bold; font-size: 16px; padding-left: 5px; }
-        .total-value { font-weight: 900; font-size: 18px; padding-right: 5px; color: #000; }
-
-        /* Pull-to-Refresh Spinner */
+        /* ===============================
+           PULL-TO-REFRESH SPINNER
+           =============================== */
         #pull-spinner {
-            position: fixed; top: -50px; left: 50%; transform: translateX(-50%);
-            width: 42px; height: 42px; background: var(--primary); border-radius: 50%;
-            display: flex; align-items: center; justify-content: center; z-index: 9999; transition: top 0.15s;
+          position: fixed; top: -50px; left: 50%; transform: translateX(-50%);
+          width: 42px; height: 42px; background: var(--primary); border-radius: 50%;
+          display: flex; align-items: center; justify-content: center;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.2); z-index: 9999; transition: top 0.15s ease-out;
         }
-        .spinner-icon { width: 18px; height: 18px; border: 3px solid rgba(255,255,255,.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.8s infinite linear; }
-        @keyframes spin { to { transform: rotate(360deg); } }
+        .spinner-icon {
+          width: 18px; height: 18px; border: 3px solid rgba(255,255,255,0.3);
+          border-top-color: #fff; border-radius: 50%; animation: spin-base 0.8s infinite linear;
+        }
+        @keyframes spin-base { to { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
 
-<div id="pull-spinner"><div class="spinner-icon"></div></div>
-<div class="subtitle" id="sub-title">Lade Daten...</div>
-<div id="overview"></div>
+    <div id="pull-spinner"><div class="spinner-icon"></div></div>
+    <div class="subtitle" id="sub-title">Lade Daten...</div>
+    <div id="overview"></div>
 
 <script>
     const WORKER_URL = "https://gruppe.dan-hunziker73.workers.dev";
     const urlParams = new URLSearchParams(window.location.search);
     const selectedYear = urlParams.get('jahr') || 'aktuell';
 
-    // Pull-to-Refresh Logik
-    let touchStart = 0;
-    document.addEventListener('touchstart', e => { touchStart = e.touches[0].pageY; }, {passive: true});
-    document.addEventListener('touchmove', e => {
-        let dist = e.touches[0].pageY - touchStart;
-        if (window.scrollY <= 0 && dist > 0) document.getElementById('pull-spinner').style.top = Math.min(dist/2.5, 60) + 'px';
-    }, {passive: true});
-    document.addEventListener('touchend', e => {
-        if (window.scrollY <= 0 && (e.changedTouches[0].pageY - touchStart) > 130) location.reload();
-        else document.getElementById('pull-spinner').style.top = '-50px';
-    }, {passive: true});
-
     let raw = [];
     let teams = [];
 
+    // --- Spinner / Refresh Logic ---
+    let touchStart = 0;
+    const spinner = document.getElementById('pull-spinner');
+    document.addEventListener('touchstart', e => { touchStart = e.touches[0].pageY; }, {passive: true});
+    document.addEventListener('touchmove', e => {
+        let distance = e.touches[0].pageY - touchStart;
+        if (window.scrollY <= 0 && distance > 0) spinner.style.top = Math.min(distance / 2.5, 60) + 'px';
+    }, {passive: true});
+    document.addEventListener('touchend', e => {
+        if (window.scrollY <= 0 && (e.changedTouches[0].pageY - touchStart) > 130) location.reload();
+        else spinner.style.top = '-50px';
+    }, {passive: true});
+
+    window.onload = loadData;
+
     async function loadData() {
+        document.getElementById('sub-title').textContent = 'Übersicht – auf Punkte klicken für Details';
+        const url = `${WORKER_URL}?type=mannschaft&jahr=${selectedYear}`;
+
         try {
-            const response = await fetch(`${WORKER_URL}?type=mannschaft&jahr=${selectedYear}`);
+            const response = await fetch(url);
+            if (!response.ok) throw new Error(response.status);
             const json = await response.json();
             const rows = json.table?.rows || [];
 
@@ -155,7 +170,6 @@
             });
 
             teams = [...new Set(raw.flatMap(r => Object.keys(r).filter(k => k.includes("Team")).map(k => r[k]).filter(Boolean)))].sort();
-            document.getElementById('sub-title').textContent = 'Übersicht – auf Punkte klicken für Details';
             buildTable();
         } catch {
             document.getElementById("overview").innerHTML = "<p style='color:red'>Fehler beim Laden</p>";
@@ -163,46 +177,36 @@
     }
 
     function buildTable() {
-        let html = `<div class="table-wrapper"><table><thead><tr><th class="col-team"></th>`;
-        for (let r = 1; r <= 7; r++) html += `<th class="col-round">R${r}</th>`;
+        let html = `<div class="table-wrapper"><table><thead><tr><th></th>`;
+        for (let r = 1; r <= 7; r++) html += `<th>R${r}</th>`;
         html += `</tr></thead><tbody>`;
 
         teams.forEach((team, index) => {
-            html += `<tr><td class="col-team">${team}</td>`;
+            html += `<tr><td class="team">${team}</td>`;
             for (let r = 1; r <= 7; r++) {
                 const sum = raw.filter(p => p[`r${r}Team`] === team).reduce((a, b) => a + b[`r${r}Pkt`], 0);
-                html += `<td class="col-round cell" onclick="toggleDetail('${team.replace(/'/g,"\\'")}', ${r}, ${index})">${sum || "–"}</td>`;
+                html += `<td class="cell" onclick="toggleDetail('${team.replace(/'/g,"\\'")}',${r},${index})">${sum || "–"}</td>`;
             }
-            html += `</tr><tr><td colspan="8" style="padding:0; border:0;"><div id="detail-div-${index}" class="detail"></div></td></tr>`;
+            html += `</tr><tr><td colspan="8"><div id="detail-div-${index}" class="detail"></div></td></tr>`;
         });
         document.getElementById("overview").innerHTML = html + `</tbody></table></div>`;
     }
 
     function toggleDetail(team, round, index) {
-        const div = document.getElementById(`detail-div-${index}`);
-        if(div.style.display === "block") { div.style.display = 'none'; return; }
         document.querySelectorAll('.detail').forEach(d => d.style.display = 'none');
-
+        const div = document.getElementById(`detail-div-${index}`);
         const list = raw.filter(p => p[`r${round}Team`] === team);
         let total = 0;
-        let html = `<div class="detail-box"><div class="detail-header">${team} – Runde ${round}</div><div class="player-list">`;
+        let html = `<div class="detail-box"><h3>${team} – Runde ${round}</h3>`;
 
         list.forEach(p => {
-            const pkt = p[`r${round}Pkt`];
-            total += pkt;
-            html += `<div class="player-row"><div class="p-name">${p.name}</div><div class="p-score">${pkt}</div></div>`;
+            total += p[`r${round}Pkt`];
+            html += `<div class="player"><div>${p.name}</div><div><strong>${p[`r${round}Pkt`]}</strong></div></div>`;
         });
 
-        html += `</div><div class="total-row">
-                    <div class="total-label">Gesamt:</div>
-                    <div class="total-value">${total}</div>
-                 </div></div>`;
-
-        div.innerHTML = html;
+        div.innerHTML = html + `<div class="total">Total: ${total}</div></div>`;
         div.style.display = 'block';
     }
-
-    window.onload = loadData;
 </script>
 </body>
 </html>
