@@ -10,8 +10,6 @@
             --bg: #f4f6f8;
             --text: #333;
             --line: #e0e0e0;
-            --aufstieg: #27ae60;
-            --abstieg: #c0392b;
         }
 
         body {
@@ -34,8 +32,6 @@
             border-top-color: #fff; border-radius: 50%; animation: spin 0.8s infinite linear;
         }
         @keyframes spin { to { transform: rotate(360deg); } }
-
-        .container { padding: 0; }
 
         .subtitle {
             color: #666;
@@ -66,8 +62,8 @@
             line-height: 1.2;
         }
 
-        /* Spalten-Layout */
-        .col-rang { width: 70px; text-align: left; }
+        /* --- Spalten-Alignment --- */
+        .col-rang { width: 60px; text-align: center; } /* Rang zentriert */
         .col-name { width: auto; text-align: left; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--primary); }
         .col-total { width: 85px; text-align: right; padding-right: 10px; }
 
@@ -78,32 +74,18 @@
             font-size: 14px;
         }
 
-        /* Die neue Rang-Zelle */
-        .rang-container {
-            display: flex;
-            flex-direction: column;
-            align-items: flex-start;
-            padding-left: 8px;
-            line-height: 1.1;
-        }
-
-        .rang-number {
-            font-size: 16px;
-            font-weight: bold;
-        }
-
+        /* Status Label unter der Zahl */
         .status-label {
-            font-size: 8px;
-            font-weight: 800;
+            display: block;
+            font-size: 9px;
+            font-weight: bold;
             text-transform: uppercase;
-            margin-top: 3px;
-            letter-spacing: 0.3px;
+            margin-top: 2px;
         }
+        .text-auf { color: #27ae60; }
+        .text-ab { color: #c0392b; }
 
-        .text-auf { color: var(--aufstieg); }
-        .text-ab { color: var(--abstieg); }
-
-        /* Farbige Balken links */
+        /* Farbige Balken */
         .aufsteiger { border-left: 4px solid #2ecc71; }
         .absteiger { border-left: 4px solid #e74c3c; }
         .neutral { border-left: 4px solid transparent; }
@@ -131,10 +113,8 @@
 
 <div id="pull-spinner"><div class="spinner-icon"></div></div>
 
-<div class="container">
-    <div class="subtitle">Tippe auf einen Schützen für Details</div>
-    <div id="content">Lade Daten…</div>
-</div>
+<div class="subtitle">Tippe auf einen Schützen für Details</div>
+<div id="content">Lade Daten…</div>
 
 <div id="tooltip" class="tooltip"></div>
 
@@ -154,14 +134,13 @@
     document.addEventListener('touchend', e => {
         let distance = e.changedTouches[0].pageY - touchStart;
         if (window.scrollY <= 0 && distance > 130) {
-            if (navigator.vibrate) navigator.vibrate(40);
             location.reload();
         } else {
             spinner.style.top = '-50px';
         }
     }, {passive: true});
 
-    // --- DATEN LADEN ---
+    // --- DATEN ---
     const API_URL="https://jahresmeisterschaft-muhen.dan-hunziker73.workers.dev?jahr=current";
     const fmt=v=>isFinite(v)?Number(v).toFixed(2):"0.00";
     const arr=v=>Array.isArray(v)?v:[];
@@ -188,31 +167,17 @@
 
         arr(data).forEach((t, i)=>{
             const id=`l${ligaNr}_${i}`;
-            let rowCls="neutral", labelHtml="";
-            
-            // Logik für Auf-/Abstieg Labels
-            if(ligaNr===1 && i>=data.length-2){ 
-                rowCls="absteiger"; 
-                labelHtml='<span class="status-label text-ab">Abstieg</span>'; 
-            }
-            if(ligaNr===2 && i<2){ 
-                rowCls="aufsteiger"; 
-                labelHtml='<span class="status-label text-auf">Aufstieg</span>'; 
-            }
+            let rowCls="neutral", label="";
+            if(ligaNr===1 && i>=data.length-2){ rowCls="absteiger"; label='<span class="status-label text-ab">Abstieg</span>'; }
+            if(ligaNr===2 && i<2){ rowCls="aufsteiger"; label='<span class="status-label text-auf">Aufstieg</span>'; }
 
             html+=`<tr class="clickable ${rowCls}" onclick="toggle('${id}')">
-                <td class="col-rang">
-                    <div class="rang-container">
-                        <span class="rang-number">${t.rang||"-"}</span>
-                        ${labelHtml}
-                    </div>
-                </td>
+                <td class="col-rang"><b>${t.rang||"-"}</b>${label}</td>
                 <td class="col-name">${t.name||"-"}</td>
                 <td class="col-total"><b>${fmt(t.total)}</b></td>
             </tr>
             <tr id="${id}" class="details"><td colspan="3"><div class="detail-grid">`;
 
-            // Meisterschaft Details
             let used=false, streich=Number(t.streichresultat_prz)||0;
             html+=`<div class="detail-box"><h4><span>Meisterschaft</span><span>Pkt (%)</span></h4><ul class="two-col">`;
             arr(t.schiessen).forEach(s=>{
@@ -221,18 +186,10 @@
                 if(isStreich) used=true;
                 html+=`<li class="${isStreich?"is-streich":""}"><span>${s.name}</span><span>${s.punkte} (${fmt(p)}%)</span></li>`;
             });
-            html+=`</ul></div>`;
-
-            // Mannschaft Details
-            html+=`<div class="detail-box"><h4><span>Mannschaft</span><span>Pkt</span></h4><ul class="two-col">`;
-            arr(t.mannschaft).forEach((m,j)=>{
-                html+=`<li><span>Runde ${j+1}</span><span>${m.punkte||"-"}</span></li>`;
-            });
-            html+=`</ul></div>`;
-
-            // Auswärts Details
+            html+=`</ul></div><div class="detail-box"><h4><span>Mannschaft</span><span>Pkt</span></h4><ul class="two-col">`;
+            arr(t.mannschaft).forEach((m,j)=>{ html+=`<li><span>Runde ${j+1}</span><span>${m.punkte||"-"}</span></li>`; });
+            html+=`</ul></div><div class="detail-box"><h4><span>Auswärts</span><span>Pkt</span></h4><ul class="two-col">`;
             const au=arr(t.auswaerts);
-            html+=`<div class="detail-box"><h4><span>Auswärtsschiessen</span><span>Pkt</span></h4><ul class="two-col">`;
             if(au.length) au.forEach(a=> html+=`<li><span>${a.name}</span><span>${a.punkte}</span></li>`);
             else html+=`<li style="color:#999">Keine Resultate</li>`;
             html+=`</ul></div></div></td></tr>`;
@@ -254,8 +211,6 @@
             });
         });
         document.addEventListener("click",()=>tip.classList.remove("show"));
-    }).catch(err => {
-        document.getElementById("content").innerHTML = "<p style='color:red'>Fehler beim Laden der Daten.</p>";
     });
 })();
 </script>
