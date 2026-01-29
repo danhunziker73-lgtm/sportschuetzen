@@ -1,97 +1,13 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
+ <link rel="stylesheet" href="base.css">
+<link rel="stylesheet" href="mannschaft.css">
+
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background: #f4f6f8;
-            margin: 0;
-            padding: 15px;
-        }
 
-        .subtitle {
-            color: #666;
-            margin-bottom: 15px;
-        }
-
-        .table-wrapper {
-            overflow-x: auto;
-            margin-bottom: 20px;
-        }
-
-        table {
-            width: auto;
-            border-collapse: collapse;
-            background: white;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.08);
-            table-layout: fixed;
-        }
-
-        th, td {
-            border-bottom: 1px solid #e0e0e0;
-            white-space: nowrap;
-            text-align: center;
-            padding: 6px 4px;
-        }
-
-        /* Header – Farbe & Größe wie ursprünglich */
-        th {
-            font-size: 14px;
-            color: white;
-            background: #0f3c5c;
-        }
-
-        /* Team-Spalte: exakt passend für "Muhen 1" */
-        th:first-child,
-        td.team {
-            width: 92px;          /* bewusst eng */
-            text-align: left;
-            font-weight: bold;
-            color: #0f3c5c;
-            padding-left: 6px;
-            padding-right: 2px;   /* kaum Abstand zu R1 */
-        }
-
-        /* R1–R7 direkt nach Team */
-        th:not(:first-child),
-        td.cell {
-            width: 34px;
-            min-width: 34px;
-            max-width: 34px;
-            font-size: 14px;      /* wie zu Beginn */
-            padding: 4px 2px;
-        }
-
-        td.cell:hover {
-            background: #e6eef5;
-            cursor: pointer;
-        }
-
-        .detail {
-            margin-top: 5px;
-            background: #f9f9f9;
-            padding: 10px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
-            display: none;
-        }
-
-        .player {
-            display: flex;
-            justify-content: space-between;
-            padding: 6px 0;
-            border-bottom: 1px solid #eee;
-        }
-
-        .total {
-            font-weight: bold;
-            text-align: right;
-            margin-top: 10px;
-            font-size: 16px;
-        }
-    </style>
 </head>
 
 <body>
