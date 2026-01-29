@@ -48,10 +48,17 @@ table{
 }
 
 /* --- Header (blauer Balken) --- */
-thead{
+/* --- Header (blauer Balken) --- */
+thead th{
   background:var(--primary);
   color:#fff;
+  font-size:13px;
+  font-weight:600;
+  padding:10px 6px;
+  text-align:center;
+  white-space:nowrap;
 }
+
 
 
 /* Einheitliche Header-Höhe */
