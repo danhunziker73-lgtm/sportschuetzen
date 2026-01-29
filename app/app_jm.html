@@ -16,34 +16,34 @@
             font-family: Arial, system-ui, -apple-system, sans-serif;
             background: var(--bg);
             margin: 0;
-            padding: 0;
+            padding: 15px; /* Padding wie bei Gruppe */
             color: var(--text);
         }
 
-        /* Hauptheader (Blauer Balken oben) */
-        .main-header {
-            background: var(--primary);
-            color: white;
-            padding: 20px 15px;
-            text-align: center;
-            margin-bottom: 20px;
+        /* Spinner Styling */
+        #pull-spinner {
+            position: fixed; top: -50px; left: 50%; transform: translateX(-50%);
+            width: 40px; height: 40px; background: var(--primary); border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2); z-index: 9999; transition: top 0.15s ease-out;
         }
-
-        .main-header h1 {
-            margin: 0;
-            font-size: 22px;
+        .spinner-icon {
+            width: 18px; height: 18px; border: 3px solid rgba(255,255,255,0.3);
+            border-top-color: #fff; border-radius: 50%; animation: spin 0.8s infinite linear;
         }
+        @keyframes spin { to { transform: rotate(360deg); } }
 
-        .container { padding: 0 15px 15px; }
+        .container { padding: 0; } /* Container Padding entfernt, da Body es regelt */
 
         .subtitle {
             color: #666;
             font-size: 14px;
-            margin-bottom: 20px;
-            text-align: center;
+            margin-bottom: 15px;
+            text-align: left; /* Linksbündig wie gewünscht */
         }
 
         .liga { margin-bottom: 30px; }
+        .liga h2 { font-size: 18px; color: var(--primary); margin: 0 0 10px 0; }
 
         table {
             width: 100%;
@@ -60,30 +60,22 @@
             color: #fff;
             font-size: 13px;
             font-weight: 600;
-            padding: 10px 6px; /* Höhe wie in Mannschaft/Gruppe */
+            padding: 10px 6px;
             line-height: 1.2;
         }
 
-        /* Alignment Korrekturen */
         .col-rang { width: 65px; text-align: left; padding-left: 10px; }
-        .col-name { width: auto; text-align: left; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .col-name { width: auto; text-align: left; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--primary); }
         .col-total { width: 85px; text-align: right; padding-right: 10px; }
 
         td {
             padding: 10px 6px;
             border-bottom: 1px solid var(--line);
-            vertical-align: top;
+            vertical-align: middle;
             font-size: 14px;
         }
 
-        .status-label {
-            display: block;
-            font-size: 10px;
-            font-weight: bold;
-            text-transform: uppercase;
-            margin-top: 2px;
-        }
-
+        .status-label { display: block; font-size: 9px; font-weight: bold; text-transform: uppercase; margin-top: 2px; }
         .text-auf { color: #27ae60; }
         .text-ab { color: #c0392b; }
         .aufsteiger { border-left: 4px solid #2ecc71; }
@@ -96,29 +88,21 @@
         
         .detail-box h4 { display: flex; justify-content: space-between; margin: 0 0 8px; border-bottom: 1px solid #ddd; color: var(--primary); font-size: 14px; }
         .two-col { list-style: none; padding: 0; margin: 0; }
-        .two-col li { display: flex; justify-content: space-between; padding: 4px 0; font-size: 13px; border-bottom: 1px solid #eee; }
+        .two-col li { display: flex; justify-content: space-between; padding: 5px 0; font-size: 13px; border-bottom: 1px solid #eee; }
         .is-streich { color: #e74c3c; text-decoration: line-through; opacity: 0.7; }
 
-        /* Tooltip Fix */
         .max-hint { font-size: 0.6em; vertical-align: super; color: rgba(255,255,255,0.7); cursor: pointer; }
         .tooltip {
-            position: fixed;
-            background: #fff;
-            padding: 6px 10px;
-            font-size: 12px;
-            border-radius: 4px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-            opacity: 0;
-            pointer-events: none;
-            transition: 0.15s;
-            z-index: 9999;
-            right: 15px; /* Verhindert das Herausrutschen rechts */
+            position: fixed; background: #fff; padding: 6px 10px; font-size: 12px; border-radius: 4px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2); opacity: 0; pointer-events: none;
+            transition: 0.15s; z-index: 9999; border: 1px solid #ccc;
         }
         .tooltip.show { opacity: 1; }
     </style>
 </head>
 <body>
 
+<div id="pull-spinner"><div class="spinner-icon"></div></div>
 
 <div class="container">
     <div class="subtitle">Tippe auf einen Schützen für Details</div>
@@ -129,6 +113,28 @@
 
 <script>
 (function(){
+    // --- PULL TO REFRESH ---
+    let touchStart = 0;
+    const spinner = document.getElementById('pull-spinner');
+
+    document.addEventListener('touchstart', e => { touchStart = e.touches[0].pageY; }, {passive: true});
+    document.addEventListener('touchmove', e => {
+        let distance = e.touches[0].pageY - touchStart;
+        if (window.scrollY <= 0 && distance > 0) {
+            spinner.style.top = Math.min(distance / 2.5, 60) + 'px';
+        }
+    }, {passive: true});
+    document.addEventListener('touchend', e => {
+        let distance = e.changedTouches[0].pageY - touchStart;
+        if (window.scrollY <= 0 && distance > 130) {
+            if (navigator.vibrate) navigator.vibrate(40);
+            location.reload();
+        } else {
+            spinner.style.top = '-50px';
+        }
+    }, {passive: true});
+
+    // --- DATEN LADEN ---
     const API_URL="https://jahresmeisterschaft-muhen.dan-hunziker73.workers.dev?jahr=current";
     const fmt=v=>isFinite(v)?Number(v).toFixed(2):"0.00";
     const arr=v=>Array.isArray(v)?v:[];
@@ -203,10 +209,13 @@
                 const r=el.getBoundingClientRect();
                 tip.textContent="Maximum: "+d.max;
                 tip.style.top=(r.top - 35)+"px";
+                tip.style.left=(r.left - 20)+"px";
                 tip.classList.add("show");
             });
         });
         document.addEventListener("click",()=>tip.classList.remove("show"));
+    }).catch(err => {
+        document.getElementById("content").innerHTML = "<p style='color:red'>Fehler beim Laden der Daten.</p>";
     });
 })();
 </script>
