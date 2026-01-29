@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mannschaftsmeisterschaft</title>
     <style>
-        /* Deine BASE-Daten */
+        /* --- BASE CSS INTEGRATION --- */
         :root {
             --primary: #0f3c5c;
             --bg: #f4f6f8;
@@ -22,25 +22,18 @@
             color: var(--text);
         }
 
-        .subtitle {
-            color: #666;
-            margin-bottom: 15px;
-            font-size: 14px;
-        }
+        .subtitle { color: #666; margin-bottom: 15px; font-size: 14px; }
 
-        .table-wrapper {
-            overflow-x: auto;
-            margin-bottom: 20px;
-        }
+        .table-wrapper { overflow-x: auto; margin-bottom: 20px; }
 
         table {
-            width: auto; /* Overrides */
-            table-layout: fixed; /* Overrides */
+            width: 100%;
             border-collapse: collapse;
             background: #fff;
             box-shadow: 0 2px 6px rgba(0,0,0,.08);
             border-radius: 6px;
             overflow: hidden;
+            table-layout: fixed; /* Wichtig für exakte Spaltenbreiten */
         }
 
         thead th {
@@ -48,113 +41,97 @@
             color: #fff;
             font-size: 13px;
             font-weight: 600;
-            padding: 10px 6px;
+            padding: 10px 4px;
             text-align: center;
-            white-space: nowrap;
-            line-height: 1.2;
         }
+
+        /* --- SPALTENDEFINITION --- */
+        .col-team { width: auto; text-align: left; padding-left: 10px; font-weight: bold; color: var(--primary); }
+        .col-round { width: 35px; text-align: center; font-variant-numeric: tabular-nums; }
 
         td {
-            padding: 8px 6px;
-            text-align: center;
+            padding: 10px 4px;
             border-bottom: 1px solid var(--line);
+            font-size: 14px;
             white-space: nowrap;
-            font-size: 14px;
         }
 
-        td.team {
+        .cell { cursor: pointer; }
+        .cell:hover { background: var(--hover); }
+
+        /* --- DETAIL BEREICH (Alpha/Beta Look) --- */
+        .detail { display: none; background: #f9f9f9; }
+        
+        .detail-content {
+            padding: 15px 20px;
+            text-align: center;
+        }
+
+        .detail-header {
             font-weight: bold;
-            text-align: left;
             color: var(--primary);
-            white-space: normal;
-            width: 140px; /* Overrides */
-            padding-right: 6px;
+            margin-bottom: 15px;
+            font-size: 16px;
         }
 
-        /* R1–R7 Overrides */
-        th:not(:first-child),
-        td.cell {
-            width: 32px;
-            min-width: 32px;
-            max-width: 32px;
-            padding: 2px 2px;
-            font-size: 14px;
-            font-variant-numeric: tabular-nums;
-            cursor: pointer;
-        }
-
-        td.cell:hover { background: var(--hover); }
-
-        /* Detailbereich */
-        .detail {
-            display: none;
-            background: #f9f9f9;
-        }
-
-        .detail-box {
-            padding: 12px 15px;
-            box-shadow: inset 0 1px 0 #ddd;
-        }
-
-        /* Spielerzeile & Gesamt-Fluchtung */
-        .player, .total-row {
-            display: grid;
-            grid-template-columns: 1fr 60px; /* 1fr für Name, 60px für Pkt */
-            gap: 10px;
+        .player-row {
+            display: flex;
+            justify-content: space-between;
             padding: 8px 0;
             border-bottom: 1px solid #eee;
-            font-size: 14px;
+            max-width: 400px; /* Hält die Detailansicht zentriert und kompakt */
+            margin: 0 auto;
+        }
+
+        .player-name { text-align: left; flex: 1; }
+        .player-score { text-align: right; font-weight: bold; width: 60px; }
+
+        /* --- GESAMT ZEILE (Bündig mit Player Scores) --- */
+        .total-wrapper {
+            max-width: 400px;
+            margin: 10px auto 0;
+            border-top: 2px solid var(--primary);
+            padding-top: 10px;
+            display: flex;
+            justify-content: space-between;
             align-items: center;
         }
 
-        .total-container {
-            margin-top: 10px;
-            border-top: 2px solid var(--primary);
-            color: var(--primary);
-        }
-
-        .total-label { font-weight: bold; font-size: 16px; text-align: left; }
-        .total-value { font-weight: 800; font-size: 16px; text-align: right; }
+        .total-label { font-weight: bold; font-size: 16px; color: var(--primary); }
+        .total-val { font-weight: 900; font-size: 18px; color: #000; }
 
         /* Spinner */
         #pull-spinner {
             position: fixed; top: -50px; left: 50%; transform: translateX(-50%);
             width: 42px; height: 42px; background: var(--primary); border-radius: 50%;
-            display: flex; align-items: center; justify-content: center;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.2); z-index: 9999; transition: top 0.15s ease-out;
+            display: flex; align-items: center; justify-content: center; z-index: 9999; transition: top 0.15s;
         }
-
-        .spinner-icon {
-            width: 18px; height: 18px; border: 3px solid rgba(255,255,255,0.3);
-            border-top-color: #fff; border-radius: 50%; animation: spin-base 0.8s infinite linear;
-        }
-        @keyframes spin-base { to { transform: rotate(360deg); } }
+        .spinner-icon { width: 18px; height: 18px; border: 3px solid rgba(255,255,255,.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.8s infinite linear; }
+        @keyframes spin { to { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
 
 <div id="pull-spinner"><div class="spinner-icon"></div></div>
-<div class="subtitle" id="sub-title">Daten werden geladen...</div>
+<div class="subtitle" id="sub-title">Lade Daten...</div>
 <div id="overview"></div>
 
 <script>
-    // --- PULL TO REFRESH ---
-    let touchStart = 0;
-    const spinner = document.getElementById('pull-spinner');
-    document.addEventListener('touchstart', e => { touchStart = e.touches[0].pageY; }, {passive: true});
-    document.addEventListener('touchmove', e => {
-        let distance = e.touches[0].pageY - touchStart;
-        if (window.scrollY <= 0 && distance > 0) spinner.style.top = Math.min(distance / 2.5, 60) + 'px';
-    }, {passive: true});
-    document.addEventListener('touchend', e => {
-        if (window.scrollY <= 0 && (e.changedTouches[0].pageY - touchStart) > 130) location.reload();
-        else spinner.style.top = '-50px';
-    }, {passive: true});
-
-    // --- DATA LOGIC ---
     const WORKER_URL = "https://gruppe.dan-hunziker73.workers.dev";
     const urlParams = new URLSearchParams(window.location.search);
     const selectedYear = urlParams.get('jahr') || 'aktuell';
+
+    // Pull-to-Refresh
+    let touchStart = 0;
+    document.addEventListener('touchstart', e => { touchStart = e.touches[0].pageY; }, {passive: true});
+    document.addEventListener('touchend', e => {
+        if (window.scrollY <= 0 && (e.changedTouches[0].pageY - touchStart) > 130) location.reload();
+        else document.getElementById('pull-spinner').style.top = '-50px';
+    }, {passive: true});
+    document.addEventListener('touchmove', e => {
+        let dist = e.touches[0].pageY - touchStart;
+        if (window.scrollY <= 0 && dist > 0) document.getElementById('pull-spinner').style.top = Math.min(dist/2.5, 60) + 'px';
+    }, {passive: true});
 
     let raw = [];
     let teams = [];
@@ -183,15 +160,15 @@
     }
 
     function buildTable() {
-        let html = `<div class="table-wrapper"><table><thead><tr><th style="width:140px;"></th>`;
-        for (let r = 1; r <= 7; r++) html += `<th>R${r}</th>`;
+        let html = `<div class="table-wrapper"><table><thead><tr><th class="col-team"></th>`;
+        for (let r = 1; r <= 7; r++) html += `<th class="col-round">R${r}</th>`;
         html += `</tr></thead><tbody>`;
 
         teams.forEach((team, index) => {
-            html += `<tr><td class="team">${team}</td>`;
+            html += `<tr><td class="col-team">${team}</td>`;
             for (let r = 1; r <= 7; r++) {
                 const sum = raw.filter(p => p[`r${r}Team`] === team).reduce((a, b) => a + b[`r${r}Pkt`], 0);
-                html += `<td class="cell" onclick="toggleDetail('${team.replace(/'/g,"\\'")}', ${r}, ${index})">${sum || "–"}</td>`;
+                html += `<td class="col-round cell" onclick="toggleDetail('${team.replace(/'/g,"\\'")}', ${r}, ${index})">${sum || "–"}</td>`;
             }
             html += `</tr><tr><td colspan="8" style="padding:0; border:0;"><div id="detail-div-${index}" class="detail"></div></td></tr>`;
         });
@@ -200,25 +177,23 @@
 
     function toggleDetail(team, round, index) {
         const div = document.getElementById(`detail-div-${index}`);
-        if(div.style.display === "block") { div.style.display = 'none'; return; }
+        if(div.style.display === "table-row" || div.style.display === "block") { div.style.display = 'none'; return; }
         document.querySelectorAll('.detail').forEach(d => d.style.display = 'none');
 
         const list = raw.filter(p => p[`r${round}Team`] === team);
         let total = 0;
-        let html = `<div class="detail-box"><h3 style="margin-top:0; font-size:16px; color:var(--primary);">${team} – Runde ${round}</h3>`;
+        let html = `<div class="detail-content"><div class="detail-header">${team} – Runde ${round}</div>`;
 
         list.forEach(p => {
             const pkt = p[`r${round}Pkt`];
             total += pkt;
-            html += `<div class="player"><div>${p.name}</div><div style="text-align:right;"><strong>${pkt}</strong></div></div>`;
+            html += `<div class="player-row"><div class="player-name">${p.name}</div><div class="player-score">${pkt}</div></div>`;
         });
 
         html += `
-            <div class="total-container">
-                <div class="total-row" style="border:0;">
-                    <div class="total-label">Gesamt:</div>
-                    <div class="total-value">${total}</div>
-                </div>
+            <div class="total-wrapper">
+                <div class="total-label">Gesamt:</div>
+                <div class="total-val">${total}</div>
             </div></div>`;
 
         div.innerHTML = html;
