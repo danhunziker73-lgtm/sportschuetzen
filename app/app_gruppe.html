@@ -16,7 +16,6 @@
         th, td { padding: 12px 10px; text-align: center; border-bottom: 1px solid #e0e0e0; }
         th { background: #0f3c5c; color: white; font-size: 14px; font-weight: 600; }
         
-        /* Entfernt "Gruppe" Label oben links - Zelle bleibt blau wie die anderen Header */
         th.first-col { text-align: left; }
 
         td.team { font-weight: bold; text-align: left; color: #0f3c5c; white-space: normal; min-width: 120px; }
@@ -25,12 +24,15 @@
 
         /* --- Detail Ansicht --- */
         .detail { margin-top: 5px; background: #f9f9f9; padding: 15px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.05); display: none; }
+        
+        /* Spalten-Layout für die Spielerzeile */
         .player { display: grid; grid-template-columns: 1fr 40px 40px 50px; gap: 10px; padding: 10px 0; border-bottom: 1px solid #eee; align-items: center; }
         
-        .name-box { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; text-align: left; }
-        .name-label { font-weight: bold; font-size: 14px; }
+        /* Name und Stellung in einer Zeile */
+        .name-container { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; text-align: left; }
+        .name-label { font-weight: bold; font-size: 14px; white-space: nowrap; }
         
-        .stellung { font-size: 10px; font-weight: 800; padding: 2px 8px; border-radius: 10px; text-transform: uppercase; }
+        .stellung { font-size: 10px; font-weight: 800; padding: 2px 8px; border-radius: 10px; text-transform: uppercase; white-space: nowrap; }
         .liegend { background: #e3f0ff; color: #1e5dbf; border: 1px solid #bcd9ff; }
         .kniend { background: #e6f6ec; color: #1f7a3a; border: 1px solid #c3e6cb; }
         
@@ -55,7 +57,6 @@
 <body>
 
     <div id="pull-spinner"><div class="spinner-icon"></div></div>
-    
     <div class="subtitle" id="sub-title">Daten werden geladen...</div>
     <div id="overview"></div>
 
@@ -92,12 +93,8 @@
     window.onload = loadData;
 
     async function loadData() {
-        document.getElementById('sub-title').textContent = `Übersicht – auf Punkte klicken für Details`;
-
         try {
             const response = await fetch(`${WORKER_URL}?type=gruppe&jahr=${selectedYear}`);
-            if (!response.ok) throw new Error("Fehler beim Abruf");
-            
             const json = await response.json();
             const rows = json.table?.rows || [];
             
@@ -121,14 +118,14 @@
                 Object.keys(r).filter(k => k.includes("Team")).map(k => r[k]).filter(Boolean)
             ))].sort();
 
+            document.getElementById('sub-title').textContent = `Übersicht – auf Punkte klicken für Details`;
             buildTable();
         } catch (e) {
-            document.getElementById("overview").innerHTML = `<p style='color:red;'>Fehler: ${e.message}</p>`;
+            document.getElementById("overview").innerHTML = `<p style='color:red;'>Fehler beim Laden.</p>`;
         }
     }
 
     function buildTable(){
-        // "Gruppe" Text entfernt, Zelle bleibt als Platzhalter für die Optik
         let html = `<div class="table-wrapper"><table><tr><th class="first-col"></th><th>R1</th><th>R2</th><th>R3</th></tr>`;
 
         teams.forEach((team, index) => {
@@ -146,11 +143,7 @@
 
     function toggleDetail(team, round, index){
         const div = document.getElementById(`detail-div-${index}`);
-        
-        if(div.style.display === "block"){
-            div.style.display = "none";
-            return;
-        }
+        if(div.style.display === "block"){ div.style.display = "none"; return; }
 
         document.querySelectorAll('.detail').forEach(d => d.style.display = 'none');
 
@@ -161,12 +154,12 @@
         list.forEach(p => {
             const sum = p[`r${round}Sum`];
             total += sum;
-            const stellungText = p.stellung || "–";
+            const stellungText = p.stellung || "";
             const cls = stellungText.toLowerCase().includes("liegend") ? "liegend" : "kniend";
             
             html += `
                 <div class="player">
-                    <div class="name-box">
+                    <div class="name-container">
                         <span class="name-label">${p.name}</span>
                         <span class="stellung ${cls}">${stellungText}</span>
                     </div>
