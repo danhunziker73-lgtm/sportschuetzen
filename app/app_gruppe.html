@@ -8,10 +8,35 @@
 </head>
 
 <body>
+    <div id="pull-spinner"><div class="spinner-icon"></div></div>
     <div class="subtitle" id="sub-title">Daten werden geladen...</div>
     <div id="overview"></div>
 
 <script>
+
+
+    // --- PULL TO REFRESH LOGIK ---
+    let touchStart = 0;
+    const spinner = document.getElementById('pull-spinner');
+
+    document.addEventListener('touchstart', e => { touchStart = e.touches[0].pageY; }, {passive: true});
+    document.addEventListener('touchmove', e => {
+        let distance = e.touches[0].pageY - touchStart;
+        if (window.scrollY <= 0 && distance > 0) {
+            spinner.style.top = Math.min(distance / 2.5, 70) + 'px';
+        }
+    }, {passive: true});
+    document.addEventListener('touchend', e => {
+        let distance = e.changedTouches[0].pageY - touchStart;
+        if (window.scrollY <= 0 && distance > 130) {
+            if (navigator.vibrate) navigator.vibrate(40);
+            location.reload();
+        } else {
+            spinner.style.top = '-50px';
+        }
+    }, {passive: true});
+
+    
     const WORKER_URL = "https://gruppe.dan-hunziker73.workers.dev";
     const urlParams = new URLSearchParams(window.location.search);
     const selectedYear = urlParams.get('jahr') || 'aktuell';
@@ -102,44 +127,33 @@
         document.getElementById("overview").innerHTML = html;
     }
 
-    function toggleDetail(team, round, index) {
+function toggleDetail(team, round, index) {
         const div = document.getElementById(`detail-div-${index}`);
-        
-        // Einfaches Auf- und Zuklappen
-        if (div.style.display === 'block') {
-            div.style.display = 'none';
-            return;
-        }
-
-        // Alle anderen schließen
+        if (div.style.display === 'block') { div.style.display = 'none'; return; }
         document.querySelectorAll('.detail').forEach(d => d.style.display = 'none');
 
         const list = raw.filter(p => p[`r${round}Team`] === team);
         let total = 0;
-        let html = `<h3>${team} – Runde ${round}</h3>`;
+        let html = `<h3 style="margin-top:0; font-size:16px;">${team} - R${round}</h3>`;
 
         list.forEach(p => {
             const p1 = p[`r${round}Pkt1`];
             const p2 = p[`r${round}Pkt2`];
             const sum = p1 + p2;
             total += sum;
-            
-            // Stellung erkennen für Farb-Badge
-            const stellungText = p.stellung || "";
-            const cls = stellungText.toLowerCase().includes("liegend") ? "liegend" : "kniend";
+            const cls = p.stellung.toLowerCase().includes("liegend") ? "liegend" : "kniend";
 
             html += `
                 <div class="player">
-                    <div class="name">
-                        ${p.name}
-                        <span class="stellung ${cls}">${stellungText}</span>
+                    <div class="name-container">
+                        <span class="name-text">${p.name}</span>
+                        <span class="stellung ${cls}">${p.stellung}</span>
                     </div>
-                    <div class="pkt">${p1}</div>
-                    <div class="pkt">${p2}</div>
-                    <div class="pkt-sum"><strong>${sum}</strong></div>
+                    <div class="pkt-val">${p1}</div>
+                    <div class="pkt-val">${p2}</div>
+                    <div class="pkt-sum">${sum}</div>
                 </div>`;
         });
-
         div.innerHTML = html + `<div class="total">Gesamt: ${total}</div>`;
         div.style.display = "block";
     }
