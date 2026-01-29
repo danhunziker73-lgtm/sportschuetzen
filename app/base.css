@@ -131,3 +131,32 @@ td.cell:hover,
   h1{font-size:20px}
   th,td{font-size:13px;padding:7px 5px}
 }
+
+/* =========================================================
+   Tooltip / MAX-Hinweis – global
+   ========================================================= */
+
+.max-hint{
+  font-size:.6em;
+  vertical-align:super;
+  color:rgba(255,255,255,.7);
+  cursor:pointer;
+}
+
+.tooltip{
+  position:fixed;
+  background:#fff;
+  padding:6px 10px;
+  font-size:.75rem;
+  border-radius:6px;
+  box-shadow:0 4px 12px rgba(0,0,0,.15);
+  opacity:0;
+  pointer-events:none;
+  transition:.15s;
+  z-index:9999;
+}
+
+.tooltip.show{
+  opacity:1;
+}
+
