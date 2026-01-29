@@ -1,0 +1,133 @@
+/* ===============================
+   BASE – Gemeinsames Layout
+   Mannschaft · Gruppe · Jahr
+   =============================== */
+
+:root{
+  --primary:#0f3c5c;
+  --bg:#f4f6f8;
+  --text:#333;
+  --line:#e0e0e0;
+  --hover:#e6eef5;
+}
+
+/* --- Grundlayout --- */
+body{
+  font-family: Arial, system-ui, -apple-system, sans-serif;
+  background:var(--bg);
+  margin:0;
+  padding:15px;
+  color:var(--text);
+}
+
+h1{
+  margin:0 0 5px;
+  color:var(--primary);
+  font-size:22px;
+}
+
+.subtitle{
+  color:#666;
+  margin-bottom:15px;
+  font-size:14px;
+}
+
+/* --- Tabellen-Wrapper --- */
+.table-wrapper{
+  overflow-x:auto;
+  margin-bottom:20px;
+}
+
+/* --- Tabelle Basis --- */
+table{
+  border-collapse:collapse;
+  background:#fff;
+  box-shadow:0 2px 6px rgba(0,0,0,.08);
+  border-radius:6px;
+  overflow:hidden;
+}
+
+/* --- Header (blauer Balken) --- */
+thead,
+tr:first-child{
+  background:var(--primary);
+  color:#fff;
+}
+
+/* Einheitliche Header-Höhe */
+th{
+  font-size:13px;
+  font-weight:600;
+  padding:8px 6px;   /* DAS ist die definierte Höhe */
+  text-align:center;
+  white-space:nowrap;
+}
+
+/* --- Zellen --- */
+td{
+  padding:8px 6px;
+  text-align:center;
+  border-bottom:1px solid var(--line);
+  white-space:nowrap;
+  font-size:14px;
+}
+
+/* Erste Spalte (Team / Gruppe / Name links) */
+td.team,
+td.name{
+  font-weight:bold;
+  text-align:left;
+  color:var(--primary);
+  white-space:normal;
+}
+
+/* Klickbare Zellen */
+.clickable,
+td.cell{
+  cursor:pointer;
+}
+
+td.cell:hover,
+.clickable:active{
+  background:var(--hover);
+}
+
+/* --- Detailbereich --- */
+.detail,
+.details{
+  display:none;
+  background:#f9f9f9;
+}
+
+.detail td,
+.details td{
+  padding:0;
+}
+
+.detail-box,
+.detail{
+  padding:12px 15px;
+  box-shadow:inset 0 1px 0 #ddd;
+}
+
+.player,
+.two-col li{
+  display:flex;
+  justify-content:space-between;
+  padding:6px 0;
+  border-bottom:1px solid #eee;
+  font-size:14px;
+}
+
+.total{
+  font-weight:bold;
+  text-align:right;
+  margin-top:10px;
+  font-size:16px;
+}
+
+/* --- Mobile Grundanpassung --- */
+@media (max-width:768px){
+  h1{font-size:20px}
+  th,td{font-size:13px;padding:7px 5px}
+}
