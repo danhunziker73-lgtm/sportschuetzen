@@ -81,7 +81,7 @@
 
         .total {
           font-weight: bold;
-          text-align: right;
+          text-align: left; /* Geändert von right auf left */
           margin-top: 10px;
           font-size: 16px;
         }
@@ -204,6 +204,7 @@
             html += `<div class="player"><div>${p.name}</div><div><strong>${p[`r${round}Pkt`]}</strong></div></div>`;
         });
 
+        // Hier wurde das Div angepasst, damit "Total" linksbündig auf Höhe der Namen steht
         div.innerHTML = html + `<div class="total">Total: ${total}</div></div>`;
         div.style.display = 'block';
     }
