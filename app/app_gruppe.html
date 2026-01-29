@@ -1,34 +1,76 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-    <link rel="stylesheet" href="base.css">
-    <link rel="stylesheet" href="gruppe.css">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gruppenmeisterschaft</title>
+    <style>
+        /* --- Basis & Layout --- */
+        body { font-family: Arial, sans-serif; background: #f4f6f8; margin: 0; padding: 15px; color: #333; }
+        .subtitle { color: #666; margin-bottom: 15px; font-size: 14px; }
+        
+        /* --- Tabelle & Header --- */
+        .table-wrapper { overflow-x: auto; margin-bottom: 20px; }
+        table { width: 100%; border-collapse: collapse; background: white; box-shadow: 0 2px 6px rgba(0,0,0,0.08); border-radius: 6px; overflow: hidden; }
+        
+        th, td { padding: 12px 10px; text-align: center; border-bottom: 1px solid #e0e0e0; }
+        th { background: #0f3c5c; color: white; font-size: 14px; font-weight: 600; }
+        
+        /* Entfernt "Gruppe" Label oben links - Zelle bleibt blau wie die anderen Header */
+        th.first-col { text-align: left; }
+
+        td.team { font-weight: bold; text-align: left; color: #0f3c5c; white-space: normal; min-width: 120px; }
+        td.cell { background: #fafafa; cursor: pointer; transition: background 0.2s; }
+        td.cell:hover { background: #e6eef5; }
+
+        /* --- Detail Ansicht --- */
+        .detail { margin-top: 5px; background: #f9f9f9; padding: 15px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.05); display: none; }
+        .player { display: grid; grid-template-columns: 1fr 40px 40px 50px; gap: 10px; padding: 10px 0; border-bottom: 1px solid #eee; align-items: center; }
+        
+        .name-box { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; text-align: left; }
+        .name-label { font-weight: bold; font-size: 14px; }
+        
+        .stellung { font-size: 10px; font-weight: 800; padding: 2px 8px; border-radius: 10px; text-transform: uppercase; }
+        .liegend { background: #e3f0ff; color: #1e5dbf; border: 1px solid #bcd9ff; }
+        .kniend { background: #e6f6ec; color: #1f7a3a; border: 1px solid #c3e6cb; }
+        
+        .total { font-weight: bold; text-align: right; margin-top: 15px; font-size: 16px; color: #0f3c5c; }
+
+        /* --- Spinner --- */
+        #pull-spinner {
+            position: fixed; top: -50px; left: 50%; transform: translateX(-50%);
+            width: 40px; height: 40px; background: #0f3c5c; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2); z-index: 9999; transition: top 0.15s ease-out;
+        }
+        .spinner-icon {
+            width: 18px; height: 18px; border: 3px solid rgba(255,255,255,0.3);
+            border-top-color: #fff; border-radius: 50%; animation: spin 0.8s infinite linear;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        @media (max-width: 768px) { th, td { padding: 10px 6px; font-size: 13px; } }
+    </style>
 </head>
 <body>
-    <div id="pull-spinner"><div class="spinner-icon"></div></div>
 
+    <div id="pull-spinner"><div class="spinner-icon"></div></div>
+    
     <div class="subtitle" id="sub-title">Daten werden geladen...</div>
     <div id="overview"></div>
 
 <script>
-    // --- PULL TO REFRESH LOGIK ---
+    // --- PULL TO REFRESH ---
     let touchStart = 0;
     const spinner = document.getElementById('pull-spinner');
 
-    document.addEventListener('touchstart', e => { 
-        touchStart = e.touches[0].pageY; 
-    }, {passive: true});
-
+    document.addEventListener('touchstart', e => { touchStart = e.touches[0].pageY; }, {passive: true});
     document.addEventListener('touchmove', e => {
         let distance = e.touches[0].pageY - touchStart;
         if (window.scrollY <= 0 && distance > 0) {
-            spinner.style.top = Math.min(distance / 2.5, 70) + 'px';
+            spinner.style.top = Math.min(distance / 2.5, 60) + 'px';
         }
     }, {passive: true});
-
     document.addEventListener('touchend', e => {
         let distance = e.changedTouches[0].pageY - touchStart;
         if (window.scrollY <= 0 && distance > 130) {
@@ -39,10 +81,10 @@
         }
     }, {passive: true});
 
-    // --- DATEN LADEN ---
+    // --- DATA LOGIC ---
     const WORKER_URL = "https://gruppe.dan-hunziker73.workers.dev";
     const urlParams = new URLSearchParams(window.location.search);
-    const selectedYear = urlParams.get('jahr') || 'aktuell';
+    const selectedYear = urlParams.get('jahr') || 'aktuell'; 
 
     let raw = [];
     let teams = [];
@@ -50,25 +92,26 @@
     window.onload = loadData;
 
     async function loadData() {
-        const subTitle = document.getElementById('sub-title');
-        subTitle.textContent = 'Übersicht – auf Punkte klicken für Details';
-        const url = `${WORKER_URL}?type=gruppe&jahr=${selectedYear}`;
+        document.getElementById('sub-title').textContent = `Übersicht – auf Punkte klicken für Details`;
 
         try {
-            const response = await fetch(url);
-            if (!response.ok) throw new Error(response.status);
+            const response = await fetch(`${WORKER_URL}?type=gruppe&jahr=${selectedYear}`);
+            if (!response.ok) throw new Error("Fehler beim Abruf");
+            
             const json = await response.json();
             const rows = json.table?.rows || [];
+            
+            if (rows.length === 0) {
+                document.getElementById("overview").innerHTML = "<p>Keine Daten gefunden.</p>";
+                return;
+            }
 
             raw = rows.map(r => {
-                let row = {
-                    name: r.c[0]?.v || "",
-                    stellung: r.c[1]?.v || "" 
-                };
-                for (let i = 1; i <= 3; i++) {
-                    row[`r${i}Team`] = r.c[(i - 1) * 3 + 2]?.v || "";
-                    row[`r${i}Pkt1`] = Number(r.c[(i - 1) * 3 + 3]?.v) || 0;
-                    row[`r${i}Pkt2`] = Number(r.c[(i - 1) * 3 + 4]?.v) || 0;
+                let row = { name: r.c[0]?.v || "", stellung: r.c[1]?.v || "" };
+                for(let i=1; i<=3; i++){
+                    row[`r${i}Team`] = r.c[(i-1)*3+2]?.v || "";
+                    row[`r${i}Pkt1`] = Number(r.c[(i-1)*3+3]?.v) || 0;
+                    row[`r${i}Pkt2`] = Number(r.c[(i-1)*3+4]?.v) || 0;
                     row[`r${i}Sum`]  = row[`r${i}Pkt1`] + row[`r${i}Pkt2`];
                 }
                 return row;
@@ -80,51 +123,61 @@
 
             buildTable();
         } catch (e) {
-            document.getElementById("overview").innerHTML = "<p style='color:red'>Fehler beim Laden</p>";
+            document.getElementById("overview").innerHTML = `<p style='color:red;'>Fehler: ${e.message}</p>`;
         }
     }
 
-    function buildTable() {
-        let html = `<div class="table-wrapper"><table><thead><tr><th>Gruppe</th><th>R1</th><th>R2</th><th>R3</th></tr></thead><tbody>`;
+    function buildTable(){
+        // "Gruppe" Text entfernt, Zelle bleibt als Platzhalter für die Optik
+        let html = `<div class="table-wrapper"><table><tr><th class="first-col"></th><th>R1</th><th>R2</th><th>R3</th></tr>`;
+
         teams.forEach((team, index) => {
             html += `<tr><td class="team">${team}</td>`;
-            for (let r = 1; r <= 3; r++) {
+            for(let r=1; r<=3; r++){
                 const sum = raw.filter(p => p[`r${r}Team`] === team).reduce((a, b) => a + b[`r${r}Sum`], 0);
-                html += `<td class="cell" onclick="toggleDetail('${team.replace(/'/g,"\\'")}',${r},${index})">${sum || "–"}</td>`;
+                html += `<td class="cell" onclick="toggleDetail('${team.replace(/'/g,"\\'")}', ${r}, ${index})">${sum || "–"}</td>`;
             }
-            html += `</tr><tr><td colspan="4"><div id="detail-div-${index}" class="detail"></div></td></tr>`;
+            html += `</tr><tr><td colspan="4" style="padding:0; border:0;"><div id="detail-div-${index}" class="detail"></div></td></tr>`;
         });
-        html += `</tbody></table></div>`;
+
+        html += `</table></div>`;
         document.getElementById("overview").innerHTML = html;
     }
 
-    function toggleDetail(team, round, index) {
+    function toggleDetail(team, round, index){
         const div = document.getElementById(`detail-div-${index}`);
-        if (div.style.display === 'block') { div.style.display = 'none'; return; }
+        
+        if(div.style.display === "block"){
+            div.style.display = "none";
+            return;
+        }
+
         document.querySelectorAll('.detail').forEach(d => d.style.display = 'none');
 
         const list = raw.filter(p => p[`r${round}Team`] === team);
         let total = 0;
-        let html = `<h3>${team} - Runde ${round}</h3>`;
-
+        let html = `<h3 style="margin-top:0;">${team} – Runde ${round}</h3>`;
+        
         list.forEach(p => {
-            const p1 = p[`r${round}Pkt1`], p2 = p[`r${round}Pkt2`], sum = p1 + p2;
+            const sum = p[`r${round}Sum`];
             total += sum;
-            const stellungText = p.stellung || "";
+            const stellungText = p.stellung || "–";
             const cls = stellungText.toLowerCase().includes("liegend") ? "liegend" : "kniend";
-
+            
             html += `
                 <div class="player">
-                    <div class="name-container">
-                        <span class="name-text">${p.name}</span>
+                    <div class="name-box">
+                        <span class="name-label">${p.name}</span>
                         <span class="stellung ${cls}">${stellungText}</span>
                     </div>
-                    <div class="pkt-val">${p1}</div>
-                    <div class="pkt-val">${p2}</div>
-                    <div class="pkt-sum">${sum}</div>
+                    <div>${p[`r${round}Pkt1`]}</div>
+                    <div>${p[`r${round}Pkt2`]}</div>
+                    <div><strong>${sum}</strong></div>
                 </div>`;
         });
-        div.innerHTML = html + `<div class="total">Gesamt: ${total}</div>`;
+        
+        html += `<div class="total">Gesamt: ${total}</div>`;
+        div.innerHTML = html;
         div.style.display = "block";
     }
 </script>
