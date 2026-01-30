@@ -123,7 +123,7 @@
 <header><h1 id="main-title">Vereins-App</h1></header>
 <div id="push-banner">
   <span>🔔 Push-Mitteilungen aktiv?</span>
-  <button onclick="handlePushClick()" style="background:var(--primary); color:#fff; border:none; padding:6px 12px; border-radius:8px; font-weight:600;">Aktivieren</button>
+  <button onclick="event.stopPropagation(); handlePushClick();" style="background:var(--primary); color:#fff; border:none; padding:6px 12px; border-radius:8px; font-weight:600;">Aktivieren</button>
 </div>
     <main>
     <section id="page-home" class="page active-page">
@@ -211,55 +211,68 @@ document.addEventListener('touchend', e => {
 }, { passive: true });
 
 /* --- Push Funktionen --- */
+/* --- Push Funktionen --- */
 function closeModal() {
     document.getElementById("push-modal").style.display = "none";
 }
 
 async function handlePushClick() {
+    // Verhindert Konflikte mit anderen Touch-Events
+    if (window.event) window.event.stopPropagation();
+    // if(event) event.stopPropagation();
+    
     window.OneSignalDeferred = window.OneSignalDeferred || [];
     OneSignalDeferred.push(async function(OneSignal) {
         const permission = Notification.permission;
         if (permission === "denied") {
             document.getElementById("push-modal").style.display = "flex";
         } else {
+            // Zeigt den System-Dialog
             await OneSignal.showNativePrompt();
         }
     });
 }
 
 async function checkPushStatus() {
-  const banner = document.getElementById("push-banner");
-  const badge = document.getElementById("home-badge");
-  const pushCard = document.getElementById("push-card-home"); // Falls du die Card so benannt hast
+    const banner = document.getElementById("push-banner");
+    const badge = document.getElementById("home-badge");
+    const pushCard = document.getElementById("push-card-home");
 
-  OneSignalDeferred.push(async function(OneSignal) {
-    // 1. Prüfen: Hat der Browser die Erlaubnis?
-    const permission = Notification.permission; // 'granted', 'denied', oder 'default'
-    // 2. Prüfen: Ist OneSignal aktiv?
-    const isSubscribed = await OneSignal.isPushNotificationsEnabled();
+    window.OneSignalDeferred = window.OneSignalDeferred || [];
+    OneSignalDeferred.push(async function(OneSignal) {
+        
+        // Funktion zur UI-Aktualisierung
+        const updateUI = async () => {
+            const isSubscribed = await OneSignal.isPushNotificationsEnabled();
+            const permission = Notification.permission;
 
-    // Wenn nicht erlaubt ODER nicht abonniert -> Zeige Hinweis
-    if (permission !== "granted" || !isSubscribed) {
-      if (banner) banner.style.display = "flex";
-      if (badge) badge.style.display = "block";
-      if (pushCard) pushCard.style.display = "block";
-    } else {
-      // Alles okay -> Verstecken
-      if (banner) banner.style.display = "none";
-      if (badge) badge.style.display = "none";
-      if (pushCard) pushCard.style.display = "none";
-    }
-  });
+            if (permission === "granted" && isSubscribed) {
+                if (banner) banner.style.display = "none";
+                if (badge) badge.style.display = "none";
+                if (pushCard) pushCard.style.display = "none";
+            } else {
+                if (banner) banner.style.display = "flex";
+                if (badge) badge.style.display = "block";
+                if (pushCard) pushCard.style.display = "block";
+            }
+        };
+
+        // 1. Sofort beim Laden prüfen
+        await updateUI();
+
+        // 2. WICHTIG: Automatisch aktualisieren, wenn der User abonniert
+        OneSignal.User.PushSubscription.addEventListener("change", () => {
+            updateUI();
+        });
+    });
 }
 
 /* --- Initialisierung beim Laden --- */
 window.addEventListener('load', () => {
-    // 1. Termine laden (Funktion aus termine.js)
-    if (typeof loadTermine === 'function') {
-        loadTermine();
-    }
+    // Termine laden
+    if (typeof loadTermine === 'function') loadTermine();
 
-    // 2. Push Status prüfen
+    // Push Status prüfen & Überwachung starten
     checkPushStatus();
 });
 </script>
