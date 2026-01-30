@@ -123,7 +123,8 @@
 <header><h1 id="main-title">Vereins-App</h1></header>
 <div id="push-banner">
   <span>🔔 Push-Mitteilungen aktiv?</span>
-  <button onclick="event.stopPropagation(); handlePushClick();" style="background:var(--primary); color:#fff; border:none; padding:6px 12px; border-radius:8px; font-weight:600;">Aktivieren</button>
+<button onclick="handlePushClick(event)" style="position: relative; z-index: 1001; background:var(--primary); color:#fff; border:none; padding:6px 12px; border-radius:8px; font-weight:600;">Aktivieren</button>
+<button class="btn-main" onclick="handlePushClick(event)" style="position: relative; z-index: 10;">Jetzt aktivieren</button> 
 </div>
     <main>
     <section id="page-home" class="page active-page">
@@ -212,23 +213,30 @@ document.addEventListener('touchend', e => {
 
 /* --- Push Funktionen --- */
 /* --- Push Funktionen --- */
+/* --- Push Funktionen --- */
 function closeModal() {
     document.getElementById("push-modal").style.display = "none";
 }
 
-async function handlePushClick() {
-    // Verhindert Konflikte mit anderen Touch-Events
-    if (window.event) window.event.stopPropagation();
-    // if(event) event.stopPropagation();
+async function handlePushClick(e) {
+    if (e) {
+        e.preventDefault();
+        e.stopPropagation();
+    }
     
     window.OneSignalDeferred = window.OneSignalDeferred || [];
     OneSignalDeferred.push(async function(OneSignal) {
         const permission = Notification.permission;
+        
         if (permission === "denied") {
             document.getElementById("push-modal").style.display = "flex";
         } else {
-            // Zeigt den System-Dialog
             await OneSignal.showNativePrompt();
+            
+            // Nach 2 Sekunden prüfen, ob User akzeptiert hat (für iOS)
+            setTimeout(() => {
+                checkPushStatus();
+            }, 2000);
         }
     });
 }
@@ -241,10 +249,12 @@ async function checkPushStatus() {
     window.OneSignalDeferred = window.OneSignalDeferred || [];
     OneSignalDeferred.push(async function(OneSignal) {
         
-        // Funktion zur UI-Aktualisierung
         const updateUI = async () => {
+            // Wir prüfen Berechtigung UND Abo-Status
             const isSubscribed = await OneSignal.isPushNotificationsEnabled();
             const permission = Notification.permission;
+
+            console.log("Push Status Check:", { permission, isSubscribed });
 
             if (permission === "granted" && isSubscribed) {
                 if (banner) banner.style.display = "none";
@@ -257,13 +267,10 @@ async function checkPushStatus() {
             }
         };
 
-        // 1. Sofort beim Laden prüfen
         await updateUI();
 
-        // 2. WICHTIG: Automatisch aktualisieren, wenn der User abonniert
-        OneSignal.User.PushSubscription.addEventListener("change", () => {
-            updateUI();
-        });
+        // Event listener für Statusänderungen
+        OneSignal.User.PushSubscription.addEventListener("change", updateUI);
     });
 }
 
@@ -272,8 +279,8 @@ window.addEventListener('load', () => {
     // Termine laden
     if (typeof loadTermine === 'function') loadTermine();
 
-    // Push Status prüfen & Überwachung starten
-    checkPushStatus();
+    // Push Status prüfen
+    setTimeout(checkPushStatus, 500); // 500ms warten damit OneSignal bereit ist
 });
 </script>
 <div id="push-modal" class="modal-overlay">
