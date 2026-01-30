@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="de">
 <head>
@@ -34,4 +33,16 @@ async function askPush() {
 
   console.log("permission:", await OneSignal.Notifications.permission);
   console.log("optedIn:", await OneSignal.User.PushSubscription.optedIn);
-  console.log("id:", await O
+  console.log("id:", await OneSignal.User.PushSubscription.id);
+}
+</script>
+</head>
+<body>
+
+<h1>OneSignal Push Test</h1>
+<button onclick="askPush()">🔔 Push erlauben</button>
+
+<p>DevTools → Console offen lassen</p>
+
+</body>
+</html>
