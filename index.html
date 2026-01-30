@@ -206,10 +206,53 @@
     }, {passive: true});
 
     // Start-Initialisierung
-    window.onload = () => { 
-        loadTeilnehmer(); 
-        loadTermine(); 
-    };
+    /* --- Neue Push Funktionen --- */
+async function checkPushStatus() {
+  const banner = document.getElementById("push-banner");
+  const badge = document.getElementById("home-badge");
+  const pushBtnHome = document.getElementById("enablePush");
+
+  OneSignalDeferred.push(async function(OneSignal) {
+    const isEnabled = await OneSignal.isPushNotificationsEnabled();
+    
+    if (!isEnabled) {
+      banner.style.display = "flex";
+      badge.style.display = "block";
+    } else {
+      banner.style.display = "none";
+      badge.style.display = "none";
+      if(pushBtnHome) pushBtnHome.parentElement.style.display = "none";
+    }
+  });
+}
+
+async function handlePushClick() {
+  OneSignalDeferred.push(async function(OneSignal) {
+    const permission = Notification.permission;
+    if (permission === "denied") {
+      document.getElementById("push-modal").style.display = "flex";
+    } else {
+      await OneSignal.showNativePrompt();
+    }
+  });
+}
+
+function closeModal() {
+  document.getElementById("push-modal").style.display = "none";
+}
+
+/* --- Aktualisiertes Window Onload --- */
+window.onload = () => {
+  // Push Status beim Start prüfen
+  checkPushStatus();
+
+  // Bestehende Logik für den großen Button auf der Home-Seite
+  const mainPushBtn = document.getElementById("enablePush");
+  if(mainPushBtn) {
+    mainPushBtn.addEventListener("touchstart", e => e.stopPropagation(), {passive: false});
+    mainPushBtn.addEventListener("click", handlePushClick);
+  }
+};
 </script>
 <div id="push-modal" class="modal-overlay">
   <div class="modal-content">
