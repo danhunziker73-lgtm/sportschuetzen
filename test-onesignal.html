@@ -1,53 +1,53 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-<meta charset="UTF-8">
-<title>OneSignal Push Test</title>
+    <meta charset="UTF-8">
+    <title>OneSignal Push Test</title>
 
-<link rel="manifest" href="/sportschuetzen/manifest.json">
+    <link rel="manifest" href="/sportschuetzen/manifest.json">
 
-<script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+    <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
 
-<script>
-window.OneSignalDeferred = window.OneSignalDeferred || [];
-OneSignalDeferred.push(async function(OneSignal) {
+    <script>
+    window.OneSignalDeferred = window.OneSignalDeferred || [];
+    OneSignalDeferred.push(async function(OneSignal) {
+        
+        await OneSignal.init({
+            appId: "4fd0fec9-a8dd-40d9-94e9-7ba330c07176",
+            // Deine spezifischen Pfade
+            serviceWorkerPath: "push/onesignal/OneSignalSDKWorker.js",
+            serviceWorkerUpdaterPath: "push/onesignal/OneSignalSDKUpdaterWorker.js",
+            serviceWorkerParam: {
+                scope: "/sportschuetzen/push/onesignal/"
+            }
+        });
 
-  await OneSignal.init({
-    appId: "4fd0fec9-a8dd-40d9-94e9-7ba330c07176",
-    serviceWorkerPath: "/sportschuetzen/push/onesignal/OneSignalSDKWorker.js",
-    serviceWorkerUpdaterPath: "/sportschuetzen/push/onesignal/OneSignalSDKUpdaterWorker.js",
-    serviceWorkerParam: {
-      scope: "/sportschuetzen/push/onesignal/"
+        console.log("Init OK");
+        
+        // Status Log beim Laden
+        console.log("Permission:", OneSignal.Notifications.permission);
+        console.log("Opted In:", OneSignal.User.PushSubscription.optedIn);
+        console.log("ID:", OneSignal.User.PushSubscription.id);
+    });
+
+    async function askPush() {
+        console.log("Starte Abfrage...");
+        // Wir nutzen OneSignalDeferred auch hier, falls OneSignal noch nicht bereit ist
+        OneSignalDeferred.push(async function(OneSignal) {
+            await OneSignal.Notifications.requestPermission();
+            
+            console.log("Nach Abfrage - Permission:", OneSignal.Notifications.permission);
+            console.log("ID:", OneSignal.User.PushSubscription.id);
+        });
     }
-  });
-
-  console.log("Init done");
-});
-</script>
-
-  console.log("init OK");
-
-  console.log("permission:", await OneSignal.Notifications.permission);
-  console.log("optedIn:", await OneSignal.User.PushSubscription.optedIn);
-  console.log("id:", await OneSignal.User.PushSubscription.id);
-});
-
-async function askPush() {
-  console.log("requestPermission()");
-  await OneSignal.Notifications.requestPermission();
-
-  console.log("permission:", await OneSignal.Notifications.permission);
-  console.log("optedIn:", await OneSignal.User.PushSubscription.optedIn);
-  console.log("id:", await OneSignal.User.PushSubscription.id);
-}
-</script>
+    </script>
 </head>
 <body>
 
-<h1>OneSignal Push Test</h1>
-<button onclick="askPush()">🔔 Push erlauben</button>
+    <h1>OneSignal Push Test</h1>
+    <button onclick="askPush()">🔔 Push erlauben</button>
 
-<p>DevTools → Console offen lassen</p>
+    <p>Bitte öffne F12 (DevTools) -> Konsole, um die Logs zu sehen.</p>
 
 </body>
 </html>
