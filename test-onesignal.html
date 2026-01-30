@@ -1,8 +1,9 @@
+
 <!DOCTYPE html>
 <html lang="de">
 <head>
 <meta charset="UTF-8">
-<title>OneSignal Test</title>
+<title>OneSignal Push Test</title>
 
 <link rel="manifest" href="/sportschuetzen/manifest.json">
 
@@ -22,19 +23,15 @@ OneSignalDeferred.push(async function(OneSignal) {
 
   console.log("init OK");
 
-  const perm = await OneSignal.Notifications.permission;
-  console.log("permission:", perm);
-
-  const subscribed = await OneSignal.User.PushSubscription.optedIn;
-  console.log("optedIn:", subscribed);
-
-  const id = await OneSignal.User.PushSubscription.id;
-  console.log("subscription id:", id);
+  console.log("permission:", await OneSignal.Notifications.permission);
+  console.log("optedIn:", await OneSignal.User.PushSubscription.optedIn);
+  console.log("id:", await OneSignal.User.PushSubscription.id);
 });
-</script>
-</head>
-<body>
-<h1>OneSignal Push Test</h1>
-<p>Öffne DevTools → Console</p>
-</body>
-</html>
+
+async function askPush() {
+  console.log("requestPermission()");
+  await OneSignal.Notifications.requestPermission();
+
+  console.log("permission:", await OneSignal.Notifications.permission);
+  console.log("optedIn:", await OneSignal.User.PushSubscription.optedIn);
+  console.log("id:", await O
