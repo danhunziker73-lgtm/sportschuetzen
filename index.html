@@ -1,22 +1,17 @@
 <!DOCTYPE html>
 <html lang="de">
-<head>
+    <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     
     <link rel="apple-touch-icon" href="icons/icon-512.png">
     <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-512.png">
-    <meta name="apple-mobile-web-app-title" content="Sportschützen Muhen">
+    <meta name="apple-mobile-web-app-title" content="Schützen Muhen">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     
     <title>Sportschützen Muhen App</title>
-
-    <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
-    <script src="/sportschuetzen/push-init.js" defer></script>
-
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
-    
     <style>
         :root { 
             --primary: #0f3a5d; 
@@ -28,28 +23,8 @@
         }
         
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        
-        body { 
-            font-family: 'Inter', sans-serif; 
-            background: var(--bg); 
-            margin: 0; 
-            padding-bottom: 90px; 
-            color: var(--text); 
-            overflow-x: hidden; 
-        }
-
-        header { 
-            background: var(--primary); 
-            color: white; 
-            padding: 15px; 
-            text-align: center; 
-            position: sticky; 
-            top: 0; 
-            z-index: 1000; 
-            box-shadow: 0 2px 8px rgba(0,0,0,0.15); 
-        }
-
-        h1 { margin: 0; font-size: 1.2rem; }
+        body { font-family: 'Inter', sans-serif; background: var(--bg); margin: 0; padding-bottom: 80px; color: var(--text); overflow-x: hidden; }
+        header { background: var(--primary); color: white; padding: 15px; text-align: center; position: sticky; top: 0; z-index: 1000; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
 
         /* NAVIGATION */
         .bottom-nav { 
@@ -57,16 +32,13 @@
             background: #ffffff; display: flex; justify-content: space-around; align-items: center;
             border-top: 1px solid #e5e7eb; z-index: 2000; padding: 0 10px;
         }
-
         .nav-item { 
             background: none; border: none; color: var(--text-light); 
             font-size: 0.7rem; font-weight: 600; display: flex; flex-direction: column; 
             align-items: center; cursor: pointer; flex: 1; transition: 0.2s;
         }
-
         .nav-item span { font-size: 1.4rem; margin-bottom: 2px; }
         .nav-item.active { color: var(--primary); }
-
         .nav-home { 
             position: relative; top: -18px; background: var(--primary) !important; 
             color: white !important; width: 65px; height: 65px; border-radius: 50%; 
@@ -75,116 +47,117 @@
         }
         .nav-home span { font-size: 1.8rem; margin-bottom: 0; }
 
-        /* LAYOUT & CARDS */
+        /* LAYOUT */
         .page { display: none; padding: 15px; max-width: 600px; margin: 0 auto; animation: fadeIn 0.3s ease; }
         .active-page { display: block; }
-        
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-
         .card { background: var(--card); padding: 1.5rem; border-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 15px; }
-        
-        iframe { 
-            width: 100%; height: calc(100vh - 180px); border: none; 
-            border-radius: 12px; background: #fff; 
-            -webkit-overflow-scrolling: touch; /* iOS Scroll Fix */
-        }
+        iframe { width: 100%; height: calc(100vh - 170px); border: none; border-radius: 12px; background: #fff; }
 
-        /* TERMINE STYLE */
-        .termine-list { display: flex; flex-direction: column; gap: 10px; }
-        .termin-row { 
-            display: grid; grid-template-columns: 75px 1fr; gap: 15px; 
-            align-items: center; padding: 12px 0; border-bottom: 1px solid #edf2f7; 
-        }
-        .termin-date { 
-            background: #ffffff; border: 1.5px solid #e2e8f0; border-radius: 12px; 
-            padding: 6px; display: flex; flex-direction: column; align-items: center; 
-            justify-content: center; height: 60px; 
-        }
-        .date-main { font-size: 0.9rem; font-weight: 800; color: var(--primary); }
-        .termin-title { font-weight: 700; font-size: 0.95rem; display: block; }
+        /* TERMINE TIMELINE */
+        .termine-list { display: flex; flex-direction: column; gap: 14px; }
+.termin-row {
+        display: grid;
+        grid-template-columns: 85px 1fr; /* Etwas breiter für das Datum */
+        gap: 15px;
+        align-items: center;
+        padding: 12px 0;
+        border-bottom: 1px solid #edf2f7;
+    }
 
-        /* FORMS & BUTTONS */
-        .form-group { margin-bottom: 15px; }
-        label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 5px; color: var(--text-light); }
-        select, input { 
-            width: 100%; padding: 12px; border: 1px solid var(--border); 
-            border-radius: 10px; font-size: 1rem; font-family: inherit;
-        }
+    .termin-date {
+        background: #ffffff;
+        border: 1.5px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 6px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 62px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+    }
 
-        .btn-main { 
-            width: 100%; padding: 1.1rem; background: var(--primary); 
-            color: #fff; border: none; border-radius: 14px; 
-            font-size: 1.1rem; font-weight: 700; cursor: pointer; 
-            transition: transform 0.1s;
-        }
-        .btn-main:active { transform: scale(0.98); }
+    .date-main {
+        font-size: 0.9rem;
+        font-weight: 800;
+        color: var(--primary);
+        white-space: nowrap;
+    }
 
-        /* SPINNER */
-        #pull-spinner { 
-            position: fixed; top: -50px; left: 50%; transform: translateX(-50%); 
-            width: 40px; height: 40px; background: var(--primary); border-radius: 50%; 
-            display: flex; align-items: center; justify-content: center; z-index: 3000; 
-            transition: transform 0.1s linear; pointer-events: none;
-        }
-        .spinner-icon { width: 20px; height: 20px; border: 3px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.8s infinite linear; }
-        @keyframes spin { to { transform: rotate(360deg); } }
+    .date-sub {
+        font-size: 0.65rem;
+        color: #718096;
+        text-transform: uppercase;
+        font-weight: 600;
+        margin-top: 2px;
+    }
 
-        /* PUSH SHEET */
-        #push-sheet {
-            position: fixed; bottom: 0; left: 0; width: 100%;
-            background: #1a1a1a; color: white;
-            padding: 20px 20px 35px 20px;
-            border-radius: 25px 25px 0 0;
-            z-index: 4000; display: none; flex-direction: column; align-items: center;
-            box-shadow: 0 -10px 30px rgba(0,0,0,0.3);
-            transform: translateY(100%);
-            transition: transform 0.4s cubic-bezier(0.17, 0.84, 0.44, 1);
-        }
-        #push-sheet.show { display: flex; transform: translateY(-75px); }
+    .termin-content {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
 
-        .badge-dot { position: absolute; top: 5px; right: 5px; width: 12px; height: 12px; background: #ff3b30; border-radius: 50%; border: 2px solid #fff; display: none; }
+    .termin-title {
+        font-weight: 700;
+        font-size: 0.95rem;
+        line-height: 1.2;
+        color: var(--text);
+    }
 
-        /* MODAL */
-        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: none; z-index: 5000; align-items: center; justify-content: center; backdrop-filter: blur(5px); }
-        .modal-content { background: #1a1a1a; color: white; padding: 25px; border-radius: 25px; width: 90%; max-width: 400px; text-align: center; }
-        .btn-close { background: #333; color: white; border: none; padding: 12px; border-radius: 12px; margin-top: 15px; width: 100%; cursor: pointer; }
+    /* PROVISORISCH BADGE */
+    .badge-prov {
+        display: inline-block;
+        font-size: 0.65rem;
+        background: #fffaf0;
+        color: #b7791f;
+        padding: 2px 8px;
+        border-radius: 6px;
+        border: 1px solid #fbd38d;
+        width: fit-content;
+        margin-top: 4px;
+        font-weight: 700;
+    }
+
+    .termin-meta {
+        font-size: 0.8rem;
+        color: var(--text-light);
+        margin-top: 3px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+        /* UPLOAD FORM */
+        .form-group { margin-bottom: 1.2rem; text-align: left; }
+        label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 0.5rem; color: var(--text-light); }
+        input, select { width: 100%; padding: 0.8rem; border: 1.5px solid var(--border); border-radius: 12px; font-size: 1rem; }
+        .upload-area { border: 2px dashed var(--border); border-radius: 12px; padding: 2rem; text-align: center; background: #f9fafb; cursor: pointer; }
+        #preview { width: 100%; max-height: 200px; object-fit: contain; display: none; margin-top: 10px; border-radius: 8px; }
+        .btn-main { width: 100%; padding: 1.1rem; background: var(--primary); color: #fff; border: none; border-radius: 14px; font-size: 1.1rem; font-weight: 700; cursor: pointer; }
     </style>
 </head>
 <body>
 
-<div id="pull-spinner"><div class="spinner-icon"></div></div>
 <header><h1 id="main-title">Vereins-App</h1></header>
-
-<div id="push-sheet">
-    <div style="width:40px; height:5px; background:#444; border-radius:10px; margin-bottom:15px;"></div>
-    <h3 style="margin:0 0 5px 0;">🔔 Push aktivieren?</h3>
-    <p style="font-size:0.85rem; color:#aaa; margin-bottom:15px; text-align:center;">Verpasse keine wichtigen Termine und Resultate mehr.</p>
-    <button class="btn-main" onclick="handlePushClick(event)" style="padding: 0.8rem;">Jetzt aktivieren</button>
-    <div onclick="dismissPushSheet()" style="margin-top:12px; font-size:0.75rem; color:#666; cursor:pointer;">Später vielleicht</div>
-</div>
 
 <main>
     <section id="page-home" class="page active-page">
         <div class="card" style="text-align:center;">
-            <img src="https://raw.githubusercontent.com/danhunziker73-lgtm/sportschuetzen/main/icons/Logo_MUHEN.png" style="height:100px; margin-bottom:10px;" alt="Logo">
+            <img src="https://raw.githubusercontent.com/danhunziker73-lgtm/sportschuetzen/main/icons/Logo_MUHEN.png" style="height:100px; margin-bottom:10px;">
             <h2>Sportschützen Muhen</h2>
             <p>Willkommen in deiner digitalen Vereins-App.</p>
         </div>
-
-        <div class="card" id="push-card-home" style="text-align:center; display:none;">
-            <p>🔔 Möchtest du Termine als Push erhalten?</p>
-            <button class="btn-main" onclick="handlePushClick(event)">Aktivieren</button>
-        </div>
-
         <div class="card">
-            <h3>Nächste Termine</h3>
+            <h3>Termine & News</h3>
             <div id="termine" class="termine-list">Lade Termine...</div>
         </div>
     </section>
 
-    <section id="page-jm" class="page"><iframe src="app/app_jm.html" loading="lazy"></iframe></section>
-    <section id="page-gruppe" class="page"><iframe src="app/app_gruppe.html" loading="lazy"></iframe></section>
-    <section id="page-mannschaft" class="page"><iframe src="app/app_mannschaft.html" loading="lazy"></iframe></section>
+    <section id="page-jm" class="page"><iframe src="app/app_jm.html"></iframe></section>
+    <section id="page-gruppe" class="page"><iframe src="app/app_gruppe.html"></iframe></section>
+    <section id="page-mannschaft" class="page"><iframe src="app/app_mannschaft.html"></iframe></section>
 
     <section id="page-upload" class="page">
         <div class="card">
@@ -192,11 +165,27 @@
             <form id="uploadForm">
                 <div class="form-group">
                     <label>Schütze auswählen</label>
-                    <select id="name" required><option value="" disabled selected>Lade Mitglieder...</option></select>
+                    <select id="name" required>
+                        <option value="" disabled selected>Namen wählen...</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Foto Standblatt</label>
+                    <div class="upload-area" onclick="document.getElementById('foto').click()">
+                        <span id="upload-hint">📸 Foto aufnehmen</span>
+                        <input type="file" id="foto" accept="image/*" required style="display:none">
+                        <img id="preview">
+                    </div>
                 </div>
                 <div style="display:flex; gap:10px; margin-bottom:20px;">
-                    <div style="flex:1;"><label>Erzielt</label><input type="number" id="erzielt" placeholder="Pkt" required></div>
-                    <div style="flex:1;"><label>Maximum</label><input type="number" id="maximal" value="100" required></div>
+                    <div style="flex:1;">
+                        <label>Erzielt</label>
+                        <input type="number" id="erzielt" placeholder="Pkt" required>
+                    </div>
+                    <div style="flex:1;">
+                        <label>Maximum</label>
+                        <input type="number" id="maximal" placeholder="100" required>
+                    </div>
                 </div>
                 <button type="submit" id="submitBtn" class="btn-main">Jetzt senden</button>
             </form>
@@ -207,30 +196,15 @@
 <nav class="bottom-nav">
     <button class="nav-item" onclick="nav('page-jm', 'Jahresmeisterschaft', this)"><span>🏆</span>JM</button>
     <button class="nav-item" onclick="nav('page-gruppe', 'Gruppe', this)"><span>👥</span>Gruppe</button>
-    <button class="nav-item nav-home active" onclick="nav('page-home', 'Vereins-App', this)">
-        <span class="badge-dot" id="home-badge"></span>
-        <span>🏠</span>
-    </button>
+    <button class="nav-item nav-home active" onclick="nav('page-home', 'Vereins-App', this)"><span>🏠</span></button>
     <button class="nav-item" onclick="nav('page-mannschaft', 'Mannschaft', this)"><span>🎯</span>Mannschaft</button>
     <button class="nav-item" onclick="nav('page-upload', 'Upload', this)"><span>📤</span>Upload</button>
 </nav>
 
-<div id="push-modal" class="modal-overlay">
-  <div class="modal-content">
-    <h3 style="color:#ff3b30; margin-top:0;">Push reaktivieren</h3>
-    <p style="font-size:0.9rem; color:#ccc;">Mitteilungen sind im Browser blockiert:</p>
-    <ol style="text-align:left; font-size:0.85rem; color:#eee; line-height: 1.5;">
-      <li>Öffne die Browser-Einstellungen.</li>
-      <li>Suche nach "Website-Einstellungen".</li>
-      <li>Erlaube Benachrichtigungen für diese Seite.</li>
-    </ol>
-    <button class="btn-close" onclick="document.getElementById('push-modal').style.display='none'">Verstanden</button>
-  </div>
-</div>
-
 <script>
     const WORKER_TERMINE_URL = "https://termine.dan-hunziker73.workers.dev";
-    const WORKER_MEMBER_URL = "https://github-dropdown-refresh.dan-hunziker73.workers.dev/";
+    const WORKER_UPLOAD_URL = "https://github-dropdown-refresh.dan-hunziker73.workers.dev/";
+    let teilnehmer = [];
 
     // NAVIGATION
     function nav(id, title, btn) {
@@ -242,113 +216,140 @@
         window.scrollTo(0,0);
     }
 
-    // PUSH LOGIK
-    async function handlePushClick(e) {
-        if (e) { e.preventDefault(); e.stopPropagation(); }
-        window.OneSignalDeferred = window.OneSignalDeferred || [];
-        OneSignalDeferred.push(async function(OneSignal) {
-            if (Notification.permission === "denied") {
-                document.getElementById("push-modal").style.display = "flex";
-            } else {
-                await OneSignal.showNativePrompt();
-                setTimeout(checkPushStatus, 2000);
-            }
+    // TERMINE LADEN
+async function loadTermine() {
+    const wrap = document.getElementById("termine");
+    try {
+        const res = await fetch(WORKER_TERMINE_URL);
+        let data = await res.json();
+        
+        // Dynamisches aktuelles Jahr ermitteln
+        const currentYear = new Date().getFullYear(); // 2026
+
+        // 1. DYNAMISCHE SORTIERUNG
+        data.sort((a, b) => {
+            const parseDate = (str) => {
+                if(!str) return new Date(8640000000000000); // Max Date für leere Felder
+                const p = str.split(", ")[1].split(" "); // ["13.", "Juni", "2026"]
+                const months = {"Januar":0, "Februar":1, "März":2, "April":3, "Mai":4, "Juni":5, "Juli":6, "August":7, "September":8, "Oktober":9, "November":10, "Dezember":11};
+                return new Date(p[2], months[p[1]], parseInt(p[0]));
+            };
+            return parseDate(a.datum) - parseDate(b.datum);
         });
-    }
 
-    function dismissPushSheet() {
-        document.getElementById('push-sheet').classList.remove('show');
-        sessionStorage.setItem('push_dismissed', 'true');
-    }
+        wrap.innerHTML = "";
 
-    async function checkPushStatus() {
-        window.OneSignalDeferred = window.OneSignalDeferred || [];
-        OneSignalDeferred.push(async function(OneSignal) {
-            const isSubscribed = await OneSignal.isPushNotificationsEnabled();
-            const sheet = document.getElementById("push-sheet");
-            const badge = document.getElementById("home-badge");
-            const card = document.getElementById("push-card-home");
-            const hasDismissed = sessionStorage.getItem('push_dismissed');
+        data.forEach(t => {
+            const status = (t.status || "").toLowerCase();
+            const datumRaw = (t.datum || "").trim();
 
-            if (isSubscribed) {
-                sheet.classList.remove("show");
-                if(badge) badge.style.display = "none";
-                if(card) card.style.display = "none";
-            } else if (!hasDismissed) {
-                sheet.classList.add("show");
-                if(badge) badge.style.display = "block";
-                if(card) card.style.display = "block";
-            }
+            if (datumRaw === "" || status === "abgesagt") return;
+
+            const isProv = status === "provisorisch";
+            
+            // Zerlegung: "Dienstag, 13. Juni 2026"
+            const parts = datumRaw.split(", ");
+            const weekday = parts[0].substring(0, 2); 
+            const dateFull = parts[1]; 
+            
+            // DYNAMISCHE JAHR-LOGIK
+            // Wir prüfen, ob im String ein anderes Jahr als das aktuelle steht
+            const yearInStringMatch = dateFull.match(/\d{4}/);
+            const yearInString = yearInStringMatch ? yearInStringMatch[0] : currentYear.toString();
+            
+            // Anzeige-Datum ohne das Jahr
+            const dateDisplay = dateFull.replace(` ${yearInString}`, "");
+            
+            // Wenn das Jahr im Termin ungleich dem aktuellen Jahr ist, zeigen wir es an
+            const subLine = (yearInString !== currentYear.toString()) 
+                            ? `${weekday} '${yearInString.substring(2)}` 
+                            : weekday;
+
+            wrap.innerHTML += `
+            <div class="termin-row">
+                <div class="termin-date">
+                    <span class="date-main">${dateDisplay}</span>
+                    <span class="date-sub">${subLine}</span>
+                </div>
+                <div class="termin-content">
+                    <span class="termin-title">${t.titel}</span>
+                    <div class="termin-meta">
+                        <span>📍 ${t.ort}</span>
+                        ${t.start ? `<span>🕒 ${t.start}</span>` : ""}
+                    </div>
+                    ${isProv ? '<span class="badge-prov">Provisorisch</span>' : ''}
+                </div>
+            </div>`;
         });
+
+    } catch (e) {
+        wrap.innerHTML = "Fehler beim Laden.";
+        console.error(e);
     }
-
-    // PULL-TO-REFRESH
-    let touchStart = 0;
-    const spinner = document.getElementById('pull-spinner');
-    document.addEventListener('touchstart', e => { touchStart = e.touches[0].pageY; }, {passive: true});
-    document.addEventListener('touchmove', e => {
-        const distance = e.touches[0].pageY - touchStart;
-        if (window.scrollY <= 0 && distance > 0) {
-            spinner.style.top = `${Math.min(distance / 2, 100) - 40}px`;
-            spinner.style.transform = `translateX(-50%) scale(${distance > 90 ? 1.2 : 1})`;
-        }
-    }, {passive: true});
-    document.addEventListener('touchend', e => {
-        if (window.scrollY <= 0 && (e.changedTouches[0].pageY - touchStart) > 90) location.reload();
-        else spinner.style.top = '-50px';
-    }, {passive: true});
-
-    // DATEN LADEN: TERMINE
-    async function loadTermine() {
-        const wrap = document.getElementById("termine");
+}
+    // TEILNEHMER LADEN (Upload-Bereich)
+    async function loadTeilnehmer() {
         try {
-            const res = await fetch(WORKER_TERMINE_URL);
-            const data = await res.json();
-            wrap.innerHTML = "";
-            data.forEach(t => {
-                if(t.status === "abgesagt") return;
-                
-                let dateStr = t.datum;
-                try {
-                    const p = t.datum.split(", ");
-                    if(p[1]) {
-                        const d = p[1].split(" ");
-                        dateStr = `${d[0]}.${d[1].substring(0,3)}`;
-                    }
-                } catch(err) {}
-
-                wrap.innerHTML += `
-                    <div class="termin-row">
-                        <div class="termin-date"><span class="date-main">${dateStr}</span></div>
-                        <div class="termin-content">
-                            <span class="termin-title">${t.titel}</span>
-                            <small>📍 ${t.ort || 'Muhen'}</small>
-                        </div>
-                    </div>`;
-            });
-        } catch (e) { wrap.innerHTML = "Fehler beim Laden."; }
-    }
-
-    // DATEN LADEN: MITGLIEDER
-    async function loadMembers() {
-        const select = document.getElementById("name");
-        try {
-            const res = await fetch(WORKER_MEMBER_URL);
-            const members = await res.json();
-            select.innerHTML = '<option value="" disabled selected>Namen wählen...</option>';
-            members.forEach(m => {
+            const res = await fetch("https://raw.githubusercontent.com/danhunziker73-lgtm/sportschuetzen/main/teilnehmer.json?t=" + Date.now());
+            teilnehmer = await res.json();
+            const select = document.getElementById("name");
+            teilnehmer.forEach(p => {
                 const opt = document.createElement("option");
-                opt.value = m; opt.textContent = m;
+                opt.value = String(p.lizenz || p.id);
+                opt.textContent = p.name;
                 select.appendChild(opt);
             });
-        } catch (e) { select.innerHTML = '<option>Fehler beim Laden</option>'; }
+        } catch(e) { console.error("Fehler Teilnehmer", e); }
     }
 
-    window.onload = () => { 
-        loadTermine(); 
-        loadMembers();
-        setTimeout(checkPushStatus, 2000); 
+    // FOTO VORSCHAU
+    document.getElementById("foto").addEventListener("change", e => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = ev => {
+            const img = document.getElementById("preview");
+            img.src = ev.target.result;
+            img.style.display = "block";
+            document.getElementById("upload-hint").style.display = "none";
+        };
+        reader.readAsDataURL(file);
+    });
+
+    // UPLOAD LOGIK
+    document.getElementById("uploadForm").onsubmit = async (e) => {
+        e.preventDefault();
+        const btn = document.getElementById("submitBtn");
+        btn.disabled = true; btn.textContent = "Wird gesendet...";
+
+        const selectedId = document.getElementById("name").value;
+        const user = teilnehmer.find(t => String(t.lizenz || t.id) === selectedId);
+        const reader = new FileReader();
+        
+        reader.onload = async () => {
+            try {
+                const res = await fetch(WORKER_UPLOAD_URL, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        action: "upload_standblatt",
+                        lizenz: selectedId,
+                        vorname: user ? user.vorname : "",
+                        nachname: user ? user.nachname : "",
+                        erzielt: document.getElementById("erzielt").value,
+                        maximal: document.getElementById("maximal").value,
+                        foto: reader.result
+                    })
+                });
+                if (res.ok) { alert("✔ Gesendet!"); location.reload(); } 
+                else { alert("Fehler beim Senden."); }
+            } catch (err) { alert("Netzwerkfehler."); }
+            finally { btn.disabled = false; btn.textContent = "Jetzt senden"; }
+        };
+        reader.readAsDataURL(document.getElementById("foto").files[0]);
     };
+
+    window.onload = () => { loadTeilnehmer(); loadTermine(); };
 </script>
 </body>
 </html>
