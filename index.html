@@ -76,11 +76,12 @@
   background: #fff;
   border-bottom: 1px solid var(--border);
   padding: 10px;
-  display: none;
+  display: none; /* Wird vom Script auf 'flex' gesetzt wenn nötig */
   align-items: center;
   justify-content: space-between;
-  font-size: 0.85rem;
-  animation: slideDown 0.3s ease;
+  position: sticky;
+  top: 60px; /* Die Höhe deines Headers */
+  z-index: 999;
 }
 @keyframes slideDown { from { transform: translateY(-100%); } to { transform: translateY(0); } }
 
@@ -124,13 +125,17 @@
   <span>🔔 Push-Mitteilungen aktiv?</span>
   <button onclick="handlePushClick()" style="background:var(--primary); color:#fff; border:none; padding:6px 12px; border-radius:8px; font-weight:600;">Aktivieren</button>
 </div>
-<main>
+    <main>
     <section id="page-home" class="page active-page">
         <div class="card" style="text-align:center;">
             <img src="icons/Logo_MUHEN.png" style="height:100px; margin-bottom:10px;">
             <h2>Sportschützen Muhen</h2>
             <p>Willkommen in deiner Vereins-App.</p>
         </div>
+        <div class="card" id="push-card-home" style="text-align:center;">
+    <p>🔔 Möchtest du Termine und Infos als Push erhalten?</p>
+    <button class="btn-main" onclick="handlePushClick()">Jetzt aktivieren</button>
+</div>
         <div class="card">
             <h3>Termine</h3>
             <div id="termine" class="termine-list">Lade Termine...</div>
@@ -223,24 +228,28 @@ async function handlePushClick() {
 }
 
 async function checkPushStatus() {
-    const banner = document.getElementById("push-banner");
-    const badge = document.getElementById("home-badge");
+  const banner = document.getElementById("push-banner");
+  const badge = document.getElementById("home-badge");
+  const pushCard = document.getElementById("push-card-home"); // Falls du die Card so benannt hast
 
-    window.OneSignalDeferred = window.OneSignalDeferred || [];
-    OneSignalDeferred.push(async function(OneSignal) {
-        // Warten bis OneSignal initialisiert ist
-        const isEnabled = await OneSignal.getNotificationPermission(); 
-        // Hinweis: isPushNotificationsEnabled() ist oft zuverlässiger
-        const active = await OneSignal.isPushNotificationsEnabled();
+  OneSignalDeferred.push(async function(OneSignal) {
+    // 1. Prüfen: Hat der Browser die Erlaubnis?
+    const permission = Notification.permission; // 'granted', 'denied', oder 'default'
+    // 2. Prüfen: Ist OneSignal aktiv?
+    const isSubscribed = await OneSignal.isPushNotificationsEnabled();
 
-        if (!active) {
-            banner.style.display = "flex";
-            badge.style.display = "block";
-        } else {
-            banner.style.display = "none";
-            badge.style.display = "none";
-        }
-    });
+    // Wenn nicht erlaubt ODER nicht abonniert -> Zeige Hinweis
+    if (permission !== "granted" || !isSubscribed) {
+      if (banner) banner.style.display = "flex";
+      if (badge) badge.style.display = "block";
+      if (pushCard) pushCard.style.display = "block";
+    } else {
+      // Alles okay -> Verstecken
+      if (banner) banner.style.display = "none";
+      if (badge) badge.style.display = "none";
+      if (pushCard) pushCard.style.display = "none";
+    }
+  });
 }
 
 /* --- Initialisierung beim Laden --- */
