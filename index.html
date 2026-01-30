@@ -51,6 +51,12 @@
         #preview { width: 100%; max-height: 200px; object-fit: contain; display: none; margin-top: 10px; }
         .btn-main { width: 100%; padding: 1.1rem; background: var(--primary); color: #fff; border: none; border-radius: 14px; font-weight: 700; }
 
+
+        
+        /* SPINNER */
+        #pull-spinner { position: fixed; top: -50px; left: 50%; transform: translateX(-50%); width: 40px; height: 40px; background: var(--primary); border-radius: 50%; display: flex; align-items: center; justify-content: center; z-index: 3000; transition: transform 0.1s linear; }
+        .spinner-icon { width: 20px; height: 20px; border: 3px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.8s infinite linear; }
+        @keyframes spin { to { transform: rotate(360deg); } }
 /* Roter Punkt am Home Button */
 .nav-home { position: relative; }
 .badge-dot {
@@ -107,18 +113,17 @@
   border-radius: 10px;
   margin-top: 10px;
 }
-        
-        /* SPINNER */
-        #pull-spinner { position: fixed; top: -50px; left: 50%; transform: translateX(-50%); width: 40px; height: 40px; background: var(--primary); border-radius: 50%; display: flex; align-items: center; justify-content: center; z-index: 3000; transition: transform 0.1s linear; }
-        .spinner-icon { width: 20px; height: 20px; border: 3px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.8s infinite linear; }
-        @keyframes spin { to { transform: rotate(360deg); } }
+ 
     </style>
 </head>
 <body>
 
 <div id="pull-spinner"><div class="spinner-icon"></div></div>
 <header><h1 id="main-title">Vereins-App</h1></header>
-
+<div id="push-banner">
+  <span>🔔 Push-Mitteilungen aktiv?</span>
+  <button onclick="handlePushClick()" style="background:var(--primary); color:#fff; border:none; padding:6px 12px; border-radius:8px; font-weight:600;">Aktivieren</button>
+</div>
 <main>
     <section id="page-home" class="page active-page">
         <div class="card" style="text-align:center;">
@@ -165,7 +170,10 @@
 <nav class="bottom-nav">
     <button class="nav-item" onclick="nav('page-jm', 'Jahresmeisterschaft', this)"><span>🏆</span>JM</button>
     <button class="nav-item" onclick="nav('page-gruppe', 'Gruppe', this)"><span>👥</span>Gruppe</button>
-    <button class="nav-item nav-home active" onclick="nav('page-home', 'Vereins-App', this)"><span>🏠</span></button>
+    <button class="nav-item nav-home active" onclick="nav('page-home', 'Vereins-App', this)">
+    <span class="badge-dot" id="home-badge"></span>    
+        <span>🏠</span>
+    </button>
     <button class="nav-item" onclick="nav('page-mannschaft', 'Mannschaft', this)"><span>🎯</span>Mannschaft</button>
     <button class="nav-item" onclick="nav('page-upload', 'Upload', this)"><span>📤</span>Upload</button>
 </nav>
@@ -203,5 +211,19 @@
         loadTermine(); 
     };
 </script>
+<div id="push-modal" class="modal-overlay">
+  <div class="modal-content">
+    <h3 style="margin-top:0">Mitteilungen erlauben</h3>
+    <p style="font-size:0.9rem; color:#ccc;">Du hast Push-Nachrichten deaktiviert. So schaltest du sie wieder ein:</p>
+    <ol style="font-size:0.85rem;">
+      <li>Öffne die <b>Einstellungen</b>.</li>
+      <li>Tippe auf <b>Mitteilungen</b>.</li>
+      <li>Suche <b>Sportschützen Muhen</b>.</li>
+      <li>Aktiviere <b>Mitteilungen erlauben</b>.</li>
+    </ol>
+    <button class="btn-close" onclick="closeModal()">Verstanden</button>
+  </div>
+</div>
+    
 </body>
 </html>
