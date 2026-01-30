@@ -179,80 +179,80 @@
 </nav>
 
 <script>
-    // Navigation Logik
-    function nav(id, title, btn) {
-        document.querySelectorAll('.page').forEach(p => p.classList.remove('active-page'));
-        document.getElementById(id).classList.add('active-page');
-        document.getElementById('main-title').textContent = title;
-        document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        window.scrollTo(0,0);
+// Navigation Logik
+function nav(id, title, btn) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active-page'));
+    document.getElementById(id).classList.add('active-page');
+    document.getElementById('main-title').textContent = title;
+    document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    window.scrollTo(0, 0);
+}
+
+// Pull-to-Refresh Logik
+let touchStart = 0;
+const spinner = document.getElementById('pull-spinner');
+document.addEventListener('touchstart', e => { touchStart = e.touches[0].pageY; }, { passive: true });
+document.addEventListener('touchmove', e => {
+    let dist = e.touches[0].pageY - touchStart;
+    if (window.scrollY <= 0 && dist > 0) {
+        spinner.style.top = `${Math.min(dist / 2, 100) - 40}px`;
+        spinner.style.transform = `translateX(-50%) scale(${dist > 90 ? 1.2 : 1})`;
     }
+}, { passive: true });
+document.addEventListener('touchend', e => {
+    if (window.scrollY <= 0 && (e.changedTouches[0].pageY - touchStart) > 90) location.reload();
+    else spinner.style.top = '-50px';
+}, { passive: true });
 
-    // Pull-to-Refresh Logik
-    let touchStart = 0;
-    const spinner = document.getElementById('pull-spinner');
-    document.addEventListener('touchstart', e => { touchStart = e.touches[0].pageY; }, {passive: true});
-    document.addEventListener('touchmove', e => {
-        let dist = e.touches[0].pageY - touchStart;
-        if (window.scrollY <= 0 && dist > 0) {
-            spinner.style.top = `${Math.min(dist/2, 100) - 40}px`;
-            spinner.style.transform = `translateX(-50%) scale(${dist > 90 ? 1.2 : 1})`;
-        }
-    }, {passive: true});
-    document.addEventListener('touchend', e => {
-        if (window.scrollY <= 0 && (e.changedTouches[0].pageY - touchStart) > 90) location.reload();
-        else spinner.style.top = '-50px';
-    }, {passive: true});
-
-    // Start-Initialisierung
-    /* --- Neue Push Funktionen --- */
-async function checkPushStatus() {
-  const banner = document.getElementById("push-banner");
-  const badge = document.getElementById("home-badge");
-  const pushBtnHome = document.getElementById("enablePush");
-
-  OneSignalDeferred.push(async function(OneSignal) {
-    const isEnabled = await OneSignal.isPushNotificationsEnabled();
-    
-    if (!isEnabled) {
-      banner.style.display = "flex";
-      badge.style.display = "block";
-    } else {
-      banner.style.display = "none";
-      badge.style.display = "none";
-      if(pushBtnHome) pushBtnHome.parentElement.style.display = "none";
-    }
-  });
+/* --- Push Funktionen --- */
+function closeModal() {
+    document.getElementById("push-modal").style.display = "none";
 }
 
 async function handlePushClick() {
-  OneSignalDeferred.push(async function(OneSignal) {
-    const permission = Notification.permission;
-    if (permission === "denied") {
-      document.getElementById("push-modal").style.display = "flex";
-    } else {
-      await OneSignal.showNativePrompt();
+    window.OneSignalDeferred = window.OneSignalDeferred || [];
+    OneSignalDeferred.push(async function(OneSignal) {
+        const permission = Notification.permission;
+        if (permission === "denied") {
+            document.getElementById("push-modal").style.display = "flex";
+        } else {
+            await OneSignal.showNativePrompt();
+        }
+    });
+}
+
+async function checkPushStatus() {
+    const banner = document.getElementById("push-banner");
+    const badge = document.getElementById("home-badge");
+
+    window.OneSignalDeferred = window.OneSignalDeferred || [];
+    OneSignalDeferred.push(async function(OneSignal) {
+        // Warten bis OneSignal initialisiert ist
+        const isEnabled = await OneSignal.getNotificationPermission(); 
+        // Hinweis: isPushNotificationsEnabled() ist oft zuverlässiger
+        const active = await OneSignal.isPushNotificationsEnabled();
+
+        if (!active) {
+            banner.style.display = "flex";
+            badge.style.display = "block";
+        } else {
+            banner.style.display = "none";
+            badge.style.display = "none";
+        }
+    });
+}
+
+/* --- Initialisierung beim Laden --- */
+window.addEventListener('load', () => {
+    // 1. Termine laden (Funktion aus termine.js)
+    if (typeof loadTermine === 'function') {
+        loadTermine();
     }
-  });
-}
 
-function closeModal() {
-  document.getElementById("push-modal").style.display = "none";
-}
-
-/* --- Aktualisiertes Window Onload --- */
-window.onload = () => {
-  // Push Status beim Start prüfen
-  checkPushStatus();
-
-  // Bestehende Logik für den großen Button auf der Home-Seite
-  const mainPushBtn = document.getElementById("enablePush");
-  if(mainPushBtn) {
-    mainPushBtn.addEventListener("touchstart", e => e.stopPropagation(), {passive: false});
-    mainPushBtn.addEventListener("click", handlePushClick);
-  }
-};
+    // 2. Push Status prüfen
+    checkPushStatus();
+});
 </script>
 <div id="push-modal" class="modal-overlay">
   <div class="modal-content">
