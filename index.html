@@ -6,7 +6,6 @@
 
 <title>Sportschützen Muhen App</title>
 
-<!-- Icons + Manifest -->
 <link rel="apple-touch-icon" href="icons/icon-512.png">
 <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
 <link rel="manifest" href="manifest.json">
@@ -15,12 +14,10 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 
-<!-- OneSignal SDK -->
 <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
 <script>
 window.OneSignalDeferred = window.OneSignalDeferred || [];
 OneSignalDeferred.push(async function(OneSignal) {
-  OneSignal.setLogLevel('debug');
   await OneSignal.init({
     appId: "d255c422-92e1-422e-b62b-6cead884627a",
     serviceWorkerPath: "/sportschuetzen/OneSignalSDKWorker.js",
@@ -38,7 +35,6 @@ OneSignalDeferred.push(async function(OneSignal) {
   --card:#ffffff;
   --text:#1f2937;
   --text-light:#6b7280;
-  --border:#d1d5db;
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 body{
@@ -48,7 +44,39 @@ body{
   padding-bottom:80px;
   color:var(--text);
   overflow-x:hidden;
+  /* Verhindert das Standard-Gummiband-Scrollen von iOS, damit unser Pull funktioniert */
+  overscroll-behavior-y: contain;
 }
+
+/* Pull to Refresh Spinner */
+#pull-spinner {
+  position: fixed;
+  top: -50px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 40px;
+  height: 40px;
+  background: var(--primary);
+  border-radius: 50%;
+  z-index: 3000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+  opacity: 0;
+  pointer-events: none;
+}
+#pull-spinner::after {
+  content: "";
+  width: 18px;
+  height: 18px;
+  border: 3px solid #fff;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
 header{
   background:var(--primary);
   color:#fff;
@@ -59,7 +87,6 @@ header{
   z-index:1000;
 }
 
-/* Navigation */
 .bottom-nav{
   position:fixed;
   bottom:0;
@@ -81,7 +108,6 @@ header{
   display:flex;
   flex-direction:column;
   align-items:center;
-  cursor:pointer;
   flex:1;
 }
 .nav-item span{font-size:1.4rem}
@@ -98,7 +124,6 @@ header{
   border:4px solid var(--bg)!important;
 }
 
-/* Layout */
 .page{display:none;padding:15px;max-width:600px;margin:0 auto}
 .active-page{display:block}
 .card{
@@ -114,8 +139,6 @@ iframe{
   border:none;
   border-radius:12px;
 }
-
-/* Buttons */
 .btn-main{
   width:100%;
   padding:1.1rem;
@@ -125,27 +148,6 @@ iframe{
   border-radius:14px;
   font-size:1.1rem;
   font-weight:700;
-  cursor:pointer;
-}
-
-/* Push Button */
-#enablePush{
-  position:relative;
-  z-index:3001;
-}
-
-/* Pull to refresh spinner */
-#pull-spinner{
-  position:fixed;
-  top:-50px;
-  left:50%;
-  transform:translateX(-50%);
-  width:40px;
-  height:40px;
-  background:var(--primary);
-  border-radius:50%;
-  z-index:3000;
-  pointer-events:none;
 }
 </style>
 </head>
@@ -159,60 +161,35 @@ iframe{
 </header>
 
 <main>
+  <section id="page-home" class="page active-page">
+    <div class="card" style="text-align:center">
+      <img src="https://raw.githubusercontent.com/danhunziker73-lgtm/sportschuetzen/main/icons/Logo_MUHEN.png" style="height:100px">
+      <h2>Sportschützen Muhen</h2>
+      <p>Willkommen in deiner digitalen Vereins-App.</p>
+    </div>
 
-<section id="page-home" class="page active-page">
+    <div class="card" style="text-align:center">
+      <p>🔔 Möchtest du Benachrichtigungen erhalten?</p>
+      <button id="enablePush" class="btn-main">Push aktivieren</button>
+    </div>
 
-  <div class="card" style="text-align:center">
-    <img src="https://raw.githubusercontent.com/danhunziker73-lgtm/sportschuetzen/main/icons/Logo_MUHEN.png" style="height:100px">
-    <h2>Sportschützen Muhen</h2>
-    <p>Willkommen in deiner digitalen Vereins-App.</p>
-  </div>
+    <div class="card">
+      <h3>Termine</h3>
+      <div id="termine">Lade Termine...</div>
+    </div>
+  </section>
 
-  <div class="card" style="text-align:center">
-    <p>🔔 Möchtest du Benachrichtigungen zu Terminen erhalten?</p>
-    <button id="enablePush" class="btn-main">Push aktivieren</button>
-  </div>
-
-  <div class="card">
-    <h3>Termine</h3>
-    <div id="termine">Lade Termine...</div>
-  </div>
-
-</section>
-
-<section id="page-jm" class="page">
-  <iframe src="app/app_jm.html"></iframe>
-</section>
-
-<section id="page-gruppe" class="page">
-  <iframe src="app/app_gruppe.html"></iframe>
-</section>
-
-<section id="page-mannschaft" class="page">
-  <iframe src="app/app_mannschaft.html"></iframe>
-</section>
-
-<section id="page-upload" class="page">
-  <div class="card">
-    <h2>Standblatt Upload</h2>
-    <form id="uploadForm">
-      <label>Schütze</label>
-      <select id="name"></select>
-
-      <label>Foto</label>
-      <input type="file" id="foto" accept="image/*">
-
-      <label>Erzielt</label>
-      <input type="number" id="erzielt">
-
-      <label>Maximum</label>
-      <input type="number" id="maximal">
-
-      <button id="submitBtn" class="btn-main">Jetzt senden</button>
-    </form>
-  </div>
-</section>
-
+  <section id="page-jm" class="page"><iframe src="app/app_jm.html"></iframe></section>
+  <section id="page-gruppe" class="page"><iframe src="app/app_gruppe.html"></iframe></section>
+  <section id="page-mannschaft" class="page"><iframe src="app/app_mannschaft.html"></iframe></section>
+  <section id="page-upload" class="page">
+    <div class="card">
+      <h2>Standblatt Upload</h2>
+      <form id="uploadForm">
+        <button id="submitBtn" class="btn-main">Jetzt senden</button>
+      </form>
+    </div>
+  </section>
 </main>
 
 <nav class="bottom-nav">
@@ -224,20 +201,37 @@ iframe{
 </nav>
 
 <script>
-/* ---------- Pull to Refresh (Button-safe) ---------- */
-let touchStart = 0;
+/* ---------- Optimiertes Pull to Refresh ---------- */
+let tStart = 0;
+let tMove = 0;
+const pDist = 100; // Pixel bis Refresh
+const spinner = document.getElementById("pull-spinner");
 
 document.addEventListener("touchstart", e => {
-  if (e.target.closest("button")) return;
-  touchStart = e.touches[0].pageY;
-}, {passive:true});
+  if (window.scrollY === 0) tStart = e.touches[0].pageY;
+}, {passive: true});
 
-document.addEventListener("touchend", e => {
-  if (e.target.closest("button")) return;
-  if (window.scrollY === 0 && e.changedTouches[0].pageY - touchStart > 90) {
-    location.reload();
+document.addEventListener("touchmove", e => {
+  if (tStart === 0 || e.target.closest("button") || e.target.closest("iframe")) return;
+  tMove = e.touches[0].pageY;
+  const dist = tMove - tStart;
+  if (dist > 0 && window.scrollY === 0) {
+    const moveY = Math.min(dist * 0.4, pDist); 
+    spinner.style.opacity = dist / pDist;
+    spinner.style.transform = `translateX(-50%) translateY(${moveY}px)`;
   }
-}, {passive:true});
+}, {passive: true});
+
+document.addEventListener("touchend", () => {
+  if (window.scrollY === 0 && (tMove - tStart) > pDist) {
+    spinner.style.transform = `translateX(-50%) translateY(120px)`;
+    location.reload();
+  } else {
+    spinner.style.transform = `translateX(-50%) translateY(0)`;
+    spinner.style.opacity = "0";
+  }
+  tStart = 0; tMove = 0;
+}, {passive: true});
 
 /* ---------- Navigation ---------- */
 function nav(id,title,btn){
@@ -249,17 +243,16 @@ function nav(id,title,btn){
   window.scrollTo(0,0);
 }
 
-/* ---------- OneSignal Push ---------- */
+/* ---------- OneSignal Push Fix ---------- */
 window.onload = () => {
   const pushBtn = document.getElementById("enablePush");
-
-  // Touch nicht an Pull-to-Refresh weitergeben
-  pushBtn.addEventListener("touchstart", e => e.stopPropagation(), {passive:true});
-  pushBtn.addEventListener("touchend", e => e.stopPropagation());
+  
+  // Verhindert, dass der Button-Touch den Refresh stört
+  pushBtn.addEventListener("touchstart", e => e.stopPropagation(), {passive: false});
 
   OneSignalDeferred.push(async function(OneSignal){
     const enabled = await OneSignal.isPushNotificationsEnabled();
-    if (enabled) pushBtn.style.display = "none";
+    if (enabled) pushBtn.parentElement.style.display = "none";
 
     pushBtn.addEventListener("click", async () => {
       await OneSignal.showNativePrompt();
