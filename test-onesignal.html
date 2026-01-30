@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<title>OneSignal Test</title>
+
+<link rel="manifest" href="/sportschuetzen/manifest.json">
+
+<script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+<script>
+window.OneSignalDeferred = window.OneSignalDeferred || [];
+OneSignalDeferred.push(async function(OneSignal) {
+
+  console.log("=== OneSignal TEST START ===");
+
+  await OneSignal.init({
+    appId: "4fd0fec9-a8dd-40d9-94e9-7ba330c07176",
+    serviceWorkerPath: "/sportschuetzen/OneSignalSDKWorker.js",
+    serviceWorkerUpdaterPath: "/sportschuetzen/OneSignalSDKUpdaterWorker.js",
+    serviceWorkerParam: { scope: "/sportschuetzen/" }
+  });
+
+  console.log("init OK");
+
+  const perm = await OneSignal.Notifications.permission;
+  console.log("permission:", perm);
+
+  const subscribed = await OneSignal.User.PushSubscription.optedIn;
+  console.log("optedIn:", subscribed);
+
+  const id = await OneSignal.User.PushSubscription.id;
+  console.log("subscription id:", id);
+});
+</script>
+</head>
+<body>
+<h1>OneSignal Push Test</h1>
+<p>Öffne DevTools → Console</p>
+</body>
+</html>
