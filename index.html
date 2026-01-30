@@ -158,6 +158,16 @@
             <img src="https://raw.githubusercontent.com/danhunziker73-lgtm/sportschuetzen/main/icons/Logo_MUHEN.png" style="height:100px; margin-bottom:10px;">
             <h2>Sportschützen Muhen</h2>
             <p>Willkommen in deiner digitalen Vereins-App.</p>
+            </div>
+            
+            <div class="card" style="text-align:center;">
+  <p style="margin-bottom:10px;">
+    🔔 Möchtest du Benachrichtigungen zu Terminen erhalten?
+  </p>
+  <button id="enablePush" class="btn-main">
+    Push aktivieren
+  </button>
+</div>
         </div>
         <div class="card">
             <h3>Termine</h3>
@@ -380,7 +390,30 @@
         reader.readAsDataURL(document.getElementById("foto").files[0]);
     };
 
-    window.onload = () => { loadTeilnehmer(); loadTermine(); };
+    window.onload = () => { 
+    loadTeilnehmer(); 
+    loadTermine(); 
+
+    // --- iOS Push Button Logik ---
+    const pushBtn = document.getElementById("enablePush");
+    if (!pushBtn) return;
+
+    // Button ausblenden, wenn Push bereits erlaubt
+    OneSignal.isPushNotificationsEnabled().then(enabled => {
+        if (enabled) {
+            pushBtn.style.display = "none";
+        }
+    });
+
+    // Klick → iOS-erlaubter Prompt
+    pushBtn.addEventListener("click", async () => {
+        try {
+            await OneSignal.showNativePrompt();
+        } catch (e) {
+            console.error("Push Prompt Fehler:", e);
+        }
+    });
+};
 </script>
 </body>
 </html>
