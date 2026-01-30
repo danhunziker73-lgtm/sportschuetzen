@@ -1,0 +1,23 @@
+<script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+<script>
+window.OneSignalDeferred = window.OneSignalDeferred || [];
+OneSignalDeferred.push(async function(OneSignal) {
+
+  console.log("[OS] init start");
+
+  await OneSignal.init({
+    appId: "d255c422-92e1-422e-b62b-6cead884627a",
+    serviceWorkerPath: "/sportschuetzen/OneSignalSDKWorker.js",
+    serviceWorkerUpdaterPath: "/sportschuetzen/OneSignalSDKUpdaterWorker.js",
+    serviceWorkerParam: { scope: "/sportschuetzen/" }
+  });
+
+  console.log("[OS] init done");
+
+  const perm = await OneSignal.Notifications.permission;
+  console.log("[OS] permission:", perm);
+
+  const id = await OneSignal.User.PushSubscription.id;
+  console.log("[OS] subscription id:", id);
+});
+</script>
