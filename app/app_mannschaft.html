@@ -236,14 +236,7 @@ document.addEventListener("visibilitychange", () => {
 });
     window.onload = loadData;
 
-    // SERVICE WORKER REGISTRIERUNG
-    if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-            navigator.serviceWorker.register('/sportschuetzen/sw.js')
-                .then(reg => console.log('SW aktiv'))
-                .catch(err => console.log('SW Fehler', err));
-        });
-    }
+ 
 </script>
 </body>
 </html>
