@@ -386,15 +386,6 @@ header h1 {
         }
     }
 
-    async function askPush() {
-    console.log("Starte Push-Abfrage...");
-    window.OneSignalDeferred = window.OneSignalDeferred || [];
-    OneSignalDeferred.push(async function(OneSignal) {
-        await OneSignal.Notifications.requestPermission();
-        console.log("Permission Status:", OneSignal.Notifications.permission);
-    });
-}
-
     
     // FOTO VORSCHAU
   document.getElementById("foto").addEventListener("change", e => {
@@ -441,7 +432,7 @@ header h1 {
         reader.readAsDataURL(document.getElementById("foto").files[0]);
     };
 
-    window.onload = () => { loadTeilnehmer(); loadTermine(); askPush(); }// ← HIER
+    window.onload = () => { loadTeilnehmer(); loadTermine(); }// ← HIER
 
 </script>
 </body>
