@@ -1,5 +1,3 @@
-
-
 <!DOCTYPE html>
 <html lang="de">
 <head>
@@ -45,8 +43,25 @@ main {
     padding-top: calc(70px + env(safe-area-inset-top));
 }
 
+       header {
+    background: var(--primary);
+    color: white;
+    padding: calc(15px + env(safe-area-inset-top)) 15px 15px 15px;
+    text-align: center;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    z-index: 1000;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
 
-  /* hier evtl. ab Box Shadow löschen */
+header h1 {
+    margin: 0;
+    font-size: 1.3rem;
+    text-align: center;  /* zwingend */
+}
+ 
         /* NAVIGATION */
         .bottom-nav { 
             position: fixed; bottom: 0; width: 100%; height: 75px;
