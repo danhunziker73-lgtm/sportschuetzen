@@ -449,14 +449,6 @@ document.addEventListener("visibilitychange", () => {
 });
     window.onload = () => { loadTeilnehmer(); loadTermine(); }// ← HIER
 
-    // Service Worker Registrierung
-if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sportschuetzen/sw.js') // Pfad prüfen!
-            .then(reg => console.log('Service Worker registriert'))
-            .catch(err => console.log('Registrierung fehlgeschlagen', err));
-    });
-}
 
     
 </script>
