@@ -5,7 +5,7 @@
   "start_url": "/sportschuetzen/",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#0f3a5d",
+  "background_color": "#ffffff",
   "theme_color": "#0f3a5d",
   "icons": [
     {
