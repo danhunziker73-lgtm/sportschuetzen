@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Grenzlandcup</title>
+    <style>
+        :root {
+          --primary: #0f3c5c;
+          --bg: #f4f6f8;
+          --text: #333;
+          --line: #e0e0e0;
+          --hover: #e6eef5;
+        }
+
+        body {
+          font-family: Arial, sans-serif;
+          background: var(--bg);
+          margin: 0;
+          padding: 15px;
+          color: var(--text);
+        }
+
+        .subtitle { color: #666; margin-bottom: 15px; font-size: 14px; }
+        .table-wrapper { overflow-x: auto; margin-bottom: 20px; }
+
+        table {
+          width: 100%;
+          border-collapse: collapse;
+          background: #fff;
+          box-shadow: 0 2px 6px rgba(0,0,0,.08);
+          border-radius: 6px;
+          overflow: hidden;
+        }
+
+        /* Hoher blauer Balken */
+        th {
+          background: var(--primary);
+          color: #fff;
+          font-size: 14px;
+          font-weight: 600;
+          padding: 18px 10px;
+          text-align: center;
+        }
+
+        td {
+          padding: 12px 10px;
+          text-align: center;
+          border-bottom: 1px solid var(--line);
+          font-size: 14px;
+        }
+
+        td.team {
+          font-weight: bold;
+          text-align: left;
+          color: var(--primary);
+          min-width: 120px;
+        }
+
+        .cell { cursor: pointer; transition: background 0.2s; font-weight: bold; }
+        .cell:hover { background: var(--hover); }
+
+        /* Detailansicht Layout */
+        .detail { display: none; background: #f9f9f9; padding: 15px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.05); }
+        h3 { font-size: 16px; margin-top: 0; color: var(--primary); text-align: left; }
+
+        /* Anpassung für Grenzlandcup (Name + 1 Score) */
+        .player, .total-row { 
+            display: flex; 
+            justify-content: space-between;
+            padding: 10px 0; 
+            align-items: center; 
+        }
+        
+        .player { border-bottom: 1px solid #eee; font-size: 14px; }
+
+        .total-row { 
+            margin-top: 10px;
+            border-top: 2px solid var(--primary);
+            color: var(--primary);
+            font-weight: bold;
+            font-size: 16px;
+        }
+
+        .name-label { text-align: left; flex-grow: 1; }
+        .score-val { text-align: right; min-width: 50px; }
+
+        /* Pull-to-Refresh Spinner */
+        #pull-spinner {
+          position: fixed; top: -50px; left: 50%; transform: translateX(-50%);
+          width: 40px; height: 40px; background: var(--primary); border-radius: 50%;
+          display: flex; align-items: center; justify-content: center; z-index: 9999; transition: top 0.15s;
+          box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+        }
+        .spinner-icon { width: 18px; height: 18px; border: 3px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.8s infinite linear; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+    <div id="pull-spinner"><div class="spinner-icon"></div></div>
+    <div class="subtitle" id="sub-title">Daten werden geladen...</div>
+    <div id="overview"></div>
+
+<script>
+    // Konfiguration für den Worker (Grenzlandcup nutzt Typ 'mannschaft')
+    const WORKER_URL = "https://gruppe.dan-hunziker73.workers.dev";
+    const urlParams = new URLSearchParams(window.location.search);
+    const selectedYear = urlParams.get('jahr') || 'aktuell'; 
+    let raw = []; let teams = [];
+
+    // Pull-to-Refresh Logik
+    let touchStart = 0;
+    document.addEventListener('touchstart', e => { touchStart = e.touches[0].pageY; }, {passive: true});
+    document.addEventListener('touchmove', e => {
+        let distance = e.touches[0].pageY - touchStart;
+        if (window.scrollY <= 0 && distance > 0) document.getElementById('pull-spinner').style.top = Math.min(distance / 2.5, 60) + 'px';
+    }, {passive: true});
+    document.addEventListener('touchend', e => {
+        if (window.scrollY <= 0 && (e.changedTouches[0].pageY - touchStart) > 130) location.reload();
+        else document.getElementById('pull-spinner').style.top = '-50px';
+    }, {passive: true});
+
+    async function loadData() {
+        try {
+            // Fetch für Grenzlandcup (1 Resultat pro Schütze)
+            const response = await fetch(`${WORKER_URL}?type=mannschaft&jahr=${selectedYear}`);
+            const json = await response.json();
+            const rows = json.table?.rows || [];
+            if (rows.length === 0) return;
+
+            raw = rows.map(r => {
+                let row = { name: r.c[0]?.v || "" };
+                for(let i=1; i<=3; i++){
+                    row[`r${i}Team`] = r.c[(i-1)*2+1]?.v || "";
+                    row[`r${i}Pkt`]  = Number(r.c[(i-1)*2+2]?.v) || 0;
+                }
+                return row;
+            });
+
+            teams = [...new Set(raw.flatMap(r => Object.keys(r).filter(k => k.includes("Team")).map(k => r[k]).filter(Boolean)))].sort();
+            document.getElementById('sub-title').textContent = `Grenzlandcup Übersicht – auf Punkte klicken`;
+            buildTable();
+        } catch (e) { 
+            document.getElementById("overview").innerHTML = "Fehler beim Laden."; 
+        }
+    }
+
+    function buildTable(){
+        let html = `<div class="table-wrapper"><table><tr><th style="text-align:left; padding-left:15px;">Mannschaft</th><th>R1</th><th>R2</th><th>R3</th></tr>`;
+        teams.forEach((team, index) => {
+            html += `<tr><td class="team">${team}</td>`;
+            for(let r=1; r<=3; r++){
+                const sum = raw.filter(p => p[`r${r}Team`] === team).reduce((a, b) => a + b[`r${r}Pkt`], 0);
+                html += `<td class="cell" onclick="toggleDetail('${team.replace(/'/g,"\\'")}', ${r}, ${index})">${sum || "–"}</td>`;
+            }
+            html += `</tr><tr><td colspan="4" style="padding:0; border:0;"><div id="detail-div-${index}" class="detail"></div></td></tr>`;
+        });
+        document.getElementById("overview").innerHTML = html + `</table></div>`;
+    }
+
+    function toggleDetail(team, round, index){
+        const div = document.getElementById(`detail-div-${index}`);
+        
+        // Toggle Logik (Schliessen wenn bereits offen)
+        const currentId = team + round;
+        if(div.style.display === "block" && div.dataset.active === currentId){ 
+            div.style.display = "none"; 
+            return; 
+        }
+        
+        document.querySelectorAll('.detail').forEach(d => d.style.display = 'none');
+        const list = raw.filter(p => p[`r${round}Team`] === team);
+        let total = 0;
+        
+        let html = `<h3 style="margin-top:0;">${team} – Runde ${round}</h3>`;
+        list.forEach(p => {
+            const pkt = p[`r${round}Pkt`]; 
+            total += pkt;
+            html += `
+                <div class="player">
+                    <div class="name-label">${p.name}</div>
+                    <div class="score-val"><strong>${pkt}</strong></div>
+                </div>`;
+        });
+
+        html += `
+            <div class="total-row">
+                <div class="name-label">Gesamt:</div>
+                <div class="score-val">${total}</div>
+            </div>`;
+
+        div.innerHTML = html;
+        div.style.display = "block";
+        div.dataset.active = currentId;
+    }
+
+    window.onload = loadData;
+</script>
+</body>
+</html>
