@@ -30,12 +30,23 @@
         }
         
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        body { font-family: 'Inter', sans-serif; background: var(--bg); margin: 0; padding-bottom: 80px; color: var(--text); overflow-x: hidden; }
-      
-        header { background: var(--primary); color: white; padding: 15px; text-align: center; position: fixed; top: 0; left: 0; width: 100%; z-index: 1000;  box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+       body { font-family: 'Inter', sans-serif; background: var(--bg); margin: 0; padding-bottom: 80px; color: var(--text); overflow-x: hidden; }
+
         main { 
-            padding-top: 70px;
+        padding-top: 70px;
+      body { 
+    font-family: 'Inter', sans-serif; 
+    background: var(--bg); 
+    margin: 0; 
+    padding-bottom: calc(75px + env(safe-area-inset-bottom)); 
+    color: var(--text); 
+    overflow-x: hidden; 
 }
+
+main { 
+    padding-top: calc(70px + env(safe-area-inset-top));
+}
+
 
   /* hier evtl. ab Box Shadow löschen */
         /* NAVIGATION */
@@ -64,7 +75,15 @@
         .active-page { display: block; }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         .card { background: var(--card); padding: 1.5rem; border-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 15px; }
-        iframe { width: 100%; height: calc(100dvh - 170px); border: none; border-radius: 12px; background: #fff; }
+       iframe { 
+    width: 100%; 
+    height: calc(100vh - 70px - 75px - env(safe-area-inset-top) - env(safe-area-inset-bottom)); 
+    max-height: 100%; 
+    border: none; 
+    border-radius: 12px; 
+    background: #fff; 
+    display: block;
+}
 
         /* TERMINE TIMELINE */
         .termine-list { display: flex; flex-direction: column; gap: 14px; }
@@ -119,7 +138,7 @@
     align-items: center;
     justify-content: center;
     box-shadow: 0 3px 10px rgba(0,0,0,0.2);
-    z-index: 3000;
+    z-index: 1001;
     transition: transform 0.1s linear;
 }
 
