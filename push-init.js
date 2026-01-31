@@ -1,7 +1,7 @@
 window.OneSignalDeferred = window.OneSignalDeferred || [];
 
 OneSignalDeferred.push(async function(OneSignal) {
-    // 1. Init
+    // 1. Initialisierung
     await OneSignal.init({
         appId: "4fd0fec9-a8dd-40d9-94e9-7ba330c07176",
         serviceWorkerPath: "/sportschuetzen/push/onesignal/OneSignalSDKWorker.js",
@@ -10,45 +10,61 @@ OneSignalDeferred.push(async function(OneSignal) {
     });
     console.log("OneSignal Init OK");
 
-    // 2. Prüfen, ob bereits blockiert
-    if (OneSignal.Notifications.permissionNative === "denied") {
-        console.warn("Push ist blockiert.");
+    // 2. Prüfen, ob Push bereits erlaubt/abgelehnt wurde
+    const perm = OneSignal.Notifications.permission;
+    console.log("Aktuelle Permission:", perm);
+
+    if (perm === "denied") {
         showPushWarning();
+        localStorage.setItem("pushAsked", "true"); // merken, dass wir schon gefragt haben
+        return;
     }
 
-    // 3. Button erstellen, um Prompt von User-Click aus zu starten
+    // 3. Nur zeigen, wenn noch nicht gefragt wurde
+    const alreadyAsked = localStorage.getItem("pushAsked");
+    if (!alreadyAsked && perm !== "granted") {
+        createPushButton(OneSignal);
+    }
+});
+
+// Funktion, um den Button einmalig zu erzeugen
+function createPushButton(OneSignal) {
+    const container = document.getElementById("page-home") || document.body;
     const btn = document.createElement("button");
-    btn.textContent = "Push aktivieren";
+    btn.textContent = "🔔 Push aktivieren";
     btn.style.cssText = `
-        position: fixed;
-        bottom: 100px;
-        left: 50%;
-        transform: translateX(-50%);
-        padding: 12px 20px;
+        width: 100%;
+        padding: 12px;
+        font-size: 1rem;
+        font-weight: 600;
         background: var(--primary);
         color: white;
         border: none;
         border-radius: 12px;
-        font-weight: 700;
-        z-index: 9999;
+        margin: 10px 0;
         cursor: pointer;
     `;
-    document.body.appendChild(btn);
-
     btn.addEventListener("click", async () => {
-        btn.disabled = true;
-        console.log("Starte OneSignal native Prompt...");
         try {
-            await OneSignal.showNativePrompt();
-            console.log("Prompt sollte jetzt erschienen sein");
+            const result = await OneSignal.Notifications.requestPermission();
+            console.log("Permission Status:", result);
+            if (result === "granted") {
+                alert("✔ Push aktiviert!");
+                btn.remove();
+            } else if (result === "denied") {
+                showPushWarning();
+                btn.remove();
+            }
         } catch (err) {
-            console.error("Fehler beim Anzeigen des Push-Prompts", err);
+            console.error(err);
         } finally {
-            btn.remove();
+            localStorage.setItem("pushAsked", "true"); // merken, dass wir schon gefragt haben
         }
     });
-});
+    container.prepend(btn);
+}
 
+// Banner, wenn Push blockiert ist
 function showPushWarning() {
     if (document.getElementById("push-denied-banner")) return;
 
@@ -72,6 +88,20 @@ function showPushWarning() {
         </span>
     `;
     
-    const homePage = document.getElementById("page-home");
-    if (homePage) homePage.prepend(banner);
+    const homePage = document.getElementById("page-home") || document.body;
+    homePage.prepend(banner);
+}
+
+// Optional: Manuelles Abfragen über Button
+async function askPush() {
+    console.log("Starte Abfrage...");
+    OneSignalDeferred.push(async function(OneSignal) {
+        const permission = await OneSignal.Notifications.requestPermission();
+        console.log("Permission Status:", permission);
+        if (permission === "granted") {
+            const banner = document.getElementById("push-denied-banner");
+            if (banner) banner.remove();
+        }
+        localStorage.setItem("pushAsked", "true");
+    });
 }
