@@ -1,5 +1,13 @@
 window.OneSignalDeferred = window.OneSignalDeferred || [];
 
+// Plattform-Erkennung
+function isIosWebApp() {
+    const ua = window.navigator.userAgent;
+    const isIos = /iPad|iPhone|iPod/.test(ua);
+    const standalone = window.navigator.standalone === true;
+    return isIos && standalone;
+}
+
 OneSignalDeferred.push(async function(OneSignal) {
     // 1. Initialisierung
     await OneSignal.init({
@@ -8,100 +16,90 @@ OneSignalDeferred.push(async function(OneSignal) {
         serviceWorkerUpdaterPath: "/sportschuetzen/push/onesignal/OneSignalSDKUpdaterWorker.js",
         serviceWorkerParam: { scope: "/sportschuetzen/push/onesignal/" }
     });
+
     console.log("OneSignal Init OK");
 
-    // 2. Prüfen, ob Push bereits erlaubt/abgelehnt wurde
-    const perm = OneSignal.Notifications.permission;
-    console.log("Aktuelle Permission:", perm);
+    // 2. Berechtigungsstatus prüfen
+    const perm = OneSignal.Notifications.permission; // "granted", "default", "denied"
+    console.log("OneSignal permission:", perm);
 
-    if (perm === "denied") {
-        showPushWarning();
-        localStorage.setItem("pushAsked", "true"); // merken, dass wir schon gefragt haben
+    // 3. Banner oder Button anzeigen, abhängig von Status
+    if (isIosWebApp()) {
+        // iOS Web-App kann nie Push
+        showPushInfo("📢 Push-Mitteilungen funktionieren in iOS Web-Apps leider nicht. " +
+                     "Bitte Safari auf macOS oder Android benutzen.");
         return;
     }
 
-    // 3. Nur zeigen, wenn noch nicht gefragt wurde
-    const alreadyAsked = localStorage.getItem("pushAsked");
-    if (!alreadyAsked && perm !== "granted") {
+    if (perm === "denied") {
+        // Nutzer hat blockiert
+        showPushInfo("📢 Mitteilungen sind blockiert. Bitte in den Browser-/Geräteeinstellungen aktivieren.");
+    } else if (perm === "default") {
+        // Noch nicht gefragt → Button anzeigen
         createPushButton(OneSignal);
     }
 });
 
-// Funktion, um den Button einmalig zu erzeugen
-function createPushButton(OneSignal) {
-    const container = document.getElementById("page-home") || document.body;
-    const btn = document.createElement("button");
-    btn.textContent = "🔔 Push aktivieren";
-    btn.style.cssText = `
-        width: 100%;
-        padding: 12px;
-        font-size: 1rem;
-        font-weight: 600;
-        background: var(--primary);
-        color: white;
-        border: none;
-        border-radius: 12px;
-        margin: 10px 0;
-        cursor: pointer;
-    `;
-    btn.addEventListener("click", async () => {
-        try {
-            const result = await OneSignal.Notifications.requestPermission();
-            console.log("Permission Status:", result);
-            if (result === "granted") {
-                alert("✔ Push aktiviert!");
-                btn.remove();
-            } else if (result === "denied") {
-                showPushWarning();
-                btn.remove();
-            }
-        } catch (err) {
-            console.error(err);
-        } finally {
-            localStorage.setItem("pushAsked", "true"); // merken, dass wir schon gefragt haben
-        }
-    });
-    container.prepend(btn);
-}
-
-// Banner, wenn Push blockiert ist
-function showPushWarning() {
-    if (document.getElementById("push-denied-banner")) return;
-
-    const banner = document.createElement("div");
-    banner.id = "push-denied-banner";
-    banner.style.cssText = `
-        background: #feb2b2; 
-        color: #9b2c2c; 
-        padding: 12px; 
-        margin: 10px; 
-        border-radius: 12px; 
-        font-size: 0.85rem; 
-        font-weight: 600; 
-        text-align: center;
-        border: 1px solid #f56565;
-    `;
-    banner.innerHTML = `
-        📢 Mitteilungen sind blockiert.<br>
-        <span style="font-size: 0.75rem; font-weight: 400;">
-            Bitte in den Geräte-Einstellungen für diese App aktivieren.
-        </span>
-    `;
-    
-    const homePage = document.getElementById("page-home") || document.body;
-    homePage.prepend(banner);
-}
-
-// Optional: Manuelles Abfragen über Button
+// Funktion für manuellen Button
 async function askPush() {
-    console.log("Starte Abfrage...");
     OneSignalDeferred.push(async function(OneSignal) {
         const permission = await OneSignal.Notifications.requestPermission();
         console.log("Permission Status:", permission);
+
         if (permission === "granted") {
-            const banner = document.getElementById("push-denied-banner");
+            const banner = document.getElementById("push-info-banner");
             if (banner) banner.remove();
+            alert("✅ Push-Mitteilungen aktiviert!");
+        } else if (permission === "denied") {
+            showPushInfo("📢 Mitteilungen blockiert. Bitte in den Browser-/Geräteeinstellungen aktivieren.");
         }
-        localStorage.setItem("pushAsked", "true");
     });
+}
+
+// Banner/Info anzeigen
+function showPushInfo(text) {
+    if (document.getElementById("push-info-banner")) return;
+
+    const banner = document.createElement("div");
+    banner.id = "push-info-banner";
+    banner.style.cssText = `
+        background: #fefcbf;
+        color: #92400e;
+        padding: 12px;
+        margin: 10px;
+        border-radius: 12px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        text-align: center;
+        border: 1px solid #f59e0b;
+    `;
+    banner.innerHTML = text;
+
+    const homePage = document.getElementById("page-home");
+    if (homePage) homePage.prepend(banner);
+}
+
+// Button erzeugen, falls noch nicht gefragt
+function createPushButton(OneSignal) {
+    if (document.getElementById("push-activate-btn")) return;
+
+    const btn = document.createElement("button");
+    btn.id = "push-activate-btn";
+    btn.textContent = "🔔 Push aktivieren";
+    btn.style.cssText = `
+        display:block;
+        margin:10px auto;
+        padding:10px 20px;
+        font-size:1rem;
+        font-weight:600;
+        background:#fbbf24;
+        color:#92400e;
+        border:none;
+        border-radius:12px;
+        cursor:pointer;
+    `;
+    btn.onclick = askPush;
+
+    const homePage = document.getElementById("page-home");
+    if (homePage) homePage.prepend(btn);
 }
