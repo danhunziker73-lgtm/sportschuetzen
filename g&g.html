@@ -4,110 +4,122 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
-        :root { --primary: #0f3c5c; --bg: #f4f6f8; --text: #333; --line: #e0e0e0; }
+        :root { --primary: #0f3c5c; --bg: #f4f6f8; --text: #333; --line: #e0e0e0; --hover: #e6eef5; }
         body { font-family: Arial, sans-serif; background: var(--bg); margin: 0; padding: 15px; color: var(--text); }
         .subtitle { color: #666; margin-bottom: 10px; font-size: 14px; font-weight: bold; }
         .table-wrapper { overflow-x: auto; margin-bottom: 30px; }
-        table { width: 100%; table-layout: fixed; border-collapse: collapse; background: #fff; box-shadow: 0 2px 6px rgba(0,0,0,.08); border-radius: 6px; }
-        th { background: var(--primary); color: #fff; font-size: 14px; height: 60px; padding: 0 10px; }
-        .col-team { width: 40%; text-align: left; padding-left: 15px; }
-        .col-round { width: 45px; text-align: center; font-size: 12px; }
-        td { padding: 12px 10px; border-bottom: 1px solid var(--line); font-size: 14px; text-align: center; }
+        
+        .separator { display: flex; align-items: center; text-align: center; margin: 40px 0 20px; color: var(--primary); font-weight: bold; font-size: 18px; }
+        .separator::before, .separator::after { content: ''; flex: 1; border-bottom: 2px solid var(--line); }
+        .separator:not(:empty)::before { margin-right: .5em; }
+        .separator:not(:empty)::after { margin-left: .5em; }
+
+        table { width: 100%; table-layout: fixed; border-collapse: collapse; background: #fff; box-shadow: 0 2px 6px rgba(0,0,0,.08); border-radius: 6px; overflow: hidden; }
+        th { background: var(--primary); color: #fff; font-size: 14px; height: 60px; padding: 0 10px; box-sizing: border-box; vertical-align: middle; }
+        
+        .col-team { width: 55%; text-align: left; padding-left: 15px; }
+        .col-round { width: 15%; text-align: center; }
+
+        td { padding: 12px 10px; border-bottom: 1px solid var(--line); font-size: 14px; }
         td.team { font-weight: bold; text-align: left; color: var(--primary); padding-left: 15px; }
-        .cell { cursor: pointer; font-weight: bold; }
-        .cell:hover { background: #e6eef5; }
-        .detail { display: none; background: #f9f9f9; padding: 15px; border-bottom: 2px solid var(--line); text-align: left; }
-        h3 { font-size: 15px; margin: 5px 0; color: var(--primary); text-align: center; border-bottom: 1px solid #ddd; padding-bottom: 5px; }
-        .player-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #eee; font-size: 13px; }
-        .total-row { display: flex; justify-content: space-between; margin-top: 8px; font-weight: bold; color: var(--primary); border-top: 2px solid var(--primary); padding-top: 5px; }
-        .stellung { font-size: 9px; font-weight: 800; padding: 1px 5px; border-radius: 8px; text-transform: uppercase; margin-left: 5px; border: 1px solid #ccc; }
+        .cell { text-align: center; cursor: pointer; transition: background 0.2s; font-weight: bold; }
+        .cell:hover { background: var(--hover); }
+
+        .detail { display: none; background: #f9f9f9; padding: 15px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.05); border-bottom: 2px solid var(--line); }
+        h3 { font-size: 16px; margin-top: 0; color: var(--primary); text-align: center; }
+
+        .player-gm, .total-row-gm { display: grid; grid-template-columns: 1fr 40px 40px 50px; gap: 10px; padding: 8px 0; align-items: center; }
+        .player-gc, .total-row-gc { display: flex; justify-content: space-between; padding: 8px 0; align-items: center; }
+
+        .player-gm, .player-gc { border-bottom: 1px solid #eee; font-size: 14px; }
+        .total-row-gm, .total-row-gc { margin-top: 10px; border-top: 2px solid var(--primary); color: var(--primary); font-weight: bold; font-size: 16px; }
+
+        .name-container { display: flex; align-items: center; gap: 8px; text-align: left; }
+        .stellung { font-size: 10px; font-weight: 800; padding: 2px 8px; border-radius: 10px; text-transform: uppercase; }
+        .liegend { background: #e3f0ff; color: #1e5dbf; border: 1px solid #bcd9ff; }
+        .kniend { background: #e6f6ec; color: #1f7a3a; border: 1px solid #c3e6cb; }
     </style>
 </head>
 <body>
-
     <div class="subtitle">Gruppenmeisterschaft</div>
     <div id="overview-gm"></div>
-
-    <div style="margin: 30px 0; border-top: 2px solid #ccc;"></div>
-    <div class="subtitle">Mannschaft (7 Runden)</div>
-    <div id="overview-ms"></div>
-
-    <div style="margin: 30px 0; border-top: 2px solid #ccc;"></div>
-    <div class="subtitle">Grenzlandcup</div>
+    <div class="separator">Grenzlandcup</div>
     <div id="overview-gc"></div>
 
 <script>
     const WORKER_URL = "https://gruppe.dan-hunziker73.workers.dev";
     const urlParams = new URLSearchParams(window.location.search);
     const selectedYear = urlParams.get('jahr') || 'aktuell'; 
-    
-    // Globale Speicher für die vom Worker gelieferten flachen Daten
-    let dataGM = [], dataMS = [], dataGC = [];
+    let rawGM = []; let rawGC = [];
 
-    async function loadAll() {
+    async function loadAllData() {
         try {
-            const [resGM, resMS, resGC] = await Promise.all([
+            // Invasiver Umbau: Der Worker liefert jetzt direkt das fertige JSON-Array
+            const [resGM, resGC] = await Promise.all([
                 fetch(`${WORKER_URL}?type=gruppe&jahr=${selectedYear}`).then(r => r.json()),
-                fetch(`${WORKER_URL}?type=mannschaft&jahr=${selectedYear}`).then(r => r.json()),
                 fetch(`${WORKER_URL}?type=grenzland&jahr=${selectedYear}`).then(r => r.json())
             ]);
-            dataGM = resGM; dataMS = resMS; dataGC = resGC;
 
-            render("gm", dataGM, "overview-gm", 3);
-            render("ms", dataMS, "overview-ms", 7);
-            render("gc", dataGC, "overview-gc", 3);
-        } catch (e) { console.error("Fehler beim Laden:", e); }
+            // Wir nutzen die Daten direkt, da der Worker das Mapping bereits erledigt hat
+            rawGM = resGM; 
+            rawGC = resGC;
+
+            buildTable("gm", rawGM, "overview-gm");
+            buildTable("gc", rawGC, "overview-gc");
+        } catch (e) { console.error("Fehler:", e); }
     }
 
-    function render(typeKey, data, targetId, runden) {
-        // Teams extrahieren
-        const teams = [...new Set(data.flatMap(d => {
-            let t = [];
-            for(let i=1; i<=runden; i++) if(d[`r${i}Team`]) t.push(d[`r${i}Team`]);
-            return t;
-        }))].sort();
-
-        let html = `<div class="table-wrapper"><table><tr><th class="col-team">Team</th>`;
-        for(let r=1; r<=runden; r++) html += `<th class="col-round">R${r}</th>`;
-        html += `</tr>`;
-
-        teams.forEach((team, tIdx) => {
+    function buildTable(type, data, targetId) {
+        const teams = [...new Set(data.flatMap(r => [r.r1Team, r.r2Team, r.r3Team]).filter(Boolean))].sort();
+        let html = `<div class="table-wrapper"><table><tr><th class="col-team"></th><th class="col-round">R1</th><th class="col-round">R2</th><th class="col-round">R3</th></tr>`;
+        
+        teams.forEach((team, index) => {
             html += `<tr><td class="team">${team}</td>`;
-            for(let r=1; r<=runden; r++) {
-                const sum = data.filter(p => p[`r${r}Team`] === team)
-                                .reduce((a, b) => a + (typeKey === "gm" ? (b[`r${r}P1`] + b[`r${r}P2`]) : b[`r${r}Pkt`]), 0);
-                html += `<td class="cell" onclick="toggle('${typeKey}', '${team.replace(/'/g,"\\'")}', ${r}, ${tIdx})">${sum || "–"}</td>`;
+            for(let r=1; r<=3; r++){
+                const sum = data.filter(p => p[`r${r}Team`] === team).reduce((a, b) => a + (type === "gm" ? (b[`r${r}P1`] + b[`r${r}P2`]) : b[`r${r}Pkt`]), 0);
+                html += `<td class="cell" onclick="toggleDetail('${type}', '${team.replace(/'/g,"\\'")}', ${r}, ${index})">${sum || "–"}</td>`;
             }
-            html += `</tr><tr><td colspan="${runden+1}" style="padding:0;border:0;">`;
-            for(let r=1; r<=runden; r++) html += `<div id="det-${typeKey}-${tIdx}-${r}" class="detail"></div>`;
-            html += `</td></tr>`;
+            html += `</tr><tr><td colspan="4" style="padding:0; border:0;">
+                        <div id="detail-${type}-${index}-1" class="detail"></div>
+                        <div id="detail-${type}-${index}-2" class="detail"></div>
+                        <div id="detail-${type}-${index}-3" class="detail"></div>
+                    </td></tr>`;
         });
         document.getElementById(targetId).innerHTML = html + `</table></div>`;
     }
 
-    function toggle(type, team, round, tIdx) {
-        const el = document.getElementById(`det-${type}-${tIdx}-${round}`);
-        if(el.style.display === "block") { el.style.display = "none"; return; }
+    function toggleDetail(type, team, round, index) {
+        const div = document.getElementById(`detail-${type}-${index}-${round}`);
+        if(div.style.display === "block"){ div.style.display = "none"; return; }
         
-        const source = (type === "gm" ? dataGM : (type === "ms" ? dataMS : dataGC));
-        const list = source.filter(p => p[`r${round}Team`] === team && (type === "gm" ? (p[`r${round}P1`]+p[`r${round}P2`]>0) : p[`r${round}Pkt`]>0));
+        const list = (type === "gm" ? rawGM : rawGC).filter(p => {
+            const teamMatch = p[`r${round}Team`] === team;
+            const hasPoints = type === "gm" ? (p[`r${round}P1`] + p[`r${round}P2`] > 0) : p[`r${round}Pkt`] > 0;
+            return teamMatch && hasPoints;
+        });
 
         let total = 0;
-        let html = `<h3>${team} - Runde ${round}</h3>`;
+        let html = `<h3>${team} – Runde ${round}</h3>`;
+
         list.forEach(p => {
             if(type === "gm") {
                 const s = p[`r${round}P1`] + p[`r${round}P2`]; total += s;
-                html += `<div class="player-row"><span>${p.name}<span class="stellung">${p.stellung}</span></span><span>${p[`r${round}P1`]} / ${p[`r${round}P2`]} = <strong>${s}</strong></span></div>`;
+                const cls = p.stellung.toLowerCase().includes("liegend") ? "liegend" : "kniend";
+                html += `<div class="player-gm"><div class="name-container"><span>${p.name}</span><span class="stellung ${cls}">${p.stellung}</span></div><div>${p[`r${round}P1`]}</div><div>${p[`r${round}P2`]}</div><div style="text-align:right;"><strong>${s}</strong></div></div>`;
             } else {
-                total += p[`r${round}Pkt`];
-                html += `<div class="player-row"><span>${p.name}</span><strong>${p[`r${round}Pkt`]}</strong></div>`;
+                const pkt = p[`r${round}Pkt`]; total += pkt;
+                html += `<div class="player-gc"><span>${p.name}</span><span style="text-align:right;"><strong>${pkt}</strong></span></div>`;
             }
         });
-        html += `<div class="total-row"><span>Gesamt</span><span>${total}</span></div>`;
-        el.innerHTML = html; el.style.display = "block";
+
+        const totalRowClass = type === "gm" ? "total-row-gm" : "total-row-gc";
+        html += `<div class="${totalRowClass}"><span>Gesamt:</span>${type === "gm" ? '<div></div><div></div>' : ''}<span style="text-align:right;">${total}</span></div>`;
+        
+        div.innerHTML = html;
+        div.style.display = "block";
     }
 
-    window.onload = loadAll;
+    window.onload = loadAllData;
 </script>
 </body>
 </html>
