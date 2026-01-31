@@ -1,404 +1,204 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    
-    <link rel="apple-touch-icon" href="icons/icon-512.png">
-    <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-512.png">
-    <meta name="apple-mobile-web-app-title" content="Sportschützen Muhen">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="default">
-    
-    <title>Sportschützen Muhen App</title>
-    
-    <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
-    <script src="/sportschuetzen/push-init.js" defer></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet"> 
+<link rel="apple-touch-icon" href="icons/icon-512.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-512.png">
+<meta name="apple-mobile-web-app-title" content="Sportschützen Muhen">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 
-                           
+<title>Sportschützen Muhen App</title>
 
-        
-    </script>
+<script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+<script src="/sportschuetzen/push-init.js" defer></script>
 
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
-    <style>
-        :root { 
-            --primary: #0f3a5d; 
-            --bg: #f3f4f6; 
-            --card: #ffffff; 
-            --text: #1f2937; 
-            --text-light: #6b7280; 
-            --border: #d1d5db; 
-        }
-        
-        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        body { font-family: 'Inter', sans-serif; background: var(--bg); margin: 0; padding-bottom: 80px; color: var(--text); overflow-x: hidden; }
-        header { background: var(--primary); color: white; padding: 15px; text-align: center; position: sticky; top: 0; z-index: 1000; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 
-        /* NAVIGATION */
-        .bottom-nav { 
-            position: fixed; bottom: 0; width: 100%; height: 75px;
-            background: #ffffff; display: flex; justify-content: space-around; align-items: center;
-            border-top: 1px solid #e5e7eb; z-index: 2000; padding: 0 10px;
-        }
-        .nav-item { 
-            background: none; border: none; color: var(--text-light); 
-            font-size: 0.7rem; font-weight: 600; display: flex; flex-direction: column; 
-            align-items: center; cursor: pointer; flex: 1; transition: 0.2s;
-        }
-        .nav-item span { font-size: 1.4rem; margin-bottom: 2px; }
-        .nav-item.active { color: var(--primary); }
-        .nav-home { 
-            position: relative; top: -18px; background: var(--primary) !important; 
-            color: white !important; width: 65px; height: 65px; border-radius: 50%; 
-            box-shadow: 0 4px 12px rgba(15, 58, 93, 0.4); justify-content: center;
-            flex: none !important; border: 4px solid var(--bg) !important;
-        }
-        .nav-home span { font-size: 1.8rem; margin-bottom: 0; }
+<style>
+:root {
+    --primary:#0f3a5d;
+    --bg:#f3f4f6;
+    --card:#ffffff;
+    --text:#1f2937;
+    --text-light:#6b7280;
+    --border:#d1d5db;
+}
 
-        /* LAYOUT */
-        .page { display: none; padding: 15px; max-width: 600px; margin: 0 auto; animation: fadeIn 0.3s ease; }
-        .active-page { display: block; }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        .card { background: var(--card); padding: 1.5rem; border-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 15px; }
-        iframe { width: 100%; height: calc(100vh - 170px); border: none; border-radius: 12px; background: #fff; }
+* { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+body {
+    font-family:'Inter',sans-serif;
+    background:var(--bg);
+    margin:0;
+    padding-bottom:80px;
+    color:var(--text);
+    overflow-x:hidden;
+}
+header {
+    background:var(--primary);
+    color:#fff;
+    padding:15px;
+    text-align:center;
+    position:sticky;
+    top:0;
+    z-index:1000;
+    box-shadow:0 2px 8px rgba(0,0,0,.15);
+}
 
-        /* TERMINE TIMELINE */
-        .termine-list { display: flex; flex-direction: column; gap: 14px; }
-        .termin-row {
-            display: grid;
-            grid-template-columns: 85px 1fr; 
-            gap: 15px;
-            align-items: center;
-            padding: 12px 0;
-            border-bottom: 1px solid #edf2f7;
-        }
+/* NAV */
+.bottom-nav {
+    position:fixed;
+    bottom:0;
+    width:100%;
+    height:75px;
+    background:#fff;
+    display:flex;
+    justify-content:space-around;
+    align-items:center;
+    border-top:1px solid #e5e7eb;
+    z-index:2000;
+}
+.nav-item {
+    background:none;
+    border:none;
+    color:var(--text-light);
+    font-size:.7rem;
+    font-weight:600;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    flex:1;
+}
+.nav-item span { font-size:1.4rem; }
+.nav-item.active { color:var(--primary); }
+.nav-home {
+    position:relative;
+    top:-18px;
+    background:var(--primary);
+    color:#fff;
+    width:65px;
+    height:65px;
+    border-radius:50%;
+    border:4px solid var(--bg);
+}
 
-        .termin-date {
-            background: #ffffff;
-            border: 1.5px solid #e2e8f0;
-            border-radius: 12px;
-            padding: 6px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 72px;  /* von 62 auf 72 */
-            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
-        }
+/* LAYOUT */
+.page { display:none; padding:15px; max-width:600px; margin:0 auto; }
+.active-page { display:block; }
+.card {
+    background:var(--card);
+    padding:1.5rem;
+    border-radius:20px;
+    box-shadow:0 4px 15px rgba(0,0,0,.05);
+    margin-bottom:15px;
+}
 
-        .date-main { font-size: 0.9rem; font-weight: 800; color: var(--primary); white-space: nowrap; }
-        .date-sub { font-size: 0.65rem; color: #718096; text-transform: uppercase; font-weight: 600; margin-top: 2px; }
-        .termin-content { display: flex; flex-direction: column; gap: 2px; }
-        .termin-title { font-weight: 700; font-size: 0.95rem; line-height: 1.2; color: var(--text); }
-        .badge-prov { display: inline-block; font-size: 0.65rem; background: #fffaf0; color: #b7791f; padding: 2px 8px; border-radius: 6px; border: 1px solid #fbd38d; width: fit-content; margin-top: 4px; font-weight: 700; }
-        .termin-meta { font-size: 0.8rem; color: var(--text-light); margin-top: 3px; display: flex; align-items: center; gap: 8px; }
+/* ✅ FIX: 100vh → 100dvh */
+iframe {
+    width:100%;
+    height:calc(100dvh - 170px);
+    border:none;
+    border-radius:12px;
+    background:#fff;
+}
 
-        /* UPLOAD FORM */
-        .form-group { margin-bottom: 1.2rem; text-align: left; }
-        label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 0.5rem; color: var(--text-light); }
-        input, select { width: 100%; padding: 0.8rem; border: 1.5px solid var(--border); border-radius: 12px; font-size: 1rem; }
-        .upload-area { border: 2px dashed var(--border); border-radius: 12px; padding: 2rem; text-align: center; background: #f9fafb; cursor: pointer; }
-        #preview { width: 100%; max-height: 200px; object-fit: contain; display: none; margin-top: 10px; border-radius: 8px; }
-        .btn-main { width: 100%; padding: 1.1rem; background: var(--primary); color: #fff; border: none; border-radius: 14px; font-size: 1.1rem; font-weight: 700; cursor: pointer; }
-
-        /* Pull-to-Refresh Spinner Styles */
+/* Pull-to-refresh Spinner */
 #pull-spinner {
-    position: fixed;
-    top: -50px; /* Startet außerhalb des Sichtfelds */
-    left: 50%;
-    transform: translateX(-50%);
-    width: 40px;
-    height: 40px;
-    background: var(--primary);
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: 0 3px 10px rgba(0,0,0,0.2);
-    z-index: 3000;
-    transition: transform 0.1s linear;
+    position:fixed;
+    top:-50px;
+    left:50%;
+    transform:translateX(-50%);
+    width:40px;
+    height:40px;
+    background:var(--primary);
+    border-radius:50%;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    z-index:3000;
 }
-
 .spinner-icon {
-    width: 20px;
-    height: 20px;
-    border: 3px solid rgba(255,255,255,0.3);
-    border-top-color: #fff;
-    border-radius: 50%;
-    animation: spin 0.8s infinite linear;
+    width:20px;
+    height:20px;
+    border:3px solid rgba(255,255,255,.3);
+    border-top-color:#fff;
+    border-radius:50%;
+    animation:spin .8s linear infinite;
 }
-
-@keyframes spin {
-    to { transform: rotate(360deg); }
-}
-
-
-        
-    </style>
+@keyframes spin { to { transform:rotate(360deg); } }
+</style>
 </head>
+
 <body>
-<div id="pull-spinner">
-    <div class="spinner-icon"></div>
-</div>
+
+<div id="pull-spinner"><div class="spinner-icon"></div></div>
+
 <header><h1 id="main-title">Termine</h1></header>
 
 <main>
-    <section id="page-home" class="page active-page">
-        <div class="card" style="text-align:center;">
-            <img src="https://raw.githubusercontent.com/danhunziker73-lgtm/sportschuetzen/main/icons/Logo_MUHEN.png" style="height:100px; margin-bottom:10px;">
-            <h2>Sportschützen Muhen</h2>
-            <p>Willkommen</p>
-        </div>
-        <div class="card">
-            <h3>Termine</h3>
-            <div id="termine" class="termine-list">Lade Termine...</div>
-        </div>
-    </section>
+<section id="page-home" class="page active-page">
+<div class="card" style="text-align:center;">
+<img src="https://raw.githubusercontent.com/danhunziker73-lgtm/sportschuetzen/main/icons/Logo_MUHEN.png" style="height:100px">
+<h2>Sportschützen Muhen</h2>
+<p>Willkommen</p>
+</div>
+</section>
 
-    <section id="page-jm" class="page"><iframe src="app/app_jm.html"></iframe></section>
-    <section id="page-gruppe" class="page"><iframe src="app/app_gruppe.html"></iframe></section>
-    <section id="page-mannschaft" class="page"><iframe src="app/app_mannschaft.html"></iframe></section>
-
-    <section id="page-upload" class="page">
-        <div class="card">
-            <h2 style="margin-top:0;">Standblatt Upload</h2>
-            <form id="uploadForm">
-                <div class="form-group">
-                   <label></label>
-                    <select id="name" required>
-                        <option value="" disabled selected>Namen wählen...</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label></label>
-                    <div class="upload-area" onclick="document.getElementById('foto').click()">
-                        <span id="upload-hint">📸 Foto Standblatt aufnehmen</span>
-                        <input type="file" id="foto" accept="image/*" required style="display:none">
-                        <img id="preview">
-                    </div>
-                </div>
-                <div style="display:flex; gap:10px; margin-bottom:20px;">
-                    <div style="flex:1;">
-                        <label>Erzielt</label>
-                        <input type="number" id="erzielt" placeholder="Pkt" required>
-                    </div>
-                    <div style="flex:1;">
-                        <label>Maximum</label>
-                        <input type="number" id="maximal" placeholder="100" required>
-                    </div>
-                </div>
-                <button type="submit" id="submitBtn" class="btn-main">Jetzt senden</button>
-            </form>
-        </div>
-    </section>
+<section id="page-jm" class="page"><iframe src="app/app_jm.html"></iframe></section>
+<section id="page-gruppe" class="page"><iframe src="app/app_gruppe.html"></iframe></section>
+<section id="page-mannschaft" class="page"><iframe src="app/app_mannschaft.html"></iframe></section>
 </main>
 
 <nav class="bottom-nav">
-    <button class="nav-item" onclick="nav('page-jm', 'Jahresmeisterschaft', this)"><span>🏆</span>JM</button>
-    <button class="nav-item" onclick="nav('page-gruppe', 'Gruppe', this)"><span>👥</span>Gruppe</button>
-    <button class="nav-item nav-home active" onclick="nav('page-home', 'Vereins-App', this)"><span>🏠</span></button>
-    <button class="nav-item" onclick="nav('page-mannschaft', 'Mannschaft', this)"><span>🎯</span>Mannschaft</button>
-    <button class="nav-item" onclick="nav('page-upload', 'Upload', this)"><span>📤</span>Upload</button>
+<button class="nav-item" onclick="nav('page-jm','JM',this)">🏆 JM</button>
+<button class="nav-item" onclick="nav('page-gruppe','Gruppe',this)">👥 Gruppe</button>
+<button class="nav-item nav-home active" onclick="nav('page-home','Vereins-App',this)">🏠</button>
+<button class="nav-item" onclick="nav('page-mannschaft','Mannschaft',this)">🎯 Mannschaft</button>
 </nav>
 
 <script>
-    const WORKER_TERMINE_URL = "https://termine.dan-hunziker73.workers.dev";
-    const WORKER_UPLOAD_URL = "https://github-dropdown-refresh.dan-hunziker73.workers.dev/";
-    let teilnehmer = [];
+const spinner = document.getElementById('pull-spinner');
+let touchStart = 0;
+let isNavigating = false; // ✅ FIX 3
 
- // OPTIMIERTES PULL-TO-REFRESH MIT SPINNER
-    let touchStart = 0;
-    const spinner = document.getElementById('pull-spinner');
-    const refreshThreshold = 90; // Pixel, die gezogen werden müssen
+document.addEventListener('touchstart', e => {
+    touchStart = e.touches[0].pageY;
+},{passive:true});
 
-    document.addEventListener('touchstart', e => { 
-        touchStart = e.touches[0].pageY; 
-    }, {passive: true});
+document.addEventListener('touchmove', e => {
+    if (isNavigating) return; // ✅ FIX 4
 
-    document.addEventListener('touchmove', e => {
-        const touchMove = e.touches[0].pageY;
-        const distance = touchMove - touchStart;
-
-        // Wenn wir ganz oben sind und nach unten ziehen
-        if (window.scrollY <= 0 && distance > 0) {
-            // Spinner sanft ins Bild schieben (max. 100px von oben)
-            const moveY = Math.min(distance / 2, 100); 
-            spinner.style.top = `${moveY - 40}px`;
-            
-            // Bei Erreichen des Schwellenwerts Spinner hervorheben (Scale-Effekt)
-            if (distance > refreshThreshold) {
-                spinner.style.transform = 'translateX(-50%) scale(1.2)';
-            } else {
-                spinner.style.transform = 'translateX(-50%) scale(1.0)';
-            }
-        }
-    }, {passive: true});
-
-    document.addEventListener('touchend', e => {
-        const touchEnd = e.changedTouches[0].pageY;
-        const distance = touchEnd - touchStart;
-
-        if (window.scrollY <= 0 && distance > refreshThreshold) {
-            // Seite neu laden
-            if (navigator.vibrate) navigator.vibrate(50);
-            location.reload();
-        } else {
-            // Spinner wieder verstecken
-            spinner.style.top = '-50px';
-        }
-    }, {passive: true});
-    // NAVIGATION
-    function nav(id, title, btn) {
-        document.querySelectorAll('.page').forEach(p => p.classList.remove('active-page'));
-        document.getElementById(id).classList.add('active-page');
-        document.getElementById('main-title').textContent = title;
-        document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        window.scrollTo(0,0);
+    const distance = e.touches[0].pageY - touchStart;
+    if (window.scrollY <= 0 && distance > 0) {
+        spinner.style.top = Math.min(distance/2,100)-40+'px';
     }
+},{passive:true});
 
-    // TERMINE LADEN
-    async function loadTermine() {
-        const wrap = document.getElementById("termine");
-        try {
-            const res = await fetch(WORKER_TERMINE_URL);
-            let data = await res.json();
-            const currentYear = new Date().getFullYear();
+document.addEventListener('touchend', e => {
+    if (isNavigating) return;
+    spinner.style.top='-50px';
+},{passive:true});
 
-            data.sort((a, b) => {
-                const parseDate = (str) => {
-                    if(!str) return new Date(8640000000000000);
-                    const p = str.split(", ")[1].split(" ");
-                    const months = {"Januar":0, "Februar":1, "März":2, "April":3, "Mai":4, "Juni":5, "Juli":6, "August":7, "September":8, "Oktober":9, "November":10, "Dezember":11};
-                    return new Date(p[2], months[p[1]], parseInt(p[0]));
-                };
-                return parseDate(a.datum) - parseDate(b.datum);
-            });
+/* ✅ FIX 3 */
+function nav(id,title,btn){
+    isNavigating = true;
 
-            wrap.innerHTML = "";
-            data.forEach(t => {
-                const status = (t.status || "").toLowerCase();
-                const datumRaw = (t.datum || "").trim();
-                if (datumRaw === "" || status === "abgesagt") return;
-                const isProv = status === "provisorisch";
-                const parts = datumRaw.split(", ");
-                const weekday = parts[0].substring(0, 2); 
-                const dateFull = parts[1]; 
-                const yearInStringMatch = dateFull.match(/\d{4}/);
-                const yearInString = yearInStringMatch ? yearInStringMatch[0] : currentYear.toString();
-                const dateDisplay = dateFull.replace(` ${yearInString}`, "");
-                const subLine = (yearInString !== currentYear.toString()) ? `${weekday} '${yearInString.substring(2)}` : weekday;
+    document.querySelectorAll('.page').forEach(p=>p.classList.remove('active-page'));
+    document.getElementById(id).classList.add('active-page');
 
-                wrap.innerHTML += `
-                <div class="termin-row">
-                    <div class="termin-date">
-                        <span class="date-main">${dateDisplay}</span>
-                        <span class="date-sub">${subLine}</span>
-                    </div>
-                    <div class="termin-content">
-                        <span class="termin-title">${t.titel}</span>
-                        <div class="termin-meta">
-                            <span>📍 ${t.ort}</span>
-                            ${t.start ? `<span>🕒 ${t.start}</span>` : ""}
-                        </div>
-                        ${isProv ? '<span class="badge-prov">Provisorisch</span>' : ''}
-                    </div>
-                </div>`;
-            });
-        } catch (e) {
-            wrap.innerHTML = "Fehler beim Laden.";
-        }
-    }
+    document.querySelectorAll('.nav-item').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
 
-    
-            // Load Teilnehmer
-  
-    async function loadTeilnehmer() {
-        try {
-            const res = await fetch("https://raw.githubusercontent.com/danhunziker73-lgtm/sportschuetzen/main/teilnehmer.json?t=" + Date.now());
-            teilnehmer = await res.json();
-            
-            // SORTIERUNG: Nach Nachname, dann Vorname
-            teilnehmer.sort((a, b) => {
-                const nameA = (a.nachname + " " + a.vorname).toLowerCase();
-                const nameB = (b.nachname + " " + b.vorname).toLowerCase();
-                return nameA.localeCompare(nameB);
-            });
+    spinner.style.top='-50px';
 
-            const select = document.getElementById("name");
-            select.innerHTML = '<option value="" disabled selected>Namen wählen...</option>'; // Reset
-            
-            teilnehmer.forEach(p => {
-                const opt = document.createElement("option");
-                opt.value = String(p.lizenz || p.id);
-                // Nur Name und Vorname anzeigen (kein Jahrgang)
-                opt.textContent = `${p.nachname} ${p.vorname}`;
-                select.appendChild(opt);
-            });
-        } catch(e) { 
-            console.error("Fehler Teilnehmer", e); 
-        }
-    }
+    document.body.scrollTop=0;
+    document.documentElement.scrollTop=0;
 
-    async function askPush() {
-    console.log("Starte Push-Abfrage...");
-    window.OneSignalDeferred = window.OneSignalDeferred || [];
-    OneSignalDeferred.push(async function(OneSignal) {
-        await OneSignal.Notifications.requestPermission();
-        console.log("Permission Status:", OneSignal.Notifications.permission);
-    });
+    setTimeout(()=>isNavigating=false,300);
 }
-
-    
-    // FOTO VORSCHAU
-    document.getElementById("foto").addEventListener("change", e => {
-        const file = e.target.files[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = ev => {
-            const img = document.getElementById("preview");
-            img.src = ev.target.result;
-            img.style.display = "block";
-            document.getElementById("upload-hint").style.display = "none";
-        };
-        reader.readAsDataURL(file);
-    });
-
-    // UPLOAD LOGIK
-    document.getElementById("uploadForm").onsubmit = async (e) => {
-        e.preventDefault();
-        const btn = document.getElementById("submitBtn");
-        btn.disabled = true; btn.textContent = "Wird gesendet...";
-        const selectedId = document.getElementById("name").value;
-        const user = teilnehmer.find(t => String(t.lizenz || t.id) === selectedId);
-        const reader = new FileReader();
-        reader.onload = async () => {
-            try {
-                const res = await fetch(WORKER_UPLOAD_URL, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        action: "upload_standblatt",
-                        lizenz: selectedId,
-                        vorname: user ? user.vorname : "",
-                        nachname: user ? user.nachname : "",
-                        erzielt: document.getElementById("erzielt").value,
-                        maximal: document.getElementById("maximal").value,
-                        foto: reader.result
-                    })
-                });
-                if (res.ok) { alert("✔ Gesendet!"); location.reload(); } 
-                else { alert("Fehler beim Senden."); }
-            } catch (err) { alert("Netzwerkfehler."); }
-            finally { btn.disabled = false; btn.textContent = "Jetzt senden"; }
-        };
-        reader.readAsDataURL(document.getElementById("foto").files[0]);
-    };
-
-    window.onload = () => { loadTeilnehmer(); loadTermine(); };
 </script>
+
 </body>
 </html>
