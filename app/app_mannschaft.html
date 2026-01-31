@@ -24,14 +24,15 @@
         .table-wrapper { overflow-x: auto; margin-bottom: 20px; }
 
         /* TABELLE AUF AUTO ZURÜCKGESETZT */
-        table {
-          width: auto;
-          border-collapse: collapse;
-          background: #fff;
-          box-shadow: 0 2px 6px rgba(0,0,0,.08);
-          border-radius: 6px;
-          overflow: hidden;
-        }
+  table {
+  width: 100%;       /* volle Breite nutzen, keine horizontale Scrollbar */
+  table-layout: fixed; /* gleichmäßige Spaltenbreiten */
+  border-collapse: collapse;
+  background: #fff;
+  box-shadow: 0 2px 6px rgba(0,0,0,.08);
+  border-radius: 6px;
+  overflow: hidden;
+}
 
         thead th {
           background: var(--primary);
@@ -57,11 +58,13 @@
         }
 
         /* Fixe Breite für die Runden-Spalten wie im Original */
-        th:not(:first-child), td.cell {
-          width: 32px;
-          min-width: 32px;
-          max-width: 32px;
-        }
+    th:not(:first-child), td.cell {
+  width: 12.5%; /* gleichmäßig auf 7 Spalten verteilt → 100% / 8 Spalten ≈ 12.5% */
+  min-width: 0;  /* verhindert horizontales Scrollen */
+  max-width: none;
+  padding: 6px 0; /* optional: kleinere Padding für bessere Breite */
+}
+
 
         .cell { cursor: pointer; transition: background 0.2s; }
         .cell:hover { background: var(--hover); }
