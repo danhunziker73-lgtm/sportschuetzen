@@ -24,9 +24,9 @@
         .table-wrapper { overflow-x: auto; margin-bottom: 20px; }
 
         /* TABELLE AUF AUTO ZURÜCKGESETZT */
-  table {
-  width: 100%;       /* volle Breite nutzen, keine horizontale Scrollbar */
-  table-layout: fixed; /* gleichmäßige Spaltenbreiten */
+table {
+  width: 100%;
+  table-layout: fixed; /* fixiert Spaltenbreiten */
   border-collapse: collapse;
   background: #fff;
   box-shadow: 0 2px 6px rgba(0,0,0,.08);
@@ -50,19 +50,22 @@
           font-size: 14px;
         }
 
-    td.team {
-  font-weight: bold;
+/* Teamname = 2 von 9 Spalten */
+td.team, th.team-header {
+  width: calc(2/9 * 100%); /* ca. 22% */
+  min-width: 0;
+  max-width: none;
   text-align: left;
-  color: var(--primary);
-  width: auto;      /* von min-width 140px auf auto */
+  padding-left: 10px;
 }
 
-        /* Fixe Breite für die Runden-Spalten wie im Original */
-    th:not(:first-child), td.cell {
-  width: 12.5%; /* gleichmäßig auf 7 Spalten verteilt → 100% / 8 Spalten ≈ 12.5% */
-  min-width: 0;  /* verhindert horizontales Scrollen */
+/* Runden = jeweils 1 von 9 Spalten */
+th.round, td.cell {
+  width: calc(1/9 * 100%); /* ca. 11% */
+  min-width: 0;
   max-width: none;
-  padding: 6px 0; /* optional: kleinere Padding für bessere Breite */
+  padding: 6px 0;
+  text-align: center;
 }
 
 
@@ -146,20 +149,21 @@
         }
     }
 
-    function buildTable() {
-        let html = `<div class="table-wrapper"><table><thead><tr><th></th>`;
-        for (let r = 1; r <= 7; r++) html += `<th>R${r}</th>`;
-        html += `</tr></thead><tbody>`;
-        teams.forEach((team, index) => {
-            html += `<tr><td class="team">${team}</td>`;
-            for (let r = 1; r <= 7; r++) {
-                const sum = raw.filter(p => p[`r${r}Team`] === team).reduce((a, b) => a + b[`r${r}Pkt`], 0);
-                html += `<td class="cell" onclick="toggleDetail('${team.replace(/'/g,"\\'")}',${r},${index})">${sum || "–"}</td>`;
-            }
-            html += `</tr><tr><td colspan="8" style="padding:0; border:0;"><div id="detail-div-${index}" class="detail"></div></td></tr>`;
-        });
-        document.getElementById("overview").innerHTML = html + `</tbody></table></div>`;
-    }
+function buildTable() {
+    let html = `<div class="table-wrapper"><table><thead><tr><th class="team-header"></th>`;
+    for (let r = 1; r <= 7; r++) html += `<th class="round">R${r}</th>`;
+    html += `</tr></thead><tbody>`;
+    teams.forEach((team, index) => {
+        html += `<tr><td class="team">${team}</td>`;
+        for (let r = 1; r <= 7; r++) {
+            const sum = raw.filter(p => p[`r${r}Team`] === team).reduce((a, b) => a + b[`r${r}Pkt`], 0);
+            html += `<td class="cell" onclick="toggleDetail('${team.replace(/'/g,"\\'")}',${r},${index})">${sum || "–"}</td>`;
+        }
+        html += `</tr><tr><td colspan="8" style="padding:0; border:0;"><div id="detail-div-${index}" class="detail"></div></td></tr>`;
+    });
+    document.getElementById("overview").innerHTML = html + `</tbody></table></div>`;
+}
+
 
     function toggleDetail(team, round, index) {
         const div = document.getElementById(`detail-div-${index}`);
