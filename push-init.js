@@ -44,16 +44,32 @@ async function askPush() {
     });
 }
 
-// Hilfsfunktion: Zeigt einen Hinweis an, wenn Push blockiert ist
 function showPushWarning() {
     if (document.getElementById("push-denied-banner")) return;
 
     const banner = document.createElement("div");
     banner.id = "push-denied-banner";
     banner.style.cssText = `
-        background: #feb2b2;
-        color: #9b2c2c;
-        padding: 12px;
-        margin: 10px;
-        border-radius: 12px;
-        font-size: 0
+        background: #feb2b2; 
+        color: #9b2c2c; 
+        padding: 12px; 
+        margin: 10px; 
+        border-radius: 12px; 
+        font-size: 0.85rem; 
+        font-weight: 600; 
+        text-align: center;
+        border: 1px solid #f56565;
+    `;
+    banner.innerHTML = `
+        📢 Mitteilungen sind blockiert.<br>
+        <span style="font-size: 0.75rem; font-weight: 400;">
+            Bitte in den Geräte-Einstellungen für diese App aktivieren.
+        </span>
+    `;
+    
+    // Banner oben auf der Startseite einfügen
+    const homePage = document.getElementById("page-home");
+    if (homePage) {
+        homePage.prepend(banner);
+    }
+}
