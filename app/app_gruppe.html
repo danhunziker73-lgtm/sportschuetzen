@@ -86,7 +86,8 @@
 }
 
 .total-label { text-align: left; }
-.total-value { text-align: center; } /* Zentriert unter der Summen-Spalte */
+/*.total-value { text-align: center; } /* Zentriert unter der Summen-Spalte */
+.total-value:last-child { text-align: right; padding-right: 5px; }
 
         .name-container { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; text-align: left; }
         .stellung { font-size: 10px; font-weight: 800; padding: 2px 8px; border-radius: 10px; text-transform: uppercase; }
@@ -173,7 +174,13 @@
             const cls = (p.stellung || "").toLowerCase().includes("liegend") ? "liegend" : "kniend";
             html += `<div class="player"><div class="name-container"><span class="name-label">${p.name}</span><span class="stellung ${cls}">${p.stellung}</span></div><div>${p[`r${round}Pkt1`]}</div><div>${p[`r${round}Pkt2`]}</div><div style="text-align:right;"><strong>${sum}</strong></div></div>`;
         });
-        html += `<div class="total-row"><div>Gesamt:</div><div></div><div></div><div style="text-align:right;">${total}</div></div>`;
+        html += `<div class="total-row">
+            <div class="total-label">Gesamt:</div>
+            <div class="total-value"></div>
+            <div class="total-value"></div>
+            <div class="total-value">${total}</div>
+         </div>`;
+
         div.innerHTML = html;
         div.style.display = "block";
     }
