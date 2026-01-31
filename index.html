@@ -89,7 +89,7 @@ OneSignalDeferred.push(async function(OneSignal) {
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            height: 62px;
+            height: 72px;  /* von 62 auf 72 */
             box-shadow: 0 2px 4px rgba(0,0,0,0.02);
         }
 
@@ -332,6 +332,16 @@ OneSignalDeferred.push(async function(OneSignal) {
         } catch(e) { console.error("Fehler Teilnehmer", e); }
     }
 
+    async function askPush() {
+    console.log("Starte Push-Abfrage...");
+    window.OneSignalDeferred = window.OneSignalDeferred || [];
+    OneSignalDeferred.push(async function(OneSignal) {
+        await OneSignal.Notifications.requestPermission();
+        console.log("Permission Status:", OneSignal.Notifications.permission);
+    });
+}
+
+    
     // FOTO VORSCHAU
     document.getElementById("foto").addEventListener("change", e => {
         const file = e.target.files[0];
