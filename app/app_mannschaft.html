@@ -11,10 +11,16 @@
         table { width: 100%; table-layout: fixed; border-collapse: collapse; background: #fff; box-shadow: 0 2px 6px rgba(0,0,0,.08); border-radius: 6px; overflow: hidden; }
         thead th { background: var(--primary); color: #fff; font-size: 14px; font-weight: 600; padding: 12px 10px; text-align: center; height: 40px; box-sizing: border-box; }
         td { padding: 12px 10px; text-align: center; border-bottom: 1px solid var(--line); font-size: 14px; }
-        td.team, th.team-header { width: calc(2.5/9 * 100%); text-align: left; padding-left: 15px; }
-        th.round, td.cell { width: calc(0.9/9 * 100%); }
+        td.team, th.team-header { width: 120px; text-align: left; padding-left: 15px; }
+        th.round, td.cell { width: 45px; }
         .cell { cursor: pointer; transition: background 0.2s; font-weight: bold; color: var(--primary); }
-        .cell:hover { background: var(--hover); }
+        
+        /* HEATMAP FARBEN (Punkt 4) */
+        .hm-low { background-color: #f8f9fa; }
+        .hm-mid { background-color: #e6f6ec; color: #1f7a3a !important; } /* Leichtes Grün */
+        .hm-high { background-color: #c3e6cb; color: #155724 !important; } /* Sattes Grün */
+        .hm-top { background-color: #ffeeba; color: #856404 !important; } /* Gold/Spitze */
+
         .detail { display: none; background: #fdfdfd; padding: 20px; box-shadow: inset 0 2px 8px rgba(0,0,0,0.06); border-bottom: 1px solid var(--line); }
         h3 { font-size: 16px; margin-top: 0; margin-bottom: 12px; color: var(--primary); text-align: left; }
         .player-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #eee; }
@@ -24,7 +30,7 @@
     </style>
 </head>
 <body>
-    <div class="subtitle" id="sub-title">Lade Daten...</div>
+    <div class="subtitle" id="sub-title">Lade Mannschaftsdaten...</div>
     <div id="overview"></div>
 
 <script>
@@ -32,20 +38,27 @@
     const selectedYear = 'aktuell'; 
     let raw = []; let teams = [];
 
+    // Hilfsfunktion für die Heatmap-Klasse
+    function getHeatmapClass(val) {
+        if (!val || val === 0) return "";
+        if (val >= 197) return "hm-top";
+        if (val >= 191) return "hm-high";
+        if (val >= 185) return "hm-mid";
+        return "hm-low";
+    }
+
     async function loadData() {
         try {
-            // Holt das flache JSON direkt vom Worker
             const response = await fetch(`${WORKER_URL}?type=mannschaft&jahr=${selectedYear}`);
             raw = await response.json(); 
             
-            // Teams basierend auf allen verfügbaren Runden (1-7) sammeln
             teams = [...new Set(raw.flatMap(r => {
                 let t = [];
                 for(let i=1; i<=7; i++) if(r[`r${i}Team`]) t.push(r[`r${i}Team`]);
                 return t;
             }))].sort();
 
-            document.getElementById('sub-title').textContent = 'Übersicht – auf Punkte klicken für Details';
+            document.getElementById('sub-title').textContent = 'Mannschaft – auf Punkte klicken für Details';
             buildTable();
         } catch {
             document.getElementById("overview").innerHTML = "Fehler beim Laden";
@@ -53,18 +66,22 @@
     }
 
     function buildTable() {
-        let html = `<div class="table-wrapper"><table><thead><tr><th class="team-header"></th>`;
+        let html = `<div class="table-wrapper"><table><thead><tr><th class="team-header">Team</th>`;
         for (let r = 1; r <= 7; r++) html += `<th class="round">R${r}</th>`;
         html += `</tr></thead><tbody>`;
         
         teams.forEach((team, tIdx) => {
             html += `<tr><td class="team">${team}</td>`;
             for (let r = 1; r <= 7; r++) {
-                const sum = raw.filter(p => p[`r${r}Team`] === team).reduce((a, b) => a + b[`r${r}Pkt`], 0);
-                // Jede Zelle bekommt eine ID-Referenz zur eigenen Detail-Box
-                html += `<td class="cell" onclick="toggleDetail('${team.replace(/'/g,"\\'")}',${r},${tIdx})">${sum || "–"}</td>`;
+                const teamData = raw.filter(p => p[`r${r}Team`] === team && p[`r${r}Pkt`] > 0);
+                const sum = teamData.reduce((a, b) => a + b[`r${r}Pkt`], 0);
+                
+                // Durchschnitt berechnen für Heatmap (Summe / Anzahl Schützen)
+                const avg = teamData.length > 0 ? sum / teamData.length : 0;
+                const hmClass = getHeatmapClass(avg);
+
+                html += `<td class="cell ${hmClass}" onclick="toggleDetail('${team.replace(/'/g,"\\'")}',${r},${tIdx})">${sum || "–"}</td>`;
             }
-            // Pro Team gibt es 7 versteckte Boxen (eine pro Runde) für den Screenshot-Modus
             html += `</tr><tr><td colspan="8" style="padding:0; border:0;">`;
             for (let r = 1; r <= 7; r++) {
                 html += `<div id="det-${tIdx}-${r}" class="detail"></div>`;
@@ -76,23 +93,20 @@
 
     function toggleDetail(team, round, tIdx) {
         const div = document.getElementById(`det-${tIdx}-${round}`);
-        // Screenshot-Modus: Schließt keine anderen Boxen mehr
         if(div.style.display === "block"){ div.style.display = "none"; return; }
         
-        // Filtert nur Schützen dieses Teams in DIESER Runde mit Punkten > 0
         const list = raw.filter(p => p[`r${round}Team`] === team && p[`r${round}Pkt`] > 0);
-        
         let total = 0;
         let html = `<h3>${team} – Runde ${round}</h3>`;
         
         list.forEach(p => {
             const val = p[`r${round}Pkt`];
             total += val;
-            html += `<div class="player-row"><div class="name-label">${p.name}</div><div class="score-val">${val}</div></div>`;
+            const pClass = getHeatmapClass(val);
+            html += `<div class="player-row"><div class="name-label">${p.name}</div><div class="score-val ${pClass}" style="padding: 2px 5px; border-radius: 4px;">${val}</div></div>`;
         });
         
         html += `<div class="total-row"><div class="name-label">Gesamt:</div><div class="score-val">${total}</div></div>`;
-            
         div.innerHTML = html;
         div.style.display = 'block';
     }
