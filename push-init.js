@@ -1,47 +1,53 @@
 window.OneSignalDeferred = window.OneSignalDeferred || [];
 
 OneSignalDeferred.push(async function(OneSignal) {
-    // 1. Initialisierung
- await OneSignal.init({
-    appId: "4fd0fec9-a8dd-40d9-94e9-7ba330c07176",
-    serviceWorkerPath: "/sportschuetzen/push/onesignal/OneSignalSDKWorker.js",
-    serviceWorkerUpdaterPath: "/sportschuetzen/push/onesignal/OneSignalSDKUpdaterWorker.js",
-    serviceWorkerParam: { scope: "/sportschuetzen/push/onesignal/" }
-});
-
+    // 1. Init
+    await OneSignal.init({
+        appId: "4fd0fec9-a8dd-40d9-94e9-7ba330c07176",
+        serviceWorkerPath: "/sportschuetzen/push/onesignal/OneSignalSDKWorker.js",
+        serviceWorkerUpdaterPath: "/sportschuetzen/push/onesignal/OneSignalSDKUpdaterWorker.js",
+        serviceWorkerParam: { scope: "/sportschuetzen/push/onesignal/" }
+    });
     console.log("OneSignal Init OK");
 
-    // 2. Prüfung der Berechtigung & Hinweis-Banner
+    // 2. Prüfen, ob bereits blockiert
     if (OneSignal.Notifications.permissionNative === "denied") {
         console.warn("Push ist blockiert.");
         showPushWarning();
     }
 
-    // 3. Direkt nach Init die Berechtigungsabfrage starten
-    const permission = await OneSignal.Notifications.requestPermission();
-    console.log("Permission Status:", permission);
+    // 3. Button erstellen, um Prompt von User-Click aus zu starten
+    const btn = document.createElement("button");
+    btn.textContent = "Push aktivieren";
+    btn.style.cssText = `
+        position: fixed;
+        bottom: 100px;
+        left: 50%;
+        transform: translateX(-50%);
+        padding: 12px 20px;
+        background: var(--primary);
+        color: white;
+        border: none;
+        border-radius: 12px;
+        font-weight: 700;
+        z-index: 9999;
+        cursor: pointer;
+    `;
+    document.body.appendChild(btn);
 
-    // Falls nach der Abfrage erlaubt wurde, Banner entfernen
-    if (permission === "granted") {
-        const banner = document.getElementById("push-denied-banner");
-        if (banner) banner.remove();
-    }
-});
-
-// Funktion zum manuellen Abfragen (für Button im Upload oder Home)
-async function askPush() {
-    console.log("Starte Abfrage...");
-    OneSignalDeferred.push(async function(OneSignal) {
-        const permission = await OneSignal.Notifications.requestPermission();
-        console.log("Permission Status:", permission);
-
-        // Falls erlaubt, Banner entfernen
-        if (permission === "granted") {
-            const banner = document.getElementById("push-denied-banner");
-            if (banner) banner.remove();
+    btn.addEventListener("click", async () => {
+        btn.disabled = true;
+        console.log("Starte OneSignal native Prompt...");
+        try {
+            await OneSignal.showNativePrompt();
+            console.log("Prompt sollte jetzt erschienen sein");
+        } catch (err) {
+            console.error("Fehler beim Anzeigen des Push-Prompts", err);
+        } finally {
+            btn.remove();
         }
     });
-}
+});
 
 function showPushWarning() {
     if (document.getElementById("push-denied-banner")) return;
@@ -66,9 +72,6 @@ function showPushWarning() {
         </span>
     `;
     
-    // Banner oben auf der Startseite einfügen
     const homePage = document.getElementById("page-home");
-    if (homePage) {
-        homePage.prepend(banner);
-    }
+    if (homePage) homePage.prepend(banner);
 }
