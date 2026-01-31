@@ -19,12 +19,6 @@
 
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet"> 
 
-                           
-
-        
-    </script>
-
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
         :root { 
             --primary: #0f3a5d; 
@@ -37,8 +31,12 @@
         
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body { font-family: 'Inter', sans-serif; background: var(--bg); margin: 0; padding-bottom: 80px; color: var(--text); overflow-x: hidden; }
-        header { background: var(--primary); color: white; padding: 15px; text-align: center; position: sticky; top: 0; z-index: 1000; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+      
+        header { background: var(--primary); color: white; padding: 15px; text-align: center; position: fixed; top: 0; left: 0; width: 100%; z-index: 1000;  box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+        main { padding-top: 70px;
+}
 
+  /* hier evtl. ab Box Shadow löschen */
         /* NAVIGATION */
         .bottom-nav { 
             position: fixed; bottom: 0; width: 100%; height: 75px;
@@ -147,6 +145,7 @@
 </div>
 <header><h1 id="main-title">Termine</h1></header>
 
+    
 <main>
     <section id="page-home" class="page active-page">
         <div class="card" style="text-align:center;">
@@ -254,12 +253,20 @@
     }, {passive: true});
     // NAVIGATION
     function nav(id, title, btn) {
+
+        
+    spinner.style.top = '-50px';
+    spinner.style.transform = 'translateX(-50%) scale(1)';
         document.querySelectorAll('.page').forEach(p => p.classList.remove('active-page'));
         document.getElementById(id).classList.add('active-page');
         document.getElementById('main-title').textContent = title;
         document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
-        window.scrollTo(0,0);
+        requestAnimationFrame(() => {
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+});
+
     }
 
     // TERMINE LADEN
