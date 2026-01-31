@@ -12,22 +12,11 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     
     <title>Sportschützen Muhen App</title>
-     <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDKUpdaterWorker.js" defer></script>
-    <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
-    <script>
-        window.OneSignalDeferred = window.OneSignalDeferred || [];
-    OneSignalDeferred.push(async function(OneSignal) {
-        
-        await OneSignal.init({
-            appId: "4fd0fec9-a8dd-40d9-94e9-7ba330c07176",
-            // Deine spezifischen Pfade
-            serviceWorkerPath: "push/onesignal/OneSignalSDKWorker.js",
-            serviceWorkerUpdaterPath: "push/onesignal/OneSignalSDKUpdaterWorker.js",
-            serviceWorkerParam: {
-                scope: "/sportschuetzen/push/onesignal/"
-            }
-        });
+      <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+    <script src="/sportschuetzen/push-init.js" defer></script>
+ 
 
+                           
 
         
     </script>
