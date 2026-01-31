@@ -72,13 +72,21 @@
         
         .player { border-bottom: 1px solid #eee; font-size: 14px; }
 
-        .total-row {
-            margin-top: 10px;
-            border-top: 2px solid var(--primary);
-            color: var(--primary);
-            font-weight: bold;
-            font-size: 16px;
-        }
+   .total-row { 
+    display: grid; 
+    grid-template-columns: 1fr 40px 40px 50px; /* Gleiche Spalten wie bei .player */
+    gap: 10px; 
+    padding: 10px 0; 
+    align-items: center;
+    margin-top: 10px;
+    border-top: 2px solid var(--primary);
+    color: var(--primary);
+    font-weight: bold;
+    font-size: 16px;
+}
+
+.total-label { text-align: left; }
+.total-value { text-align: center; } /* Zentriert unter der Summen-Spalte */
 
         .name-container { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; text-align: left; }
         .stellung { font-size: 10px; font-weight: 800; padding: 2px 8px; border-radius: 10px; text-transform: uppercase; }
