@@ -1,5 +1,5 @@
 
-<DOCTYPE html>
+<!DOCTYPE html>
 <html lang="de">
 <head>
     <meta charset="UTF-8">
@@ -312,21 +312,36 @@
         }
     }
 
-    // TEILNEHMER LADEN
+    
+            // Load Teilnehmer
+    <script>
     async function loadTeilnehmer() {
         try {
             const res = await fetch("https://raw.githubusercontent.com/danhunziker73-lgtm/sportschuetzen/main/teilnehmer.json?t=" + Date.now());
             teilnehmer = await res.json();
+            
+            // SORTIERUNG: Nach Nachname, dann Vorname
+            teilnehmer.sort((a, b) => {
+                const nameA = (a.nachname + " " + a.vorname).toLowerCase();
+                const nameB = (b.nachname + " " + b.vorname).toLowerCase();
+                return nameA.localeCompare(nameB);
+            });
+
             const select = document.getElementById("name");
+            select.innerHTML = '<option value="" disabled selected>Namen wählen...</option>'; // Reset
+            
             teilnehmer.forEach(p => {
                 const opt = document.createElement("option");
                 opt.value = String(p.lizenz || p.id);
-                opt.textContent = p.name;
+                // Nur Name und Vorname anzeigen (kein Jahrgang)
+                opt.textContent = `${p.nachname} ${p.vorname}`;
                 select.appendChild(opt);
             });
-        } catch(e) { console.error("Fehler Teilnehmer", e); }
+        } catch(e) { 
+            console.error("Fehler Teilnehmer", e); 
+        }
     }
-
+</script>
     async function askPush() {
     console.log("Starte Push-Abfrage...");
     window.OneSignalDeferred = window.OneSignalDeferred || [];
