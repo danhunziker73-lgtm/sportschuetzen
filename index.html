@@ -315,7 +315,7 @@
 
     
             // Load Teilnehmer
-    <script>
+  
     async function loadTeilnehmer() {
         try {
             const res = await fetch("https://raw.githubusercontent.com/danhunziker73-lgtm/sportschuetzen/main/teilnehmer.json?t=" + Date.now());
@@ -342,7 +342,7 @@
             console.error("Fehler Teilnehmer", e); 
         }
     }
-</script>
+
     async function askPush() {
     console.log("Starte Push-Abfrage...");
     window.OneSignalDeferred = window.OneSignalDeferred || [];
