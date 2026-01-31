@@ -31,3 +31,28 @@ self.addEventListener("fetch", e => {
     fetch(e.request).catch(() => caches.match(e.request))
   );
 });
+
+self.addEventListener('notificationclick', function(event) {
+    event.notification.close();
+    
+    // Die URL, die wir vom Google Script geschickt haben
+    const targetUrl = event.notification.data ? event.notification.data.url : '/sportschuetzen/index.html';
+
+    event.waitUntil(
+        clients.matchAll({type: 'window', includeUncontrolled: true}).then(function(clientList) {
+            // Check: Ist die App schon offen?
+            for (var i = 0; i < clientList.length; i++) {
+                var client = clientList[i];
+                // Wenn ja: Zwinge sie auf die neue URL und fokussiere
+                if ('navigate' in client) {
+                    client.focus();
+                    return client.navigate(targetUrl);
+                }
+            }
+            // Wenn nein: Öffne ein neues Fenster
+            if (clients.openWindow) {
+                return clients.openWindow(targetUrl);
+            }
+        })
+    );
+});
