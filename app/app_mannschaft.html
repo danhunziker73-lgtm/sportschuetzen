@@ -84,14 +84,14 @@ th.round, td.cell {
           align-items: center;
         }  */
 
-        .player { 
-  min-height: 40px; /* oder 48px je nach Geschmack */
-  display: flex; 
-  justify-content: space-between; 
-  align-items: center; 
-  padding: 10px 0; 
-  font-size: 14px;
+       .player {
+  display: grid;
+  grid-template-columns: 1fr 40px 40px 50px;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 0;
 }
+
 
 
         .total-row {
