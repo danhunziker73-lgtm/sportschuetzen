@@ -42,6 +42,7 @@
 
         table {
           width: 100%;
+          table-layout: fixed; /* Zwingt Spalten in feste Breiten */
           border-collapse: collapse;
           background: #fff;
           box-shadow: 0 2px 6px rgba(0,0,0,.08);
@@ -49,22 +50,24 @@
           overflow: hidden;
         }
 
-        /* FIXIERTE HÖHE FÜR BLAUE BALKEN: 60px */
+        /* HEADER FIX: 60px Höhe & Synchronisierte Spalten */
         th {
           background: var(--primary);
           color: #fff;
           font-size: 14px;
           font-weight: 600;
-          padding: 0 10px; 
-          text-align: center;
           height: 60px;
+          padding: 0 10px;
           box-sizing: border-box;
           vertical-align: middle;
         }
 
+        /* Spalten-Synchronisation */
+        .col-team { width: 55%; text-align: left; padding-left: 15px; }
+        .col-round { width: 15%; text-align: center; }
+
         td {
           padding: 12px 10px;
-          text-align: center;
           border-bottom: 1px solid var(--line);
           font-size: 14px;
         }
@@ -73,43 +76,37 @@
           font-weight: bold;
           text-align: left;
           color: var(--primary);
-          min-width: 120px;
+          padding-left: 15px;
         }
 
-        .cell { cursor: pointer; transition: background 0.2s; font-weight: bold; }
+        .cell { text-align: center; cursor: pointer; transition: background 0.2s; font-weight: bold; }
         .cell:hover { background: var(--hover); }
 
+        /* Detailansichten */
         .detail { display: none; background: #f9f9f9; padding: 15px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.05); }
-        h3 { font-size: 16px; margin-top: 0; color: var(--primary); text-align: left; }
+        h3 { font-size: 16px; margin-top: 0; color: var(--primary); text-align: center; }
 
-        /* GM Layout (4 Spalten) */
+        /* GM Detail Layout */
         .player-gm, .total-row-gm { 
             display: grid; 
             grid-template-columns: 1fr 40px 40px 50px; 
-            gap: 10px; 
-            padding: 10px 0; 
-            align-items: center; 
+            gap: 10px; padding: 10px 0; align-items: center; 
         }
         
-        /* GC Layout (2 Spalten - Name und Summe) */
+        /* GC Detail Layout */
         .player-gc, .total-row-gc { 
             display: flex; 
             justify-content: space-between;
-            padding: 10px 0; 
-            align-items: center; 
+            padding: 10px 0; align-items: center; 
         }
 
         .player-gm, .player-gc { border-bottom: 1px solid #eee; font-size: 14px; }
-
         .total-row-gm, .total-row-gc { 
-            margin-top: 10px;
-            border-top: 2px solid var(--primary);
-            color: var(--primary);
-            font-weight: bold;
-            font-size: 16px;
+            margin-top: 10px; border-top: 2px solid var(--primary);
+            color: var(--primary); font-weight: bold; font-size: 16px;
         }
 
-        .name-container { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; text-align: left; }
+        .name-container { display: flex; align-items: center; gap: 8px; text-align: left; }
         .stellung { font-size: 10px; font-weight: 800; padding: 2px 8px; border-radius: 10px; text-transform: uppercase; }
         .liegend { background: #e3f0ff; color: #1e5dbf; border: 1px solid #bcd9ff; }
         .kniend { background: #e6f6ec; color: #1f7a3a; border: 1px solid #c3e6cb; }
@@ -136,20 +133,7 @@
     const WORKER_URL = "https://gruppe.dan-hunziker73.workers.dev";
     const urlParams = new URLSearchParams(window.location.search);
     const selectedYear = urlParams.get('jahr') || 'aktuell'; 
-    
     let rawGM = []; let rawGC = [];
-
-    // Pull-to-Refresh
-    let touchStart = 0;
-    document.addEventListener('touchstart', e => { touchStart = e.touches[0].pageY; }, {passive: true});
-    document.addEventListener('touchmove', e => {
-        let distance = e.touches[0].pageY - touchStart;
-        if (window.scrollY <= 0 && distance > 0) document.getElementById('pull-spinner').style.top = Math.min(distance / 2.5, 60) + 'px';
-    }, {passive: true});
-    document.addEventListener('touchend', e => {
-        if (window.scrollY <= 0 && (e.changedTouches[0].pageY - touchStart) > 130) location.reload();
-        else document.getElementById('pull-spinner').style.top = '-50px';
-    }, {passive: true});
 
     async function loadAllData() {
         try {
@@ -158,6 +142,7 @@
                 fetch(`${WORKER_URL}?type=mannschaft&jahr=${selectedYear}`).then(r => r.json())
             ]);
 
+            // GM mapping: Team Spalte ist (i-1)*3 + 2
             rawGM = (resGM.table?.rows || []).map(r => {
                 let row = { name: r.c[0]?.v || "", stellung: r.c[1]?.v || "" };
                 for(let i=1; i<=3; i++){
@@ -169,6 +154,7 @@
                 return row;
             });
 
+            // GC mapping: Team Spalte ist (i-1)*2 + 1
             rawGC = (resGC.table?.rows || []).map(r => {
                 let row = { name: r.c[0]?.v || "" };
                 for(let i=1; i<=3; i++){
@@ -185,7 +171,7 @@
 
     function buildTableGM(){
         const teams = [...new Set(rawGM.flatMap(r => [r.r1Team, r.r2Team, r.r3Team]).filter(Boolean))].sort();
-        let html = `<div class="table-wrapper"><table><tr><th></th><th>R1</th><th>R2</th><th>R3</th></tr>`;
+        let html = `<div class="table-wrapper"><table><tr><th class="col-team"></th><th class="col-round">R1</th><th class="col-round">R2</th><th class="col-round">R3</th></tr>`;
         teams.forEach((team, index) => {
             html += `<tr><td class="team">${team}</td>`;
             for(let r=1; r<=3; r++){
@@ -201,6 +187,8 @@
         const div = document.getElementById(`detail-gm-${index}`);
         if(div.style.display === "block"){ div.style.display = "none"; return; }
         document.querySelectorAll('#overview-gm .detail').forEach(d => d.style.display = 'none');
+        
+        // Filtert STRENG nur Schützen, die in DIESER Runde im Team sind
         const list = rawGM.filter(p => p[`r${round}Team`] === team);
         let total = 0;
         let html = `<h3>${team} – Runde ${round}</h3>`;
@@ -215,7 +203,7 @@
 
     function buildTableGC(){
         const teams = [...new Set(rawGC.flatMap(r => [r.r1Team, r.r2Team, r.r3Team]).filter(Boolean))].sort();
-        let html = `<div class="table-wrapper"><table><tr><th></th><th>R1</th><th>R2</th><th>R3</th></tr>`;
+        let html = `<div class="table-wrapper"><table><tr><th class="col-team"></th><th class="col-round">R1</th><th class="col-round">R2</th><th class="col-round">R3</th></tr>`;
         teams.forEach((team, index) => {
             html += `<tr><td class="team">${team}</td>`;
             for(let r=1; r<=3; r++){
@@ -231,6 +219,8 @@
         const div = document.getElementById(`detail-gc-${index}`);
         if(div.style.display === "block"){ div.style.display = "none"; return; }
         document.querySelectorAll('#overview-gc .detail').forEach(d => d.style.display = 'none');
+        
+        // Filtert STRENG nur Schützen der aktuellen GC-Rundenspalte
         const list = rawGC.filter(p => p[`r${round}Team`] === team);
         let total = 0;
         let html = `<h3>${team} – Runde ${round}</h3>`;
@@ -241,6 +231,18 @@
         html += `<div class="total-row-gc"><span>Gesamt:</span><span style="text-align:right;">${total}</span></div>`;
         div.innerHTML = html; div.style.display = "block";
     }
+
+    // Pull-to-Refresh
+    let touchStart = 0;
+    document.addEventListener('touchstart', e => { touchStart = e.touches[0].pageY; }, {passive: true});
+    document.addEventListener('touchmove', e => {
+        let distance = e.touches[0].pageY - touchStart;
+        if (window.scrollY <= 0 && distance > 0) document.getElementById('pull-spinner').style.top = Math.min(distance / 2.5, 60) + 'px';
+    }, {passive: true});
+    document.addEventListener('touchend', e => {
+        if (window.scrollY <= 0 && (e.changedTouches[0].pageY - touchStart) > 130) location.reload();
+        else document.getElementById('pull-spinner').style.top = '-50px';
+    }, {passive: true});
 
     window.onload = loadAllData;
 </script>
