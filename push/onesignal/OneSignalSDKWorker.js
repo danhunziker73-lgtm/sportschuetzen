@@ -1,9 +1,8 @@
-// WICHTIG: Dies MUSS die allererste Zeile sein!
 importScripts('https://cdn.onesignal.com/sdks/OneSignalSDKWorker.js');
 
-// Erst danach darf dein eigener Code kommen
+// Falls deine sw.js im Hauptordner liegt, brauchen wir ../..
 try {
-    importScripts('/sportschuetzen/sw.js');
+    importScripts('../../sw.js');
 } catch (e) {
-    console.error("Eigener SW konnte nicht geladen werden:", e);
+    console.error("Zusatz-SW nicht gefunden");
 }
