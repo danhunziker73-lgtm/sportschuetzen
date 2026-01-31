@@ -3,7 +3,6 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Grenzlandcup</title>
     <style>
         :root {
           --primary: #0f3c5c;
@@ -21,8 +20,26 @@
           color: var(--text);
         }
 
-        .subtitle { color: #666; margin-bottom: 15px; font-size: 14px; }
-        .table-wrapper { overflow-x: auto; margin-bottom: 20px; }
+        .subtitle { color: #666; margin-bottom: 10px; font-size: 14px; font-weight: bold; }
+        .table-wrapper { overflow-x: auto; margin-bottom: 30px; }
+
+        /* Trennelement Design */
+        .separator {
+            display: flex;
+            align-items: center;
+            text-align: center;
+            margin: 40px 0 20px;
+            color: var(--primary);
+            font-weight: bold;
+            font-size: 18px;
+        }
+        .separator::before, .separator::after {
+            content: '';
+            flex: 1;
+            border-bottom: 2px solid var(--line);
+        }
+        .separator:not(:empty)::before { margin-right: .5em; }
+        .separator:not(:empty)::after { margin-left: .5em; }
 
         table {
           width: 100%;
@@ -33,13 +50,13 @@
           overflow: hidden;
         }
 
-        /* Hoher blauer Balken */
+        /* Einheitliche Höhe für den blauen Balken */
         th {
           background: var(--primary);
           color: #fff;
           font-size: 14px;
           font-weight: 600;
-          padding: 18px 10px;
+          padding: 18px 10px; 
           text-align: center;
         }
 
@@ -57,24 +74,32 @@
           min-width: 120px;
         }
 
-        .cell { cursor: pointer; transition: background 0.2s; font-weight: bold; }
+        .cell { cursor: pointer; transition: background 0.2s; }
         .cell:hover { background: var(--hover); }
 
-        /* Detailansicht Layout */
         .detail { display: none; background: #f9f9f9; padding: 15px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.05); }
         h3 { font-size: 16px; margin-top: 0; color: var(--primary); text-align: left; }
 
-        /* Anpassung für Grenzlandcup (Name + 1 Score) */
-        .player, .total-row { 
+        /* Gruppe Spalten Layout (GM) */
+        .player-gm, .total-row-gm { 
+            display: grid; 
+            grid-template-columns: 1fr 40px 40px 50px; 
+            gap: 10px; 
+            padding: 10px 0; 
+            align-items: center; 
+        }
+        
+        /* Grenzlandcup Layout (GC - 1 Score) */
+        .player-gc, .total-row-gc { 
             display: flex; 
             justify-content: space-between;
             padding: 10px 0; 
             align-items: center; 
         }
-        
-        .player { border-bottom: 1px solid #eee; font-size: 14px; }
 
-        .total-row { 
+        .player-gm, .player-gc { border-bottom: 1px solid #eee; font-size: 14px; }
+
+        .total-row-gm, .total-row-gc { 
             margin-top: 10px;
             border-top: 2px solid var(--primary);
             color: var(--primary);
@@ -82,10 +107,11 @@
             font-size: 16px;
         }
 
-        .name-label { text-align: left; flex-grow: 1; }
-        .score-val { text-align: right; min-width: 50px; }
+        .name-container { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; text-align: left; }
+        .stellung { font-size: 10px; font-weight: 800; padding: 2px 8px; border-radius: 10px; text-transform: uppercase; }
+        .liegend { background: #e3f0ff; color: #1e5dbf; border: 1px solid #bcd9ff; }
+        .kniend { background: #e6f6ec; color: #1f7a3a; border: 1px solid #c3e6cb; }
 
-        /* Pull-to-Refresh Spinner */
         #pull-spinner {
           position: fixed; top: -50px; left: 50%; transform: translateX(-50%);
           width: 40px; height: 40px; background: var(--primary); border-radius: 50%;
@@ -98,17 +124,21 @@
 </head>
 <body>
     <div id="pull-spinner"><div class="spinner-icon"></div></div>
-    <div class="subtitle" id="sub-title">Daten werden geladen...</div>
-    <div id="overview"></div>
+    
+    <div class="subtitle">Gruppenmeisterschaft</div>
+    <div id="overview-gm">Lade Gruppenmeisterschaft...</div>
+
+    <div class="separator">Grenzlandcup</div>
+    <div id="overview-gc">Lade Grenzlandcup...</div>
 
 <script>
-    // Konfiguration für den Worker (Grenzlandcup nutzt Typ 'mannschaft')
     const WORKER_URL = "https://gruppe.dan-hunziker73.workers.dev";
     const urlParams = new URLSearchParams(window.location.search);
     const selectedYear = urlParams.get('jahr') || 'aktuell'; 
-    let raw = []; let teams = [];
+    
+    let rawGM = []; let rawGC = [];
 
-    // Pull-to-Refresh Logik
+    // Pull-to-Refresh
     let touchStart = 0;
     document.addEventListener('touchstart', e => { touchStart = e.touches[0].pageY; }, {passive: true});
     document.addEventListener('touchmove', e => {
@@ -120,15 +150,27 @@
         else document.getElementById('pull-spinner').style.top = '-50px';
     }, {passive: true});
 
-    async function loadData() {
+    async function loadAllData() {
         try {
-            // Fetch für Grenzlandcup (1 Resultat pro Schütze)
-            const response = await fetch(`${WORKER_URL}?type=mannschaft&jahr=${selectedYear}`);
-            const json = await response.json();
-            const rows = json.table?.rows || [];
-            if (rows.length === 0) return;
+            // 1. Gruppenmeisterschaft laden
+            const resGM = await fetch(`${WORKER_URL}?type=gruppe&jahr=${selectedYear}`);
+            const jsonGM = await resGM.json();
+            rawGM = (jsonGM.table?.rows || []).map(r => {
+                let row = { name: r.c[0]?.v || "", stellung: r.c[1]?.v || "" };
+                for(let i=1; i<=3; i++){
+                    row[`r${i}Team`] = r.c[(i-1)*3+2]?.v || "";
+                    row[`r${i}Pkt1`] = Number(r.c[(i-1)*3+3]?.v) || 0;
+                    row[`r${i}Pkt2`] = Number(r.c[(i-1)*3+4]?.v) || 0;
+                    row[`r${i}Sum`]  = row[`r${i}Pkt1`] + row[`r${i}Pkt2`];
+                }
+                return row;
+            });
+            buildTableGM();
 
-            raw = rows.map(r => {
+            // 2. Grenzlandcup laden
+            const resGC = await fetch(`${WORKER_URL}?type=mannschaft&jahr=${selectedYear}`);
+            const jsonGC = await resGC.json();
+            rawGC = (jsonGC.table?.rows || []).map(r => {
                 let row = { name: r.c[0]?.v || "" };
                 for(let i=1; i<=3; i++){
                     row[`r${i}Team`] = r.c[(i-1)*2+1]?.v || "";
@@ -136,65 +178,71 @@
                 }
                 return row;
             });
+            buildTableGC();
 
-            teams = [...new Set(raw.flatMap(r => Object.keys(r).filter(k => k.includes("Team")).map(k => r[k]).filter(Boolean)))].sort();
-            document.getElementById('sub-title').textContent = `Grenzlandcup Übersicht – auf Punkte klicken`;
-            buildTable();
-        } catch (e) { 
-            document.getElementById("overview").innerHTML = "Fehler beim Laden."; 
-        }
+        } catch (e) { console.error(e); }
     }
 
-    function buildTable(){
-        let html = `<div class="table-wrapper"><table><tr><th style="text-align:left; padding-left:15px;">Mannschaft</th><th>R1</th><th>R2</th><th>R3</th></tr>`;
+    function buildTableGM(){
+        const teams = [...new Set(rawGM.flatMap(r => [r.r1Team, r.r2Team, r.r3Team]).filter(Boolean))].sort();
+        let html = `<div class="table-wrapper"><table><tr><th>Mannschaft</th><th>R1</th><th>R2</th><th>R3</th></tr>`;
         teams.forEach((team, index) => {
             html += `<tr><td class="team">${team}</td>`;
             for(let r=1; r<=3; r++){
-                const sum = raw.filter(p => p[`r${r}Team`] === team).reduce((a, b) => a + b[`r${r}Pkt`], 0);
-                html += `<td class="cell" onclick="toggleDetail('${team.replace(/'/g,"\\'")}', ${r}, ${index})">${sum || "–"}</td>`;
+                const sum = rawGM.filter(p => p[`r${r}Team`] === team).reduce((a, b) => a + b[`r${r}Sum`], 0);
+                html += `<td class="cell" onclick="toggleDetailGM('${team.replace(/'/g,"\\'")}', ${r}, ${index})">${sum || "–"}</td>`;
             }
-            html += `</tr><tr><td colspan="4" style="padding:0; border:0;"><div id="detail-div-${index}" class="detail"></div></td></tr>`;
+            html += `</tr><tr><td colspan="4" style="padding:0; border:0;"><div id="detail-gm-${index}" class="detail"></div></td></tr>`;
         });
-        document.getElementById("overview").innerHTML = html + `</table></div>`;
+        document.getElementById("overview-gm").innerHTML = html + `</table></div>`;
     }
 
-    function toggleDetail(team, round, index){
-        const div = document.getElementById(`detail-div-${index}`);
-        
-        // Toggle Logik (Schliessen wenn bereits offen)
-        const currentId = team + round;
-        if(div.style.display === "block" && div.dataset.active === currentId){ 
-            div.style.display = "none"; 
-            return; 
-        }
-        
-        document.querySelectorAll('.detail').forEach(d => d.style.display = 'none');
-        const list = raw.filter(p => p[`r${round}Team`] === team);
+    function toggleDetailGM(team, round, index){
+        const div = document.getElementById(`detail-gm-${index}`);
+        if(div.style.display === "block"){ div.style.display = "none"; return; }
+        document.querySelectorAll('#overview-gm .detail').forEach(d => d.style.display = 'none');
+        const list = rawGM.filter(p => p[`r${round}Team`] === team);
         let total = 0;
-        
-        let html = `<h3 style="margin-top:0;">${team} – Runde ${round}</h3>`;
+        let html = `<h3>${team} – Runde ${round}</h3>`;
         list.forEach(p => {
-            const pkt = p[`r${round}Pkt`]; 
-            total += pkt;
-            html += `
-                <div class="player">
-                    <div class="name-label">${p.name}</div>
-                    <div class="score-val"><strong>${pkt}</strong></div>
-                </div>`;
+            const sum = p[`r${round}Sum`]; total += sum;
+            const cls = (p.stellung || "").toLowerCase().includes("liegend") ? "liegend" : "kniend";
+            html += `<div class="player-gm"><div class="name-container"><span>${p.name}</span><span class="stellung ${cls}">${p.stellung}</span></div><div>${p[`r${round}Pkt1`]}</div><div>${p[`r${round}Pkt2`]}</div><div style="text-align:right;"><strong>${sum}</strong></div></div>`;
         });
-
-        html += `
-            <div class="total-row">
-                <div class="name-label">Gesamt:</div>
-                <div class="score-val">${total}</div>
-            </div>`;
-
-        div.innerHTML = html;
-        div.style.display = "block";
-        div.dataset.active = currentId;
+        html += `<div class="total-row-gm"><div>Gesamt:</div><div></div><div></div><div style="text-align:right;">${total}</div></div>`;
+        div.innerHTML = html; div.style.display = "block";
     }
 
-    window.onload = loadData;
+    function buildTableGC(){
+        const teams = [...new Set(rawGC.flatMap(r => [r.r1Team, r.r2Team, r.r3Team]).filter(Boolean))].sort();
+        let html = `<div class="table-wrapper"><table><tr><th>Mannschaft</th><th>R1</th><th>R2</th><th>R3</th></tr>`;
+        teams.forEach((team, index) => {
+            html += `<tr><td class="team">${team}</td>`;
+            for(let r=1; r<=3; r++){
+                const sum = rawGC.filter(p => p[`r${r}Team`] === team).reduce((a, b) => a + b[`r${r}Pkt`], 0);
+                html += `<td class="cell" onclick="toggleDetailGC('${team.replace(/'/g,"\\'")}', ${r}, ${index})">${sum || "–"}</td>`;
+            }
+            html += `</tr><tr><td colspan="4" style="padding:0; border:0;"><div id="detail-gc-${index}" class="detail"></div></td></tr>`;
+        });
+        document.getElementById("overview-gc").innerHTML = html + `</table></div>`;
+    }
+
+    function toggleDetailGC(team, round, index){
+        const div = document.getElementById(`detail-gc-${index}`);
+        if(div.style.display === "block"){ div.style.display = "none"; return; }
+        document.querySelectorAll('#overview-gc .detail').forEach(d => d.style.display = 'none');
+        const list = rawGC.filter(p => p[`r${round}Team`] === team);
+        let total = 0;
+        let html = `<h3>${team} – Runde ${round}</h3>`;
+        list.forEach(p => {
+            const pkt = p[`r${round}Pkt`]; total += pkt;
+            html += `<div class="player-gc"><span>${p.name}</span><span style="text-align:right;"><strong>${pkt}</strong></span></div>`;
+        });
+        html += `<div class="total-row-gc"><span>Gesamt:</span><span style="text-align:right;">${total}</span></div>`;
+        div.innerHTML = html; div.style.display = "block";
+    }
+
+    window.onload = loadAllData;
 </script>
 </body>
 </html>
