@@ -23,8 +23,9 @@
         .subtitle { color: #666; margin-bottom: 15px; font-size: 14px; }
         .table-wrapper { overflow-x: auto; margin-bottom: 20px; }
 
+        /* TABELLE AUF AUTO ZURÜCKGESETZT */
         table {
-          width: 100%;
+          width: auto;
           border-collapse: collapse;
           background: #fff;
           box-shadow: 0 2px 6px rgba(0,0,0,.08);
@@ -52,7 +53,14 @@
           font-weight: bold;
           text-align: left;
           color: var(--primary);
-          min-width: 120px;
+          min-width: 140px; /* Beibehalten für bessere Lesbarkeit */
+        }
+
+        /* Fixe Breite für die Runden-Spalten wie im Original */
+        th:not(:first-child), td.cell {
+          width: 32px;
+          min-width: 32px;
+          max-width: 32px;
         }
 
         .cell { cursor: pointer; transition: background 0.2s; }
@@ -102,7 +110,7 @@
     const selectedYear = urlParams.get('jahr') || 'aktuell';
     let raw = []; let teams = [];
 
-    // Pull-to-Refresh Logik...
+    // Pull-to-Refresh Logik
     let touchStart = 0;
     document.addEventListener('touchstart', e => { touchStart = e.touches[0].pageY; }, {passive: true});
     document.addEventListener('touchmove', e => {
