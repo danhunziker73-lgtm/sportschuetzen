@@ -35,24 +35,28 @@ self.addEventListener("fetch", e => {
 self.addEventListener('notificationclick', function(event) {
     event.notification.close();
     
-    // Die URL, die wir vom Google Script geschickt haben
+// Dieser Teil steuert, was beim Klick auf die Nachricht passiert
+self.addEventListener('notificationclick', function(event) {
+    event.notification.close(); // Nachricht schließen
+    
+    // Die URL aus den OneSignal-Daten auslesen
     const targetUrl = event.notification.data ? event.notification.data.url : '/sportschuetzen/index.html';
 
     event.waitUntil(
         clients.matchAll({type: 'window', includeUncontrolled: true}).then(function(clientList) {
-            // Check: Ist die App schon offen?
+            // 1. Schauen, ob die App schon irgendwo offen ist
             for (var i = 0; i < clientList.length; i++) {
                 var client = clientList[i];
-                // Wenn ja: Zwinge sie auf die neue URL und fokussiere
-                if ('navigate' in client) {
+                // Wenn ja, dann wechsle dort die Seite und hol sie in den Vordergrund
+                if ('navigate' in client && 'focus' in client) {
                     client.focus();
                     return client.navigate(targetUrl);
                 }
             }
-            // Wenn nein: Öffne ein neues Fenster
+            // 2. Wenn die App komplett zu war, öffne sie neu mit der Ziel-URL
             if (clients.openWindow) {
                 return clients.openWindow(targetUrl);
             }
         })
     );
-});
+}); 
