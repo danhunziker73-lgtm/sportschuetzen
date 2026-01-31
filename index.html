@@ -364,26 +364,18 @@
 
     
     // FOTO VORSCHAU
-    document.getElementById("foto").addEventListener("change", e => {
-        const file = e.target.files[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = ev => {
-            const img = document.getElementById("preview");
-            img.src = ev.target.result;
-            img.style.display = "block";
-            document.getElementById("upload-hint").style.display = "none";
-        };
-       const file = document.getElementById("foto").files[0];
-if (!file) {
-    alert("Bitte Foto auswählen");
-    btn.disabled = false;
-    btn.textContent = "Jetzt senden";
-    return;
-}
-reader.readAsDataURL(file);
-
-    });
+  document.getElementById("foto").addEventListener("change", e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+        const img = document.getElementById("preview");
+        img.src = ev.target.result;
+        img.style.display = "block";
+        document.getElementById("upload-hint").style.display = "none";
+    };
+    reader.readAsDataURL(file);
+});
 
     // UPLOAD LOGIK
     document.getElementById("uploadForm").onsubmit = async (e) => {
