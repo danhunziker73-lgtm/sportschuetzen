@@ -1,18 +1,50 @@
+
 if (window === window.top) {
   window.OneSignalDeferred = window.OneSignalDeferred || [];
 
   OneSignalDeferred.push(async (OneSignal) => {
-    await OneSignal.init({
-      appId: "975091f5-948b-48d4-9e61-b7f4d43a1021",
-      serviceWorkerPath: "OneSignalSDKWorker.js",
-      serviceWorkerUpdaterWorkerPath: "OneSignalSDKUpdaterWorker.js"
-    });
+    try {
+      await OneSignal.init({
+        appId: "975091f5-948b-48d4-9e61-b7f4d43a1021",
+        serviceWorkerPath: "OneSignalSDKWorker.js",
+        serviceWorkerUpdaterWorkerPath: "OneSignalSDKUpdaterWorker.js"
+      });
 
-    console.log("✅ OneSignal bereit", {
-      optedIn: OneSignal.User.PushSubscription.optedIn,
-      permission: await OneSignal.Notifications.permission
-    });
+      const permission = await OneSignal.Notifications.permission;
+      const isSubscribed = await OneSignal.isPushNotificationsEnabled();
+
+      console.log("✅ OneSignal Status:", { permission, isSubscribed });
+
+      showSnackbar(
+        isSubscribed ? "✅ Push aktiviert" :
+        permission === "default" ? "ℹ️ Push nicht aktiviert – erlauben" :
+        "❌ Push blockiert"
+      );
+
+    } catch (err) {
+      console.error("❌ OneSignal Init Fehler:", err);
+    }
   });
+}
+
+function showSnackbar(message) {
+  const snackbar = document.createElement("div");
+  snackbar.textContent = message;
+  Object.assign(snackbar.style, {
+    position: "fixed",
+    bottom: "20px",
+    left: "50%",
+    transform: "translateX(-50%)",
+    background: "#333",
+    color: "#fff",
+    padding: "12px 24px",
+    borderRadius: "8px",
+    zIndex: 9999,
+    fontFamily: "sans-serif",
+    fontSize: "14px"
+  });
+  document.body.appendChild(snackbar);
+  setTimeout(() => snackbar.remove(), 5000);
 }
 
 
