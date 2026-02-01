@@ -1,5 +1,7 @@
+// 1️⃣ OneSignal Core (MUSS zuerst geladen werden)
 importScripts("https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.sw.js");
 
+// 2️⃣ Eigene Events DIREKT danach (keine async / keine Bedingungen)
 self.addEventListener("notificationclick", event => {
   event.notification.close();
 
@@ -15,9 +17,7 @@ self.addEventListener("notificationclick", event => {
             return client.focus();
           }
         }
-        if (clients.openWindow) {
-          return clients.openWindow(url);
-        }
+        return clients.openWindow(url);
       })
   );
 });
