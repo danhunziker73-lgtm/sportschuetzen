@@ -13,7 +13,6 @@ function getIosStatus() {
   return { isIos, isStandalone };
 }
 
-// OneSignal Initialisierung
 OneSignalDeferred.push(async function (OneSignal) {
   await OneSignal.init({
     appId: "4fd0fec9-a8dd-40d9-94e9-7ba330c07176",
@@ -25,7 +24,34 @@ OneSignalDeferred.push(async function (OneSignal) {
   console.log("OneSignal Init OK");
 
   const ios = getIosStatus();
-  const perm = await OneSignal.Notifications.getPermission();
+
+  // iOS: nur Standalone erlaubt
+  if (ios.isIos && !ios.isStandalone) {
+    showPushInfo(
+      "📢 Um Resultate als Push zu erhalten: Tippe auf „Teilen“ (unten in Safari) und dann auf „Zum Home-Bildschirm“."
+    );
+    return;
+  }
+
+  // ✅ v16 Permission korrekt lesen
+  let perm = OneSignal.Notifications.permission;
+
+  // iOS-Fallback: kurz warten, falls noch undefined
+  if (perm === undefined) {
+    await new Promise(r => setTimeout(r, 300));
+    perm = OneSignal.Notifications.permission;
+  }
+
+  console.log("Permission:", perm);
+
+  if (perm === "denied") {
+    showPushInfo(
+      "📢 Mitteilungen sind blockiert. Bitte in den Geräteeinstellungen für diese App aktivieren."
+    );
+  } else if (perm === "default") {
+    createPushButton();
+  }
+});
 
   // iOS: Nur Home-Screen Apps dürfen Push
   if (ios.isIos && !ios.isStandalone) {
