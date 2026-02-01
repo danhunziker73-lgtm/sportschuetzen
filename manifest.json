@@ -1,8 +1,10 @@
 {
+  "id": "/sportschuetzen/",
   "name": "Sportschützen Muhen",
   "short_name": "Muhen",
   "description": "Resultate und Termine der Sportschützen Muhen",
-  "start_url": "/sportschuetzen/",
+  "start_url": "/sportschuetzen/?source=pwa",
+  "scope": "/sportschuetzen/",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#ffffff",
@@ -21,7 +23,7 @@
       "purpose": "any"
     },
     {
-      "src": "icons/icon-512.png",
+      "src": "icons/icon-512-maskable.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
