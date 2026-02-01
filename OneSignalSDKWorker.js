@@ -1,32 +1,23 @@
-importScripts("https://cdn.onesignal.com/sdks/OneSignalSDKWorker.js");
+importScripts("https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.sw.js");
 
-/**
- * Push-Klick Navigation
- * iOS / Android / Desktop
- */
 self.addEventListener("notificationclick", event => {
   event.notification.close();
 
-  const targetUrl =
+  const url =
     event.notification?.data?.url ||
-    "/sportschuetzen/index.html";
+    "/index.html";
 
   event.waitUntil(
-    clients.matchAll({
-      type: "window",
-      includeUncontrolled: true
-    }).then(clientList => {
-
-      for (const client of clientList) {
-        if (client.url.includes(targetUrl) && "focus" in client) {
-          return client.focus();
+    clients.matchAll({ type: "window", includeUncontrolled: true })
+      .then(clientList => {
+        for (const client of clientList) {
+          if ("focus" in client) {
+            return client.focus();
+          }
         }
-      }
-
-      if (clients.openWindow) {
-        return clients.openWindow(targetUrl);
-      }
-    })
+        if (clients.openWindow) {
+          return clients.openWindow(url);
+        }
+      })
   );
 });
-
