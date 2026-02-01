@@ -8,13 +8,6 @@ if (window === window.top) {
       serviceWorkerUpdaterPath: "OneSignalSDKUpdaterWorker.js"
     });
 
-    // 🔑 WICHTIG: User explizit sicherstellen
-    if (!OneSignal.User.id) {
-      await OneSignal.User.setExternalId(
-        crypto.randomUUID()
-      );
-      console.log("🔑 OneSignal User explizit erstellt");
-    }
 
     console.log("✅ OneSignal bereit", {
       userId: OneSignal.User.id,
