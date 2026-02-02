@@ -4,11 +4,12 @@ if (window === window.top) {
 
   OneSignalDeferred.push(async (OneSignal) => {
     try {
-      await OneSignal.init({
-        appId: "975091f5-948b-48d4-9e61-b7f4d43a1021",
-        serviceWorkerPath: "OneSignalSDKWorker.js",
-        serviceWorkerUpdaterWorkerPath: "OneSignalSDKUpdaterWorker.js"
-      });
+  await OneSignal.init({
+  appId: "975091f5-948b-48d4-9e61-b7f4d43a1021",
+  serviceWorkerPath: "/sportschuetzen/OneSignalSDKWorker.js",
+  serviceWorkerUpdaterWorkerPath: "/sportschuetzen/OneSignalSDKUpdaterWorker.js",
+  serviceWorkerParam: { scope: "/sportschuetzen/" } // 👈 Scope hinzufügen
+});
 
       const permission = await OneSignal.Notifications.permission;
       const isSubscribed = await OneSignal.isPushNotificationsEnabled();
