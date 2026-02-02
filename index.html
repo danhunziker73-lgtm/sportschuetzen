@@ -320,24 +320,21 @@ header h1 {
     // TERMINE LADEN
 async function loadTermine() {
     const wrap = document.getElementById("termine");
-  
+    const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzi9BVdewuF-HTXB1ruwdap5C1pLyobj6XZsgJV6XFLVQDLUU3jPYvx727tzC1y3NM/exec";
 
     try {
-        // Lädt beide Quellen gleichzeitig
         const [resWorker, resGoogle] = await Promise.all([
-            fetch(WORKER_TERMINE_URL).then(r => r.json()).catch(err => { console.error("Worker Fehler", err); return []; }),
-            fetch(GOOGLE_SCRIPT_URL).then(r => r.json()).catch(err => { console.error("Google Fehler", err); return []; })
+            fetch(WORKER_TERMINE_URL).then(r => r.json()).catch(() => []),
+            fetch(GOOGLE_SCRIPT_URL).then(r => r.json()).catch(() => [])
         ]);
 
         let data = [...resWorker, ...resGoogle];
         const currentYear = new Date().getFullYear();
 
-        // ROBUSTE SORTIERUNG
+        // Sortierung nach echtem Datum
         data.sort((a, b) => {
             const parseDate = (obj) => {
-                if (obj.datum_iso) return new Date(obj.datum_iso); // Google Format
-                if (!obj.datum) return new Date(8640000000000000);
-                // Dein Worker Format: "Wochentag, Tag. Monat Jahr"
+                if (obj.datum_iso) return new Date(obj.datum_iso);
                 const p = obj.datum.split(", ")[1].split(" ");
                 const months = {"Januar":0, "Februar":1, "März":2, "April":3, "Mai":4, "Juni":5, "Juli":6, "August":7, "September":8, "Oktober":9, "November":10, "Dezember":11};
                 return new Date(p[2], months[p[1]], parseInt(p[0]));
@@ -348,32 +345,31 @@ async function loadTermine() {
         wrap.innerHTML = "";
         data.forEach(t => {
             const isExtern = t.typ === "extern";
-            const status = (t.status || "").toLowerCase();
-            if (status === "abgesagt") return;
+            if ((t.status || "").toLowerCase() === "abgesagt") return;
 
-            const datumRaw = (t.datum || "").trim();
-            const parts = datumRaw.split(", ");
+            const parts = t.datum.split(", ");
             const weekday = parts[0].substring(0, 2); 
             const dateFull = parts[1]; 
-            const yearInStringMatch = dateFull.match(/\d{4}/);
-            const yearInString = yearInStringMatch ? yearInStringMatch[0] : currentYear.toString();
-            const dateDisplay = dateFull.replace(` ${yearInString}`, "");
-            const subLine = (yearInString !== currentYear.toString()) ? `${weekday} '${yearInString.substring(2)}` : weekday;
+            const yearMatch = dateFull.match(/\d{4}/);
+            const yearInStr = yearMatch ? yearMatch[0] : currentYear.toString();
+            const dateDisplay = dateFull.replace(` ${yearInStr}`, "");
+            const subLine = (yearInStr !== currentYear.toString()) ? `${weekday} '${yearInStr.substring(2)}` : weekday;
 
-            // OPTIK ANPASSEN FÜR EXTERN
-            const rowStyle = isExtern ? 'style="opacity: 0.8; border-left: 4px solid var(--border);"' : '';
-            const titlePrefix = isExtern ? '<span style="color: var(--text-light); font-weight: 400;">Belegt:</span> ' : '';
+            // Design-Unterscheidung
+            const rowClass = isExtern ? 'style="background: #fdfdfd; opacity: 0.85; border-left: 4px solid #cbd5e0;"' : '';
+            const icon = isExtern ? '🏠' : '📍';
+            const displayTitle = isExtern ? `<span style="font-weight:400; color:#6b7280;">Belegt:</span> ${t.titel}` : t.titel;
 
             wrap.innerHTML += `
-            <div class="termin-row" ${rowStyle}>
-                <div class="termin-date" ${isExtern ? 'style="background: #f9fafb;"' : ''}>
+            <div class="termin-row" ${rowClass}>
+                <div class="termin-date" ${isExtern ? 'style="border-color:#e2e8f0;"' : ''}>
                     <span class="date-main">${dateDisplay}</span>
                     <span class="date-sub">${subLine}</span>
                 </div>
                 <div class="termin-content">
-                    <span class="termin-title">${titlePrefix}${t.titel}</span>
+                    <span class="termin-title">${displayTitle}</span>
                     <div class="termin-meta">
-                        <span>${isExtern ? '🏠' : '📍'} ${t.ort}</span>
+                        <span>${icon} ${t.ort}</span>
                         ${t.start ? `<span>🕒 ${t.start}</span>` : ""}
                     </div>
                 </div>
@@ -381,6 +377,7 @@ async function loadTermine() {
         });
     } catch (e) {
         wrap.innerHTML = "Fehler beim Laden.";
+        console.error(e);
     }
 }
 
