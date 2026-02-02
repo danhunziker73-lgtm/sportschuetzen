@@ -4,12 +4,15 @@ if (window === window.top) {
 
   OneSignalDeferred.push(async (OneSignal) => {
     try {
-  await OneSignal.init({
+await OneSignal.init({
   appId: "975091f5-948b-48d4-9e61-b7f4d43a1021",
-  serviceWorkerPath: "/sportschuetzen/OneSignalSDKWorker.js",
-  serviceWorkerUpdaterWorkerPath: "/sportschuetzen/OneSignalSDKUpdaterWorker.js",
-  serviceWorkerParam: { scope: "/sportschuetzen/" } // 👈 Scope hinzufügen
-});
+  // Wir nutzen relative Pfade ohne den führenden Slash, 
+  // falls die Files im gleichen Ordner wie die index.html liegen
+  serviceWorkerPath: "OneSignalSDKWorker.js",
+  serviceWorkerUpdaterWorkerPath: "OneSignalSDKWorker.js",
+  serviceWorkerParam: { scope: "/sportschuetzen/" },
+  allowLocalhostAsSecureOrigin: true // Hilft beim Debuggen
+});;
 
       const permission = await OneSignal.Notifications.permission;
       const isSubscribed = await OneSignal.isPushNotificationsEnabled();
