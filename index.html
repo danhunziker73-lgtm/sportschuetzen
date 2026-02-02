@@ -456,36 +456,51 @@ async function loadTermine() {
     reader.readAsDataURL(file);
 });
 
-    // UPLOAD LOGIK
-    document.getElementById("uploadForm").onsubmit = async (e) => {
-        e.preventDefault();
-        const btn = document.getElementById("submitBtn");
-        btn.disabled = true; btn.textContent = "Wird gesendet...";
-        const selectedId = document.getElementById("name").value;
-        const user = teilnehmer.find(t => String(t.lizenz || t.id) === selectedId);
-        const reader = new FileReader();
-        reader.onload = async () => {
-            try {
-                const res = await fetch(WORKER_UPLOAD_URL, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        action: "upload_standblatt",
-                        lizenz: selectedId,
-                        vorname: user ? user.vorname : "",
-                        nachname: user ? user.nachname : "",
-                        erzielt: document.getElementById("erzielt").value,
-                        maximal: document.getElementById("maximal").value,
-                        foto: reader.result
-                    })
-                });
-                if (res.ok) { alert("✔ Gesendet!"); location.reload(); } 
-                else { alert("Fehler beim Senden."); }
-            } catch (err) { alert("Netzwerkfehler."); }
-            finally { btn.disabled = false; btn.textContent = "Jetzt senden"; }
-        };
-        reader.readAsDataURL(document.getElementById("foto").files[0]);
+  
+// UPLOAD LOGIK MIT KONTROLLE
+document.getElementById("uploadForm").onsubmit = async (e) => {
+    e.preventDefault();
+    
+    const erzielt = parseInt(document.getElementById("erzielt").value);
+    const maximal = parseInt(document.getElementById("maximal").value);
+    const btn = document.getElementById("submitBtn");
+
+    // KONTROLLE: Erzielt darf nicht höher als Maximum sein
+    if (erzielt > maximal) {
+        alert("❌ Fehler: Das erzielte Resultat (" + erzielt + ") kann nicht höher sein als das Maximum (" + maximal + ")!");
+        document.getElementById("erzielt").focus();
+        return; // Bricht den Upload ab
+    }
+
+    btn.disabled = true; 
+    btn.textContent = "Wird gesendet...";
+    
+    const selectedId = document.getElementById("name").value;
+    const user = teilnehmer.find(t => String(t.lizenz || t.id) === selectedId);
+    const reader = new FileReader();
+    
+    reader.onload = async () => {
+        try {
+            const res = await fetch(WORKER_UPLOAD_URL, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    action: "upload_standblatt",
+                    lizenz: selectedId,
+                    vorname: user ? user.vorname : "",
+                    nachname: user ? user.nachname : "",
+                    erzielt: erzielt,
+                    maximal: maximal,
+                    foto: reader.result
+                })
+            });
+            if (res.ok) { alert("✔ Gesendet!"); location.reload(); } 
+            else { alert("Fehler beim Senden."); }
+        } catch (err) { alert("Netzwerkfehler."); }
+        finally { btn.disabled = false; btn.textContent = "Jetzt senden"; }
     };
+    reader.readAsDataURL(document.getElementById("foto").files[0]);
+};
 // Speziell für iOS: Erkennt das "Aufwachen" der App
 document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "visible") {
