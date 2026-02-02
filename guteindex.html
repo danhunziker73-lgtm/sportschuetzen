@@ -255,6 +255,7 @@ header h1 {
 <script>
     const WORKER_TERMINE_URL = "https://termine.dan-hunziker73.workers.dev";
     const WORKER_UPLOAD_URL = "https://github-dropdown-refresh.dan-hunziker73.workers.dev/";
+  const GOOGLE_SCRIPT_URL = "AKfycbzi9BVdewuF-HTXB1ruwdap5C1pLyobj6XZsgJV6XFLVQDLUU3jPYvx727tzC1y3NM";
     let teilnehmer = [];
 
  // OPTIMIERTES PULL-TO-REFRESH MIT SPINNER
@@ -317,57 +318,71 @@ header h1 {
     }
 
     // TERMINE LADEN
-    async function loadTermine() {
-        const wrap = document.getElementById("termine");
-        try {
-            const res = await fetch(WORKER_TERMINE_URL);
-            let data = await res.json();
-            const currentYear = new Date().getFullYear();
+async function loadTermine() {
+    const wrap = document.getElementById("termine");
+    const GOOGLE_SCRIPT_URL = "DEINE_APPS_SCRIPT_URL_HIER"; // <--- HIER URL EINSETZEN
 
-            data.sort((a, b) => {
-                const parseDate = (str) => {
-                    if(!str) return new Date(8640000000000000);
-                    const p = str.split(", ")[1].split(" ");
-                    const months = {"Januar":0, "Februar":1, "März":2, "April":3, "Mai":4, "Juni":5, "Juli":6, "August":7, "September":8, "Oktober":9, "November":10, "Dezember":11};
-                    return new Date(p[2], months[p[1]], parseInt(p[0]));
-                };
-                return parseDate(a.datum) - parseDate(b.datum);
-            });
+    try {
+        // Lädt beide Quellen gleichzeitig
+        const [resWorker, resGoogle] = await Promise.all([
+            fetch(WORKER_TERMINE_URL).then(r => r.json()).catch(err => { console.error("Worker Fehler", err); return []; }),
+            fetch(GOOGLE_SCRIPT_URL).then(r => r.json()).catch(err => { console.error("Google Fehler", err); return []; })
+        ]);
 
-            wrap.innerHTML = "";
-            data.forEach(t => {
-                const status = (t.status || "").toLowerCase();
-                const datumRaw = (t.datum || "").trim();
-                if (datumRaw === "" || status === "abgesagt") return;
-                const isProv = status === "provisorisch";
-                const parts = datumRaw.split(", ");
-                const weekday = parts[0].substring(0, 2); 
-                const dateFull = parts[1]; 
-                const yearInStringMatch = dateFull.match(/\d{4}/);
-                const yearInString = yearInStringMatch ? yearInStringMatch[0] : currentYear.toString();
-                const dateDisplay = dateFull.replace(` ${yearInString}`, "");
-                const subLine = (yearInString !== currentYear.toString()) ? `${weekday} '${yearInString.substring(2)}` : weekday;
+        let data = [...resWorker, ...resGoogle];
+        const currentYear = new Date().getFullYear();
 
-                wrap.innerHTML += `
-                <div class="termin-row">
-                    <div class="termin-date">
-                        <span class="date-main">${dateDisplay}</span>
-                        <span class="date-sub">${subLine}</span>
+        // ROBUSTE SORTIERUNG
+        data.sort((a, b) => {
+            const parseDate = (obj) => {
+                if (obj.datum_iso) return new Date(obj.datum_iso); // Google Format
+                if (!obj.datum) return new Date(8640000000000000);
+                // Dein Worker Format: "Wochentag, Tag. Monat Jahr"
+                const p = obj.datum.split(", ")[1].split(" ");
+                const months = {"Januar":0, "Februar":1, "März":2, "April":3, "Mai":4, "Juni":5, "Juli":6, "August":7, "September":8, "Oktober":9, "November":10, "Dezember":11};
+                return new Date(p[2], months[p[1]], parseInt(p[0]));
+            };
+            return parseDate(a) - parseDate(b);
+        });
+
+        wrap.innerHTML = "";
+        data.forEach(t => {
+            const isExtern = t.typ === "extern";
+            const status = (t.status || "").toLowerCase();
+            if (status === "abgesagt") return;
+
+            const datumRaw = (t.datum || "").trim();
+            const parts = datumRaw.split(", ");
+            const weekday = parts[0].substring(0, 2); 
+            const dateFull = parts[1]; 
+            const yearInStringMatch = dateFull.match(/\d{4}/);
+            const yearInString = yearInStringMatch ? yearInStringMatch[0] : currentYear.toString();
+            const dateDisplay = dateFull.replace(` ${yearInString}`, "");
+            const subLine = (yearInString !== currentYear.toString()) ? `${weekday} '${yearInString.substring(2)}` : weekday;
+
+            // OPTIK ANPASSEN FÜR EXTERN
+            const rowStyle = isExtern ? 'style="opacity: 0.8; border-left: 4px solid var(--border);"' : '';
+            const titlePrefix = isExtern ? '<span style="color: var(--text-light); font-weight: 400;">Belegt:</span> ' : '';
+
+            wrap.innerHTML += `
+            <div class="termin-row" ${rowStyle}>
+                <div class="termin-date" ${isExtern ? 'style="background: #f9fafb;"' : ''}>
+                    <span class="date-main">${dateDisplay}</span>
+                    <span class="date-sub">${subLine}</span>
+                </div>
+                <div class="termin-content">
+                    <span class="termin-title">${titlePrefix}${t.titel}</span>
+                    <div class="termin-meta">
+                        <span>${isExtern ? '🏠' : '📍'} ${t.ort}</span>
+                        ${t.start ? `<span>🕒 ${t.start}</span>` : ""}
                     </div>
-                    <div class="termin-content">
-                        <span class="termin-title">${t.titel}</span>
-                        <div class="termin-meta">
-                            <span>📍 ${t.ort}</span>
-                            ${t.start ? `<span>🕒 ${t.start}</span>` : ""}
-                        </div>
-                        ${isProv ? '<span class="badge-prov">Provisorisch</span>' : ''}
-                    </div>
-                </div>`;
-            });
-        } catch (e) {
-            wrap.innerHTML = "Fehler beim Laden.";
-        }
+                </div>
+            </div>`;
+        });
+    } catch (e) {
+        wrap.innerHTML = "Fehler beim Laden.";
     }
+}
 
     
             // Load Teilnehmer
