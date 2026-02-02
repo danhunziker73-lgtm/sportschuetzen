@@ -318,36 +318,67 @@ header h1 {
     }
 
     // TERMINE LADEN
+// TERMINE LADEN (KORRIGIERTE VERSION)
 async function loadTermine() {
     const wrap = document.getElementById("termine");
+    // Deine Google URL bleibt gleich
     const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzi9BVdewuF-HTXB1ruwdap5C1pLyobj6XZsgJV6XFLVQDLUU3jPYvx727tzC1y3NM/exec";
 
     try {
         const [resWorker, resGoogle] = await Promise.all([
-            fetch(WORKER_TERMINE_URL).then(r => r.json()).catch(() => []),
-            fetch(GOOGLE_SCRIPT_URL).then(r => r.json()).catch(() => [])
+            fetch(WORKER_TERMINE_URL).then(r => r.json()).catch(e => { console.error("Worker Fehler:", e); return []; }),
+            fetch(GOOGLE_SCRIPT_URL).then(r => r.json()).catch(e => { console.error("Google Fehler:", e); return []; })
         ]);
 
+        // Daten zusammenführen
         let data = [...resWorker, ...resGoogle];
         const currentYear = new Date().getFullYear();
 
-        // Sortierung nach echtem Datum
+        // 1. FILTERN: Google-Termine mit "Reinigung" ausschließen
+        data = data.filter(t => {
+            const titel = (t.titel || "").toLowerCase();
+            // Wenn externer Termin UND Titel "reinigung" enthält -> wegwerfen
+            if (t.typ === "extern" && titel.includes("reinigung")) {
+                return false;
+            }
+            return true;
+        });
+
+        // 2. SORTIERUNG: Stabilisiert für beide Formate
         data.sort((a, b) => {
             const parseDate = (obj) => {
+                // Falls Google ISO Format
                 if (obj.datum_iso) return new Date(obj.datum_iso);
-                const p = obj.datum.split(", ")[1].split(" ");
-                const months = {"Januar":0, "Februar":1, "März":2, "April":3, "Mai":4, "Juni":5, "Juli":6, "August":7, "September":8, "Oktober":9, "November":10, "Dezember":11};
-                return new Date(p[2], months[p[1]], parseInt(p[0]));
+                
+                // Falls Worker Text Format: "Samstag, 15. März 2026"
+                try {
+                    if (obj.datum && obj.datum.includes(",")) {
+                        const p = obj.datum.split(", ")[1].split(" ");
+                        const months = {"Januar":0, "Februar":1, "März":2, "April":3, "Mai":4, "Juni":5, "Juli":6, "August":7, "September":8, "Oktober":9, "November":10, "Dezember":11};
+                        return new Date(p[2], months[p[1]], parseInt(p[0]));
+                    }
+                } catch(e) { return new Date(8640000000000000); }
+                
+                return new Date(obj.datum || 8640000000000000);
             };
             return parseDate(a) - parseDate(b);
         });
 
         wrap.innerHTML = "";
+        
+        if (data.length === 0) {
+            wrap.innerHTML = "Keine aktuellen Termine gefunden.";
+            return;
+        }
+
         data.forEach(t => {
             const isExtern = t.typ === "extern";
             if ((t.status || "").toLowerCase() === "abgesagt") return;
 
+            // Datums-Aufbereitung für die Anzeige
             const parts = t.datum.split(", ");
+            if (parts.length < 2) return; // Sicherheitscheck
+
             const weekday = parts[0].substring(0, 2); 
             const dateFull = parts[1]; 
             const yearMatch = dateFull.match(/\d{4}/);
@@ -362,7 +393,7 @@ async function loadTermine() {
 
             wrap.innerHTML += `
             <div class="termin-row" ${rowClass}>
-                <div class="termin-date" ${isExtern ? 'style="border-color:#e2e8f0;"' : ''}>
+                <div class="termin-date" ${isExtern ? 'style="border-color:#e2e8f0; background:#f8fafc;"' : ''}>
                     <span class="date-main">${dateDisplay}</span>
                     <span class="date-sub">${subLine}</span>
                 </div>
@@ -376,11 +407,10 @@ async function loadTermine() {
             </div>`;
         });
     } catch (e) {
-        wrap.innerHTML = "Fehler beim Laden.";
-        console.error(e);
+        wrap.innerHTML = "Fehler beim Laden der Termine.";
+        console.error("Gesamtfehler loadTermine:", e);
     }
 }
-
     
             // Load Teilnehmer
   
