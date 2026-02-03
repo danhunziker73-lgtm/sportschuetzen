@@ -17,9 +17,9 @@ if (window === window.top) {
 
             await OneSignal.init({
                 appId: "975091f5-948b-48d4-9e61-b7f4d43a1021",
-                serviceWorkerPath: "/sportschuetzen-test/test_OneSignalSDKWorker.js",
-                serviceWorkerUpdaterWorkerPath: "/sportschuetzen-test/test_OneSignalSDKUpdaterWorker.js",
-                serviceWorkerParam: { scope: "/sportschuetzen-test/" },
+                serviceWorkerPath: "/sportschuetzen/test_OneSignalSDKWorker.js",
+                serviceWorkerUpdaterWorkerPath: "/sportschuetzen/test_OneSignalSDKUpdaterWorker.js",
+                serviceWorkerParam: { scope: "/sportschuetzen/" },
                 autoRegister: true,
                 notifyButton: { enable: false },
                 allowLocalhostAsSecureOrigin: true,
