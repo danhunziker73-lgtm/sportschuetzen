@@ -140,24 +140,25 @@ input[type=number] {
         padding: 12px 0;
         border-bottom: 1px solid #edf2f7;
     }
- .termin-row.extern {
-    background: #f8fafc;
+.termin-row.extern {
+    background: #f8fafc; /* Ganz leichter Hintergrund für die ganze Zeile */
     border-radius: 12px;
-    border-left: none; /* Balken entfernt */
-    padding-left: 0;
 }
 
     }
 
-/* Spezifische Farbe für das Datumsfeld bei Hausbelegung */
+
+/* Nur das Datums-Quadrat links wird dünkler eingefärbt */
 .termin-row.extern .termin-date {
-    background: #e2e8f0; /* Ein schönes Grau */
-    border-color: #cbd5e0;
+    background: #cbd5e0 !important; /* Dunkleres Grau */
+    border-color: #a0aec0;
 }
 
+/* Text im Quadrat dünkler für Lesbarkeit */
 .termin-row.extern .date-main, 
 .termin-row.extern .date-sub {
-    color: #4a5568; /* Dunkleres Grau für den Text */
+    color: #1a202c !important;
+}
 }
     }
     .termin-date {
