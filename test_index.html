@@ -1,29 +1,29 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sportschützen Test App</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sportschützen Test App</title>
 
-<!-- Manifest für PWA -->
+    <link rel="manifest" href="test_manifest.json">
+    
+    <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+    
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Muhen Test">
 
-<link rel="manifest" href="/sportschuetzen/test_manifest.json">
-  
-<link rel="apple-touch-icon" href="/sportschuetzen/icons/apple-touch-icon.png">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="Muhen Test">
+    <script src="https://cdn.onesignal.com/sdks/OneSignalSDK.js" defer></script>
+    
+    <script src="test_push-init.js" defer></script>
 
-<!-- OneSignal SDK nur hier laden -->
-<script src="https://cdn.onesignal.com/sdks/OneSignalSDK.js" async=""></script>
-<script src="/sportschuetzen/test_push-init.js" defer></script>
-
-<style>
-body { font-family: -apple-system,BlinkMacSystemFont,sans-serif; background:#f4f6f8; margin:0; padding:15px; }
-#log { white-space: pre-wrap; font-family: monospace; background:#fff; border:1px solid #ccc; padding:10px; max-height: 400px; overflow:auto; }
-</style>
+    <style>
+        body { font-family: -apple-system,BlinkMacSystemFont,sans-serif; background:#f4f6f8; margin:0; padding:15px; }
+        #log { white-space: pre-wrap; font-family: monospace; background:#fff; border:1px solid #ccc; padding:10px; min-height: 200px; max-height: 400px; overflow:auto; }
+    </style>
 </head>
-<body>
+  <body>
 
 <h2>Sportschützen Push Test</h2>
 <p>Alle Logs werden hier angezeigt und zusätzlich in der Konsole.</p>
