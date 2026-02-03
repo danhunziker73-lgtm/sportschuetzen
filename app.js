@@ -5,6 +5,7 @@ let allTermine = [];
 
 let touchStart = 0;
 const spinner = document.getElementById('pull-spinner');
+
 document.addEventListener('touchstart', e => { touchStart = e.touches[0].pageY; }, {passive: true});
 document.addEventListener('touchmove', e => {
     const distance = e.touches[0].pageY - touchStart;
