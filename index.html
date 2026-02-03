@@ -28,7 +28,18 @@
         --text-light: #6b7280; 
         --border: #d1d5db; 
     }
-    
+    /* Entfernt die Hoch/Runter-Pfeile bei type="number" */
+/* Chrome, Safari, Edge, Opera */
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Firefox */
+input[type=number] {
+  -moz-appearance: textfield;
+}
     * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
     body { 
         font-family: 'Inter', sans-serif; 
@@ -129,11 +140,25 @@
         padding: 12px 0;
         border-bottom: 1px solid #edf2f7;
     }
-    .termin-row.extern {
-        background: #f8fafc;
-        border-radius: 12px;
-        border-left: 4px solid #cbd5e0;
-        padding-left: 8px;
+ .termin-row.extern {
+    background: #f8fafc;
+    border-radius: 12px;
+    border-left: none; /* Balken entfernt */
+    padding-left: 0;
+}
+
+    }
+
+/* Spezifische Farbe für das Datumsfeld bei Hausbelegung */
+.termin-row.extern .termin-date {
+    background: #e2e8f0; /* Ein schönes Grau */
+    border-color: #cbd5e0;
+}
+
+.termin-row.extern .date-main, 
+.termin-row.extern .date-sub {
+    color: #4a5568; /* Dunkleres Grau für den Text */
+}
     }
     .termin-date {
         background: #ffffff;
