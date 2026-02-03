@@ -53,4 +53,10 @@ document.getElementById("uploadForm").onsubmit = async (e) => {
             });
             if (res.ok) { alert("✔ Gesendet!"); location.reload(); }
             else alert("Fehler beim Senden.");
-        } catch (err)
+        } catch (err) { alert("Netzwerkfehler."); }
+        finally { btn.disabled = false; btn.textContent = "Jetzt senden"; }
+    };
+    reader.readAsDataURL(document.getElementById("foto").files[0]);
+};
+
+window.onload = loadTeilnehmer;
