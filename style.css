@@ -7,7 +7,7 @@
     --border: #d1d5db; 
 }
 
-/* Entfernt die Hoch/Runter-Pfeile bei type="number" */
+ /* Entfernt die Hoch/Runter-Pfeile bei type="number" */
 /* Chrome, Safari, Edge, Opera */
 input::-webkit-outer-spin-button,
 input::-webkit-inner-spin-button {
