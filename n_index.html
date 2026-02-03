@@ -1,1 +1,69 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<title>Sportschützen Muhen App</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+<link rel="manifest" href="/sportschuetzen/manifest.json">
+<link rel="apple-touch-icon" sizes="180x180" href="/sportschuetzen/icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-title" content="Sportschützen Muhen">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+
+<link rel="icon" type="image/png" sizes="192x192" href="/sportschuetzen/icons/icon-192.png">
+<link rel="icon" type="image/png" sizes="512x512" href="/sportschuetzen/icons/icon-512.png">
+
+<script src="https://cdn.onesignal.com/sdks/OneSignalSDK.js" async=""></script>
+<script src="/sportschuetzen/push-init.js" defer></script>
+
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div id="pull-spinner"><div class="spinner-icon"></div></div>
+<header><h1 id="main-title">Termine</h1></header>
+
+<main>
+    <section id="page-home" class="page active-page">
+        <div class="card" style="text-align:center;">
+            <img src="https://raw.githubusercontent.com/danhunziker73-lgtm/sportschuetzen/main/icons/icon-512.png" style="height:100px; margin-bottom:10px;">
+            <h2>Sportschützen Muhen</h2>
+            <p>Willkommen</p>
+        </div>
+        <div class="card">
+            <h3>Termine</h3>
+            
+            <div class="filter-container">
+                <button class="filter-btn active" onclick="filterTermine('all', this)">Alle</button>
+                <button class="filter-btn" onclick="filterTermine('verein', this)">🎯 Verein</button>
+                <button class="filter-btn" onclick="filterTermine('extern', this)">🏠 Haus</button>
+            </div>
+
+            <div id="termine" class="termine-list">Lade Termine...</div>
+        </div>
+    </section>
+
+    <section id="page-jm" class="page"><iframe src="app/app_jm.html"></iframe></section>
+    <section id="page-gruppe" class="page"><iframe src="app/app_gruppe.html"></iframe></section>
+    <section id="page-mannschaft" class="page"><iframe src="app/app_mannschaft.html"></iframe></section>
+
+    <!-- Upload in iframe auslagern -->
+    <section id="page-upload" class="page">
+        <iframe src="upload.html" style="width:100%; height:100%; border:none; border-radius:12px;"></iframe>
+    </section>
+</main>
+
+<nav class="bottom-nav">
+    <button class="nav-item" onclick="nav('page-jm', 'Jahresmeisterschaft', this)"><span>🏆</span>JM</button>
+    <button class="nav-item" onclick="nav('page-gruppe', 'Gruppe', this)"><span>👥</span>G&G</button>
+    <button class="nav-item nav-home active" onclick="nav('page-home', 'Vereins-App', this)"><span>🏠</span></button>
+    <button class="nav-item" onclick="nav('page-mannschaft', 'Mannschaft', this)"><span>🎯</span>Mannschaft</button>
+    <button class="nav-item" onclick="nav('page-upload', 'Upload', this)"><span>📤</span>Upload</button>
+</nav>
+
+<script src="app.js" defer></script>
+</body>
+</html>
 
