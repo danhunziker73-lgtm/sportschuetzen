@@ -19,7 +19,7 @@ if (window === window.top) {
                 appId: "975091f5-948b-48d4-9e61-b7f4d43a1021",
                 serviceWorkerPath: "OneSignalSDKWorker.js",
                 serviceWorkerUpdaterWorkerPath: "OneSignalSDKUpdaterWorker.js",
-                serviceWorkerParam: { scope: "/sportschuetzen/" },
+                serviceWorkerParam: { scope: "./" },
                 autoRegister: true,
                 notifyButton: { enable: false },
                 allowLocalhostAsSecureOrigin: true,
