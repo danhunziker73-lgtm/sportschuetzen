@@ -17,8 +17,8 @@ if (window === window.top) {
 
             await OneSignal.init({
                 appId: "975091f5-948b-48d4-9e61-b7f4d43a1021",
-                serviceWorkerPath: "/sportschuetzen/OneSignalSDKWorker.js",
-                serviceWorkerUpdaterWorkerPath: "/sportschuetzen/OneSignalSDKUpdaterWorker.js",
+                serviceWorkerPath: "OneSignalSDKWorker.js",
+                serviceWorkerUpdaterWorkerPath: "OneSignalSDKUpdaterWorker.js",
                 serviceWorkerParam: { scope: "/sportschuetzen/" },
                 autoRegister: true,
                 notifyButton: { enable: false },
