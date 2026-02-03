@@ -1,5 +1,5 @@
 {
-  "name": "Sportschützen Test",
+   "name": "Sportschützen Test",
   "short_name": "MuhenTest",
   "start_url": "/sportschuetzen/?source=pwa",
   "scope": "/sportschuetzen/",
