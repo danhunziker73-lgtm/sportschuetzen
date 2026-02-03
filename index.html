@@ -6,7 +6,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 
   <link rel="manifest" href="./sportschuetzen/manifest.json">
-
   <link rel="apple-touch-icon" sizes="180x180" href="./sportschuetzen/icons/apple-touch-icon.png">
   <meta name="apple-mobile-web-app-title" content="Sportschützen Muhen">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -94,6 +93,32 @@
         display: block;
     }
 
+    /* FILTER SWITCH */
+    .filter-container {
+        display: flex;
+        background: #f1f5f9;
+        padding: 4px;
+        border-radius: 12px;
+        margin-bottom: 20px;
+    }
+    .filter-btn {
+        flex: 1;
+        border: none;
+        background: none;
+        padding: 8px;
+        font-size: 0.8rem;
+        font-weight: 700;
+        color: #64748b;
+        cursor: pointer;
+        border-radius: 8px;
+        transition: 0.2s;
+    }
+    .filter-btn.active {
+        background: white;
+        color: var(--primary);
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+
     /* TERMINE TIMELINE */
     .termine-list { display: flex; flex-direction: column; gap: 14px; }
     .termin-row {
@@ -104,15 +129,12 @@
         padding: 12px 0;
         border-bottom: 1px solid #edf2f7;
     }
-
-    /* Styling für externe Belegungen */
     .termin-row.extern {
         background: #f8fafc;
         border-radius: 12px;
         border-left: 4px solid #cbd5e0;
         padding-left: 8px;
     }
-
     .termin-date {
         background: #ffffff;
         border: 1.5px solid #e2e8f0;
@@ -125,7 +147,6 @@
         height: 72px;
         box-shadow: 0 2px 4px rgba(0,0,0,0.02);
     }
-
     .date-main { font-size: 0.9rem; font-weight: 800; color: var(--primary); white-space: nowrap; }
     .date-sub { font-size: 0.65rem; color: #718096; text-transform: uppercase; font-weight: 600; margin-top: 2px; }
     .termin-content { display: flex; flex-direction: column; gap: 2px; }
@@ -142,7 +163,6 @@
     #preview { width: 100%; max-height: 200px; object-fit: contain; display: none; margin-top: 10px; border-radius: 8px; }
     .btn-main { width: 100%; padding: 1.1rem; background: var(--primary); color: #fff; border: none; border-radius: 14px; font-size: 1.1rem; font-weight: 700; cursor: pointer; }
 
-    /* Pull-to-Refresh Spinner */
     #pull-spinner {
         position: fixed; top: -50px; left: 50%; transform: translateX(-50%);
         width: 40px; height: 40px; background: var(--primary); border-radius: 50%;
@@ -167,6 +187,13 @@
         </div>
         <div class="card">
             <h3>Termine</h3>
+            
+            <div class="filter-container">
+                <button class="filter-btn active" onclick="filterTermine('all', this)">Alle</button>
+                <button class="filter-btn" onclick="filterTermine('verein', this)">🎯 Verein</button>
+                <button class="filter-btn" onclick="filterTermine('extern', this)">🏠 Haus</button>
+            </div>
+
             <div id="termine" class="termine-list">Lade Termine...</div>
         </div>
     </section>
@@ -208,12 +235,13 @@
 </nav>
 
 <script>
-    const WORKER_TERMINE_URL = "https://termine.dan-hunziker73.workers.dev";
+    const WORKER_TERMINE_URL = "https://termine.dan-hunziker73.workers.dev?action=getTermine";
     const WORKER_UPLOAD_URL = "https://github-dropdown-refresh.dan-hunziker73.workers.dev/";
     const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzi9BVdewuF-HTXB1ruwdap5C1pLyobj6XZsgJV6XFLVQDLUU3jPYvx727tzC1y3NM/exec";
+    
+    let allTermine = []; // Globaler Speicher für Filterung
     let teilnehmer = [];
 
-    // PULL TO REFRESH LOGIK
     let touchStart = 0;
     const spinner = document.getElementById('pull-spinner');
     document.addEventListener('touchstart', e => { touchStart = e.touches[0].pageY; }, {passive: true});
@@ -238,16 +266,14 @@
         window.scrollTo(0,0);
     }
 
-    // TERMINE LADEN
     async function loadTermine() {
         const wrap = document.getElementById("termine");
-        
-        // Hilfsfunktion für sicheren Fetch
         const safeFetch = async (url) => {
             try {
                 const r = await fetch(url);
                 if(!r.ok) return [];
-                return await r.json();
+                const d = await r.json();
+                return Array.isArray(d) ? d : [];
             } catch(e) { return []; }
         };
 
@@ -257,17 +283,13 @@
                 safeFetch(GOOGLE_SCRIPT_URL)
             ]);
 
-            let data = [
+            allTermine = [
                 ...resWorker.map(t => ({...t, typ: 'verein'})),
                 ...resGoogle.map(t => ({...t, typ: 'extern'}))
             ];
 
-            const currentYear = new Date().getFullYear();
-
-            // Sortierung & Filterung
-            data = data.filter(t => (t.status || "").toLowerCase() !== "abgesagt");
-            
-            data.sort((a, b) => {
+            // Sortierung
+            allTermine.sort((a, b) => {
                 const parse = (obj) => {
                     if(obj.datum_iso) return new Date(obj.datum_iso);
                     try {
@@ -279,39 +301,60 @@
                 return parse(a) - parse(b);
             });
 
-            wrap.innerHTML = data.length === 0 ? "Keine Termine." : "";
-
-            data.forEach(t => {
-                const isExtern = t.typ === "extern";
-                if(isExtern && t.titel.toLowerCase().includes("reinigung")) return;
-
-                const parts = t.datum.split(", ");
-                if(parts.length < 2) return;
-
-                const weekday = parts[0].substring(0, 2); 
-                const dateFull = parts[1]; 
-                const yearMatch = dateFull.match(/\d{4}/);
-                const yearInStr = yearMatch ? yearMatch[0] : currentYear.toString();
-                const dateDisplay = dateFull.replace(` ${yearInStr}`, "");
-                const subLine = (yearInStr !== currentYear.toString()) ? `${weekday} '${yearInStr.substring(2)}` : weekday;
-
-                wrap.innerHTML += `
-                <div class="termin-row ${isExtern ? 'extern' : ''}">
-                    <div class="termin-date">
-                        <span class="date-main">${dateDisplay}</span>
-                        <span class="date-sub">${subLine}</span>
-                    </div>
-                    <div class="termin-content">
-                        <span class="termin-title">${isExtern ? '🚫 ' : ''}${t.titel}</span>
-                        <div class="termin-meta">
-                            <span>${isExtern ? '🏠' : '📍'} ${t.ort || 'Schützenhaus'}</span>
-                            ${t.start ? `<span>🕒 ${t.start}</span>` : ""}
-                        </div>
-                        ${isExtern ? '<span class="badge-extern">Haus belegt</span>' : (t.status === 'provisorisch' ? '<span class="badge-prov">Provisorisch</span>' : '')}
-                    </div>
-                </div>`;
-            });
+            renderTermine(allTermine);
         } catch (e) { wrap.innerHTML = "Fehler beim Laden."; }
+    }
+
+    function renderTermine(data) {
+        const wrap = document.getElementById("termine");
+        const currentYear = new Date().getFullYear();
+        wrap.innerHTML = data.length === 0 ? "Keine Termine gefunden." : "";
+
+        data.forEach(t => {
+            if(t.status === "abgesagt") return;
+            const isExtern = t.typ === "extern";
+            if(isExtern && t.titel.toLowerCase().includes("reinigung")) return;
+
+            const parts = t.datum.split(", ");
+            if(parts.length < 2) return;
+
+            const weekday = parts[0].substring(0, 2); 
+            const dateFull = parts[1]; 
+            const yearMatch = dateFull.match(/\d{4}/);
+            const yearInStr = yearMatch ? yearMatch[0] : currentYear.toString();
+            const dateDisplay = dateFull.replace(` ${yearInStr}`, "");
+            const subLine = (yearInStr !== currentYear.toString()) ? `${weekday} '${yearInStr.substring(2)}` : weekday;
+
+            wrap.innerHTML += `
+            <div class="termin-row ${isExtern ? 'extern' : ''}">
+                <div class="termin-date">
+                    <span class="date-main">${dateDisplay}</span>
+                    <span class="date-sub">${subLine}</span>
+                </div>
+                <div class="termin-content">
+                    <span class="termin-title">${isExtern ? '🏠 ' : ''}${t.titel}</span>
+                    <div class="termin-meta">
+                        <span>${isExtern ? 'Schützenhaus' : '📍 ' + (t.ort || 'Muhen')}</span>
+                        ${t.start ? `<span>🕒 ${t.start}</span>` : ""}
+                    </div>
+                    ${isExtern ? '<span class="badge-extern">Haus belegt</span>' : (t.status === 'provisorisch' ? '<span class="badge-prov">Provisorisch</span>' : '')}
+                </div>
+            </div>`;
+        });
+    }
+
+    function filterTermine(type, btn) {
+        // UI Update
+        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+
+        // Logik
+        if(type === 'all') {
+            renderTermine(allTermine);
+        } else {
+            const filtered = allTermine.filter(t => t.typ === type);
+            renderTermine(filtered);
+        }
     }
 
     async function loadTeilnehmer() {
