@@ -1,79 +1,69 @@
-// Hilfsfunktion für Logs (DOM + Console)
+// Maximale Transparenz in der Konsole
 function log(msg, obj) {
     const el = document.getElementById("log");
-    const text = typeof obj !== "undefined" ? `${msg}: ${JSON.stringify(obj,null,2)}` : msg;
-    console.log(text);
-    el.textContent += "\n" + text;
-    el.scrollTop = el.scrollHeight;
+    const timestamp = new Date().toLocaleTimeString();
+    const text = typeof obj !== "undefined" ? `${timestamp} - ${msg}: ${JSON.stringify(obj, null, 2)}` : `${timestamp} - ${msg}`;
+    
+    console.log(`[OneSignal-Debug] ${text}`, obj || "");
+    if (el) {
+        el.textContent += "\n" + text;
+        el.scrollTop = el.scrollHeight;
+    }
 }
 
-// Alles in window.top scope
 if (window === window.top) {
     window.OneSignalDeferred = window.OneSignalDeferred || [];
 
+    // 1. Debug-Level VOR dem Init setzen
+    OneSignalDeferred.push(() => {
+        log("🚀 Setze Debug-Level auf Trace");
+        window.OneSignal.Debug.setLogLevel('trace'); 
+    });
+
     OneSignalDeferred.push(async (OneSignal) => {
         try {
-            log("🔹 OneSignal init start");
+            log("🔹 Starte Initialisierung...");
 
             await OneSignal.init({
                 appId: "975091f5-948b-48d4-9e61-b7f4d43a1021",
                 serviceWorkerPath: "OneSignalSDKWorker.js",
-                serviceWorkerUpdaterWorkerPath: "OneSignalSDKUpdaterWorker.js",
-                serviceWorkerParam: { scope: "./" },
-                autoRegister: true,
-                notifyButton: { enable: false },
-                allowLocalhostAsSecureOrigin: true,
-                persistNotification: true,
-                safari_web_id: "web.onesignal.auto.ios.test"
+                serviceWorkerParam: { scope: "/sportschuetzen/" },
+                autoRegister: false, // Wir triggern manuell für besseres Feedback
+                safari_web_id: "web.onesignal.auto.ios.test",
+                allowLocalhostAsSecureOrigin: true
             });
 
-            // Debug Level maximal
-            OneSignal.SERVICE_WORKER_PARAM = OneSignal.SERVICE_WORKER_PARAM || {};
-            OneSignal.setSubscription(true);
-            OneSignal.log.setLevel('trace');
+            // 2. Registrierungs-Status prüfen
+            const id = await OneSignal.User.PushSubscription.id;
+            const token = await OneSignal.User.PushSubscription.token;
+            const optedIn = OneSignal.User.PushSubscription.optedIn;
+            const permission = OneSignal.Notifications.permission;
 
-            const permission = await OneSignal.Notifications.permission;
-            const isSubscribed = await OneSignal.isPushNotificationsEnabled();
+            log("📊 Aktueller Status", {
+                hasSubscriptionId: !!id,
+                subscriptionId: id,
+                hasToken: !!token,
+                optedIn: optedIn,
+                notificationPermission: permission
+            });
 
-            log("✅ OneSignal Status", { permission, isSubscribed });
+            // 3. Wenn nicht abonniert, Button einblenden oder direkt fragen
+            if (!id) {
+                log("ℹ️ Keine Subscription gefunden. Triggere Slidedown...");
+                await OneSignal.Slidedown.promptPush();
+            }
 
-            // Optional: Snackbar Feedback
-            showSnackbar(
-                isSubscribed ? "✅ Push aktiviert" :
-                permission === "default" ? "ℹ️ Push nicht aktiviert – erlauben" :
-                "❌ Push blockiert"
-            );
+            // 4. Events überwachen
+            OneSignal.Notifications.addEventListener("permissionChange", (permission) => {
+                log("🔔 Permission geändert", permission);
+            });
 
-            // Subscribtion Change Event
-            OneSignal.on('subscriptionChange', (isSub) => log("🔔 subscriptionChange", isSub));
-
-            // Notification Events
-            OneSignal.on('notificationDisplay', (event) => log("🔔 notificationDisplay", event));
-            OneSignal.on('notificationDismiss', (event) => log("🔔 notificationDismiss", event));
-            OneSignal.on('notificationPermissionChange', (event) => log("🔔 notificationPermissionChange", event));
+            OneSignal.User.PushSubscription.addEventListener("change", (event) => {
+                log("🔔 Subscription geändert", event);
+            });
 
         } catch (err) {
-            log("❌ OneSignal Init Fehler", err);
+            log("❌ Kritischer Fehler beim Init", err.stack || err);
         }
     });
-}
-
-function showSnackbar(message) {
-    const snackbar = document.createElement("div");
-    snackbar.textContent = message;
-    Object.assign(snackbar.style, {
-        position: "fixed",
-        bottom: "20px",
-        left: "50%",
-        transform: "translateX(-50%)",
-        background: "#333",
-        color: "#fff",
-        padding: "12px 24px",
-        borderRadius: "8px",
-        zIndex: 9999,
-        fontFamily: "sans-serif",
-        fontSize: "14px"
-    });
-    document.body.appendChild(snackbar);
-    setTimeout(() => snackbar.remove(), 5000);
 }
