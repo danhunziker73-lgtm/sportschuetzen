@@ -20,19 +20,30 @@ if (window === window.top) {
         window.OneSignal.Debug.setLogLevel('trace'); 
     });
 
-    OneSignalDeferred.push(async (OneSignal) => {
-        try {
-            log("🔹 Starte Initialisierung...");
+ OneSignalDeferred.push(async (OneSignal) => {
+    try {
+        log("🔹 Starte finalen Pfad-Test...");
 
-            await OneSignal.init({
-                appId: "975091f5-948b-48d4-9e61-b7f4d43a1021",
-                serviceWorkerPath: "sportschuetzen/OneSignalSDKWorker.js",
-                serviceWorkerParam: { scope: "/sportschuetzen/" },
-                autoRegister: false, // Wir triggern manuell für besseres Feedback
-                safari_web_id: "web.onesignal.auto.ios.test",
-                allowLocalhostAsSecureOrigin: true
-            });
+        await OneSignal.init({
+            appId: "975091f5-948b-48d4-9e61-b7f4d43a1021",
+            // WICHTIG: Absoluter Pfad inklusive Unterordner für GitHub Pages
+            serviceWorkerPath: "/sportschuetzen/OneSignalSDKWorker.js",
+            serviceWorkerParam: { scope: "/sportschuetzen/" },
+            autoRegister: true,
+            safari_web_id: "web.onesignal.auto.ios.test",
+            allowLocalhostAsSecureOrigin: true
+        });
 
+        log("✅ OneSignal initialisiert");
+
+        // Prüfen, ob der Browser den Worker überhaupt sieht
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        log("🔍 Aktive Service Worker:", registrations.map(r => r.scope));
+
+    } catch (err) {
+        log("❌ Fehler bei der Registrierung", err);
+    }
+});
             // 2. Registrierungs-Status prüfen
             const id = await OneSignal.User.PushSubscription.id;
             const token = await OneSignal.User.PushSubscription.token;
