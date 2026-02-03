@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<body>
+    <h2>Worker Test: Termine</h2>
+    <button onclick="testWorker()">Worker jetzt prüfen</button>
+    <pre id="output" style="background:#f4f4f4; padding:15px; margin-top:10px;">
+        Ergebnis erscheint hier...
+    </pre>
+
+    <script>
+        async function testWorker() {
+            const out = document.getElementById("output");
+            const url = "https://termine.dan-hunziker73.workers.dev";
+            
+            out.innerText = "Lade... (" + url + ")";
+            
+            try {
+                const response = await fetch(url);
+                out.innerText = "Status: " + response.status + " " + response.statusText + "\n\n";
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    out.innerText += "DATEN EMPFANGEN:\n" + JSON.stringify(data, null, 2);
+                } else {
+                    out.innerText += "FEHLER: Worker antwortet, aber mit Status " + response.status;
+                }
+            } catch (err) {
+                out.innerText = "KRITISCHER FEHLER (CORS oder Netzwerk):\n" + err.message;
+            }
+        }
+    </script>
+</body>
+</html>
