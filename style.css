@@ -106,7 +106,7 @@ iframe {
 #page-upload iframe {
     width: 100%;
     /* Wir verringern den Abzug von 160px auf 140px, um das Fenster nach unten zu verlängern */
-    height: calc(100vh - 140px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+    height: calc(100vh - 180px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
     border: none;
     background: #fff;
     border-radius: 12px;
