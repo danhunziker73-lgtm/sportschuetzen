@@ -63,7 +63,7 @@
         }
 
         /* --- Spalten-Alignment --- */
-        .col-rang { width: 60px; text-align: center; } /* Rang zentriert */
+        .col-rang { width: 60px; text-align: center; }
         .col-name { width: auto; text-align: left; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--primary); }
         .col-total { width: 85px; text-align: right; padding-right: 10px; }
 
@@ -74,7 +74,6 @@
             font-size: 14px;
         }
 
-        /* Status Label unter der Zahl */
         .status-label {
             display: block;
             font-size: 9px;
@@ -85,12 +84,10 @@
         .text-auf { color: #27ae60; }
         .text-ab { color: #c0392b; }
 
-        /* Farbige Balken */
         .aufsteiger { border-left: 4px solid #2ecc71; }
         .absteiger { border-left: 4px solid #e74c3c; }
         .neutral { border-left: 4px solid transparent; }
 
-        /* Details */
         .details { display: none; background: #f9f9f9; }
         .detail-grid { display: grid; grid-template-columns: 1fr; gap: 15px; padding: 15px; border-top: 1px solid #ddd; }
         @media(min-width:768px){ .detail-grid { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); } }
@@ -197,20 +194,39 @@
         return html+`</tbody></table></div>`;
     }
 
-    fetch(API_URL).then(r=>r.json()).then(d=>{
-        document.getElementById("content").innerHTML = renderLiga(1, d.liga1) + renderLiga(2, d.liga2);
-        const tip=document.getElementById("tooltip");
-        document.querySelectorAll(".max-hint").forEach(el=>{
-            el.addEventListener("click", e=>{
-                e.stopPropagation();
-                const r=el.getBoundingClientRect();
-                tip.textContent="Maximum: "+d.max;
-                tip.style.top=(r.top - 35)+"px";
-                tip.style.left=(r.left - 20)+"px";
-                tip.classList.add("show");
+    async function loadJMData() {
+        try {
+            const r = await fetch(API_URL + "&t=" + Date.now());
+            const d = await r.json();
+            
+            document.getElementById("content").innerHTML = renderLiga(1, d.liga1) + renderLiga(2, d.liga2);
+            
+            const tip=document.getElementById("tooltip");
+            document.querySelectorAll(".max-hint").forEach(el=>{
+                el.addEventListener("click", e=>{
+                    e.stopPropagation();
+                    const rect=el.getBoundingClientRect();
+                    tip.textContent="Maximum: "+d.max;
+                    tip.style.top=(rect.top - 35)+"px";
+                    tip.style.left=(rect.left - 20)+"px";
+                    tip.classList.add("show");
+                });
             });
-        });
-        document.addEventListener("click",()=>tip.classList.remove("show"));
+            document.addEventListener("click",()=>tip.classList.remove("show"));
+        } catch(e) {
+            console.error("Fehler beim Laden:", e);
+            document.getElementById("content").innerHTML = "Fehler beim Laden der Daten.";
+        }
+    }
+
+    // Beim ersten Start laden
+    window.onload = loadJMData;
+
+    // Automatischer Refresh beim Wiederöffnen (iOS Push Support)
+    document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "visible") {
+            loadJMData();
+        }
     });
 })();
 </script>
