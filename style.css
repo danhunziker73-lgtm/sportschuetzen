@@ -107,14 +107,52 @@ iframe {
 .filter-btn.active { background: white; color: var(--primary); box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
 
 /* --- TERMINE --- */
-.termine-list { display: flex; flex-direction: column; gap: 16px; }
-.termin-row { display: grid; grid-template-columns: 90px 1fr; gap: 15px; align-items: center; padding: 15px 0; border-bottom: 1px solid #edf2f7; }
-.termin-row.extern { background: #f8fafc; border-radius: 12px; }
 
-.termin-date { 
-    background: #ffffff; border: 1.5px solid #e2e8f0; border-radius: 12px; 
-    padding: 8px; display: flex; flex-direction: column; align-items: center; 
-    justify-content: center; height: 78px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); 
+/* --- TERMINE TIMELINE --- */
+.termine-list { display: flex; flex-direction: column; gap: 14px; }
+
+.termin-row {
+    display: grid;
+    grid-template-columns: 85px 1fr; 
+    gap: 15px;
+    align-items: center;
+    padding: 12px 0;
+    border-bottom: 1px solid #edf2f7;
+}
+
+/* Hintergrund für die externe Zeile */
+.termin-row.extern {
+    background: #f8fafc;
+    border-radius: 12px;
+}
+
+/* Das Datums-Quadrat standardmäßig */
+.termin-date {
+    background: #ffffff;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 6px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 72px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+}
+
+/* Spezial-Style für EXTERNE Termine (Dunkles Datum) */
+.termin-row.extern .termin-date {
+    background: #4a5568 !important; /* Schönes Dunkelgrau/Blau */
+    border-color: #2d3748;
+}
+
+/* Text im dunklen Quadrat auf weiß setzen */
+.termin-row.extern .date-main {
+    color: #ffffff !important;
+}
+
+.termin-row.extern .date-sub {
+    color: #cbd5e0 !important;
 }
 .date-main { font-size: 1.0rem; font-weight: 800; color: var(--primary); white-space: nowrap; }
 .date-sub { font-size: 0.75rem; color: #718096; text-transform: uppercase; font-weight: 600; margin-top: 4px; }
