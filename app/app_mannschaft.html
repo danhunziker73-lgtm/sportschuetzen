@@ -154,7 +154,8 @@
 
     async function loadData() {
         try {
-            const response = await fetch(`${WORKER_URL}?type=mannschaft&jahr=${selectedYear}`);
+            // Cache-Busting hinzugefügt (?t=...), damit Push-Nachrichten immer frische Daten erzwingen
+            const response = await fetch(`${WORKER_URL}?type=mannschaft&jahr=${selectedYear}&t=${Date.now()}`);
             raw = await response.json(); 
             
             teams = [...new Set(raw.flatMap(r => {
@@ -219,24 +220,19 @@
             targetDiv.style.display = 'block';
         }
     }
-// Speziell für iOS: Erkennt das "Aufwachen" der App
-document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "visible") {
-        console.log("App wurde in den Vordergrund geholt.");
-        
-        // Prüfen, ob wir loadData() haben und die Daten frisch ziehen müssen
-        if (typeof loadData === "function") {
-            loadData();
+
+    // Speziell für iOS: Erkennt das "Aufwachen" der App (Visibility Change)
+    document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "visible") {
+            console.log("App wurde in den Vordergrund geholt - lade Daten neu.");
+            if (typeof loadData === "function") {
+                loadData();
+            }
         }
-        
-        // Trick: Wenn die URL in der Adressleiste nicht mit der aktuellen Seite übereinstimmt,
-        // (passiert manchmal bei iOS-Push), erzwingen wir den Wechsel.
-        // Das ist nur nötig, wenn loadData() allein nicht reicht.
-    }
-});
+    });
+
     window.onload = loadData;
 
- 
 </script>
 </body>
 </html>
