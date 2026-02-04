@@ -34,30 +34,40 @@ document.addEventListener('touchend', e => {
 // --- NAVIGATION ---
 
 function nav(id, title, btn) {
-    // 1. Seiten umschalten
+    // 1. Alle Seiten ausblenden
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active-page'));
+    
+    // 2. Zielseite einblenden
     const targetPage = document.getElementById(id);
-    if(targetPage) targetPage.classList.add('active-page');
-    
-    // 2. Titel setzen
-    document.getElementById('main-title').textContent = title;
-    
-    // 3. Buttons aktualisieren
-    document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
-    if(btn) btn.classList.add('active');
-    
-    // --- NEU: URL AKTUALISIEREN ---
-    // Wir extrahieren das Kürzel aus der ID (z.B. "page-jm" wird zu "jm")
-    const pageKey = id.replace('page-', '');
-    
-    // Wir überschreiben die URL im Browser, damit beim Reload die richtige Seite kommt
-    // Wenn es die Home-Seite ist, leeren wir den Parameter
-    if(pageKey === 'home') {
-        window.history.replaceState({}, '', window.location.pathname);
-    } else {
-        window.history.replaceState({}, '', `?page=${pageKey}`);
+    if (targetPage) {
+        targetPage.classList.add('active-page');
     }
     
+    // 3. Header-Titel anpassen
+    document.getElementById('main-title').textContent = title;
+    
+    // 4. Aktiven Button in der Navigation markieren
+    document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+    if (btn) {
+        btn.classList.add('active');
+    }
+
+    // --- NEU: URL AKTUALISIEREN FÜR PULL-TO-REFRESH ---
+    // Wir ziehen das Kürzel aus der ID (z.B. "page-jm" -> "jm")
+    const pageKey = id.replace('page-', '');
+    
+    // Aktuellen Pfad holen (n_index.html)
+    const newPath = window.location.pathname;
+
+    if (pageKey === 'home') {
+        // Auf der Startseite entfernen wir den ?page= Parameter
+        window.history.replaceState({}, '', newPath);
+    } else {
+        // Auf Unterseiten setzen wir den passenden Parameter
+        window.history.replaceState({}, '', `${newPath}?page=${pageKey}`);
+    }
+    
+    // Nach oben springen
     window.scrollTo(0,0);
 }
 // Deep Linking Logik (Springe zu Seite via URL ?page=...)
