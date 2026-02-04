@@ -1,35 +1,38 @@
 
-if (window === window.top) {
-  window.OneSignalDeferred = window.OneSignalDeferred || [];
 
-  OneSignalDeferred.push(async (OneSignal) => {
-    try {
-await OneSignal.init({
-  appId: "975091f5-948b-48d4-9e61-b7f4d43a1021",
-  // Wir nutzen relative Pfade ohne den führenden Slash, 
-  // falls die Files im gleichen Ordner wie die index.html liegen
-  serviceWorkerPath: "OneSignalSDKWorker.js",
-  serviceWorkerUpdaterWorkerPath: "OneSignalSDKWorker.js",
-  serviceWorkerParam: { scope: "/sportschuetzen/" },
-  allowLocalhostAsSecureOrigin: true // Hilft beim Debuggen
-});;
-
-      const permission = await OneSignal.Notifications.permission;
-      const isSubscribed = await OneSignal.isPushNotificationsEnabled();
-
-      console.log("✅ OneSignal Status:", { permission, isSubscribed });
-
-      showSnackbar(
-        isSubscribed ? "✅ Push aktiviert" :
-        permission === "default" ? "ℹ️ Push nicht aktiviert – erlauben" :
-        "❌ Push blockiert"
-      );
-
-    } catch (err) {
-      console.error("❌ OneSignal Init Fehler:", err);
+window.OneSignal = window.OneSignal || [];
+OneSignal.push(function() {
+  OneSignal.init({
+    appId: "DEINE_ONESIGNAL_APP_ID", // hier deine OneSignal App ID einfügen
+    safari_web_id: "web.onesignal.auto.YOUR_SAFARI_WEB_ID", // nur für Safari/iOS nötig
+    notifyButton: {
+      enable: false // wir machen eigenes Button
     }
   });
-}
+
+  const statusEl = document.getElementById("status");
+  const btn = document.getElementById("subscribe");
+
+  btn.addEventListener("click", async () => {
+    const isPushEnabled = await OneSignal.isPushNotificationsEnabled();
+    if (!isPushEnabled) {
+      OneSignal.registerForPushNotifications().then(() => {
+        statusEl.textContent = "Push aktiviert ✅";
+      });
+    } else {
+      statusEl.textContent = "Push ist bereits aktiviert ✅";
+    }
+  });
+
+  OneSignal.on('subscriptionChange', function(isSubscribed) {
+    console.log("Subscription changed:", isSubscribed);
+    statusEl.textContent = isSubscribed ? "Abonniert ✅" : "Nicht abonniert ❌";
+  });
+});
+
+
+
+//  ab hier nicht mehr original
 
 function showSnackbar(message) {
   const snackbar = document.createElement("div");
