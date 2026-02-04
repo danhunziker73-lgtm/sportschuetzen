@@ -83,18 +83,26 @@ header h1 { margin: 0; font-size: 1.3rem; text-align: center; }
     display: block;
 }
 /* Iframe Anpassung */
+/* Ersetze den alten iframe-Block durch diesen hier: */
 iframe { 
     width: 100%; 
-    /* Erhöhe den Abzug oder setze auf 100%, falls der Container begrenzt */
+    /* Berechnet die Höhe: 100% Bildschirm minus Header und Footer */
     height: calc(100vh - 160px - env(safe-area-inset-top) - env(safe-area-inset-bottom)); 
     border: none; 
-    border-radius: 12px; 
-    background: #fff; 
     display: block;
-    /* Verhindert doppelte Scrollbalken, wenn nicht nötig */
-    overflow: auto; 
+    background: #fff;
 }
 
+/* Spezielle Korrektur für die Upload-Sektion */
+#page-upload {
+    padding: 0; /* Entfernt Padding der Page, damit das Iframe vollflächig wirkt */
+    overflow: hidden;
+}
+
+#page-upload iframe {
+    height: calc(100vh - 155px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+    border-radius: 0; /* Optional: sieht oft besser aus, wenn es bündig abschließt */
+}
 /* Speziell für die Upload-Seite in der index.html */
 #page-upload iframe {
     height: calc(400vh - 650px); /* Etwas mehr Platz geben */
