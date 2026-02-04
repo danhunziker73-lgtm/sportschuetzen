@@ -8,17 +8,28 @@
 <link rel="stylesheet" href="style.css">
 
 <style>
+
+    html, body {
+    margin: 0;
+    padding: 0;
+    overflow: hidden; /* Verhindert den Scrollbalken im Iframe-Inhalt */
+    height: 100%;
+}
+
+.card {
+    margin: 0 !important;
+    padding: 15px !important;
+    box-shadow: none !important;
+    border: none !important; /* Entfernt Ränder, die Platz fressen könnten */
+}
+    
+    
+    
     /* Spezielle Anpassung für die Anzeige im Iframe */
     body { 
         padding: 5px; /* Minimaler Außenabstand */
         background: transparent; /* Verhindert hässliche weiße Ränder */
         overflow: hidden; /* Verhindert Scrollen innerhalb des Bodys */
-    }
-    .card { 
-        margin: 0 !important; 
-        padding: 1rem !important; /* Etwas kompakteres Padding */
-        box-shadow: none !important; /* Schatten wird im Iframe meist abgeschnitten */
-        border: 1px solid #eee; /* Ersatz für den Schatten */
     }
     h2 { font-size: 1.2rem; margin-bottom: 15px; }
     .upload-area { padding: 1rem !important; }
