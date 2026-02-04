@@ -2,10 +2,22 @@ const WORKER_TERMINE_URL = "https://termine.dan-hunziker73.workers.dev?action=ge
 const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzi9BVdewuF-HTXB1ruwdap5C1pLyobj6XZsgJV6XFLVQDLUU3jPYvx727tzC1y3NM/exec";
 
 let allTermine = [];
-
 let touchStart = 0;
 const spinner = document.getElementById('pull-spinner');
 
+// --- EVENT LISTENER ---
+
+// Auto-Update wenn die App wieder geöffnet wird
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+        loadTermine(); 
+        document.querySelectorAll('iframe').forEach(iframe => {
+            iframe.src = iframe.src; 
+        });
+    }
+});
+
+// Pull-to-Refresh Logik
 document.addEventListener('touchstart', e => { touchStart = e.touches[0].pageY; }, {passive: true});
 document.addEventListener('touchmove', e => {
     const distance = e.touches[0].pageY - touchStart;
@@ -19,14 +31,43 @@ document.addEventListener('touchend', e => {
     else spinner.style.top = '-50px';
 }, {passive: true});
 
+// --- NAVIGATION ---
+
 function nav(id, title, btn) {
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active-page'));
-    document.getElementById(id).classList.add('active-page');
+    const targetPage = document.getElementById(id);
+    if(targetPage) targetPage.classList.add('active-page');
+    
     document.getElementById('main-title').textContent = title;
+    
     document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
+    if(btn) btn.classList.add('active');
+    
     window.scrollTo(0,0);
 }
+
+// Deep Linking Logik (Springe zu Seite via URL ?page=...)
+function handleDeepLink() {
+    const params = new URLSearchParams(window.location.search);
+    const target = params.get('page');
+
+    if (target) {
+        const pages = {
+            'jm': { id: 'page-jm', title: 'Jahresmeisterschaft', selector: '[onclick*="page-jm"]' },
+            'gruppe': { id: 'page-gruppe', title: 'Gruppe & Grenzland', selector: '[onclick*="page-gruppe"]' },
+            'mannschaft': { id: 'page-mannschaft', title: 'Mannschaft', selector: '[onclick*="page-mannschaft"]' },
+            'upload': { id: 'page-upload', title: 'Upload', selector: '[onclick*="page-upload"]' }
+        };
+
+        const config = pages[target];
+        if (config) {
+            const btn = document.querySelector(config.selector);
+            nav(config.id, config.title, btn);
+        }
+    }
+}
+
+// --- DATEN LADEN & RENDERN ---
 
 async function loadTermine() {
     const wrap = document.getElementById("termine");
@@ -50,6 +91,7 @@ async function loadTermine() {
             ...resGoogle.map(t => ({...t, typ: 'extern'}))
         ];
 
+        // Sortierung... (dein bestehender Code)
         allTermine.sort((a, b) => {
             const parse = (obj) => {
                 if(obj.datum_iso) return new Date(obj.datum_iso);
@@ -107,27 +149,13 @@ function renderTermine(data) {
 function filterTermine(type, btn) {
     document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
-
     if(type === 'all') renderTermine(allTermine);
     else renderTermine(allTermine.filter(t => t.typ === type));
 }
 
-window.onload = loadTermine;
+// --- INITIALISIERUNG ---
 
-
-// Prüfen, ob eine Seite via URL-Parameter aufgerufen wurde
 window.addEventListener('load', () => {
-    const params = new URLSearchParams(window.location.search);
-    const targetPage = params.get('page');
-    
-    if (targetPage === 'jm') {
-        nav('page-jm', 'Jahresmeisterschaft', document.querySelector('[onclick*="page-jm"]'));
-    } else if (targetPage === 'upload') {
-        nav('page-upload', 'Upload', document.querySelector('[onclick*="page-upload"]'));
-     } else if (targetPage === '') {
-        nav('page-gruppe', 'Gruppe & Grenzland', document.querySelector('[onclick*="page-gruppe"]'));
-     } else if (targetPage === '') {
-        nav('page-mannschaft', 'Mannschaft', document.querySelector('[onclick*="page-mannschaft"]'));
-    }
-    // usw. für andere Seiten
+    loadTermine();
+    handleDeepLink(); // Prüft URL beim Start
 });
