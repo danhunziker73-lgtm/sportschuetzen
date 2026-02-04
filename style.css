@@ -141,4 +141,4 @@ input, select { width: 100%; padding: 0.8rem; border: 1.5px solid var(--border);
 @keyframes spin { to { transform: rotate(360deg); } }
 
 /* iOS SAFE AREAS - Hier lag der Fehler (70px wurde zu 60px) */
-body, main { padding-top: calc(75px + env(safe-area-inset-top)); padding-bottom: calc(75px + env(safe-area-inset-bottom)); }
+body, main { padding-top: calc(40px + env(safe-area-inset-top)); padding-bottom: calc(75px + env(safe-area-inset-bottom)); }
