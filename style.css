@@ -92,18 +92,26 @@ iframe {
     display: block;
     background: #fff;
 }
-
-/* Spezielle Korrektur für die Upload-Sektion */
+/* Suche diesen Bereich und ersetze ihn */
 #page-upload {
-    padding: 0; /* Entfernt Padding der Page, damit das Iframe vollflächig wirkt */
-    overflow: hidden;
+    padding: 10px; /* Kleiner Puffer zum Rand der App */
+    max-width: 600px;
+    margin: 0 auto;
+    display: none; /* Wird via JS auf 'block' gesetzt */
+}
+
+#page-upload.active-page {
+    display: block;
 }
 
 #page-upload iframe {
-    height: calc(100vh - 155px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
-    border-radius: 0; /* Optional: sieht oft besser aus, wenn es bündig abschließt */
+    width: 100%;
+    /* Die Berechnung muss den Header (70px) und Footer (75px) abziehen */
+    height: calc(100vh - 160px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+    border: none;
+    background: #fff;
+    border-radius: 12px;
 }
-
 /* Filter */
 .filter-container { display: flex; background: #f1f5f9; padding: 4px; border-radius: 12px; margin-bottom: 20px; }
 .filter-btn {
