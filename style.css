@@ -97,7 +97,7 @@ iframe {
 
 /* Speziell für die Upload-Seite in der index.html */
 #page-upload iframe {
-    height: calc(200vh - 250px); /* Etwas mehr Platz geben */
+    height: calc(400vh - 650px); /* Etwas mehr Platz geben */
 }
 /* Filter */
 .filter-container { display: flex; background: #f1f5f9; padding: 4px; border-radius: 12px; margin-bottom: 20px; }
