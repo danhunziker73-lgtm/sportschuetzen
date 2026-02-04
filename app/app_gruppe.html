@@ -145,20 +145,16 @@
 // Speziell für iOS: Erkennt das "Aufwachen" der App
 document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "visible") {
-        console.log("App wurde in den Vordergrund geholt.");
-        
-        // Prüfen, ob wir loadData() haben und die Daten frisch ziehen müssen
-        if (typeof loadData === "function") {
-            loadData();
+        // Jetzt rufen wir den richtigen Namen auf:
+        if (typeof loadAllData === "function") {
+            loadAllData();
         }
-        
-        // Trick: Wenn die URL in der Adressleiste nicht mit der aktuellen Seite übereinstimmt,
-        // (passiert manchmal bei iOS-Push), erzwingen wir den Wechsel.
-        // Das ist nur nötig, wenn loadData() allein nicht reicht.
     }
 });
-    
-    window.onload = loadAllData;
+
+// Und hier auch den korrekten Namen für den ersten Start:
+window.onload = loadAllData;
+ 
 </script>
 </body>
 </html>
