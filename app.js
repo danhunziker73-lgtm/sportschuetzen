@@ -34,18 +34,32 @@ document.addEventListener('touchend', e => {
 // --- NAVIGATION ---
 
 function nav(id, title, btn) {
+    // 1. Seiten umschalten
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active-page'));
     const targetPage = document.getElementById(id);
     if(targetPage) targetPage.classList.add('active-page');
     
+    // 2. Titel setzen
     document.getElementById('main-title').textContent = title;
     
+    // 3. Buttons aktualisieren
     document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
     if(btn) btn.classList.add('active');
     
+    // --- NEU: URL AKTUALISIEREN ---
+    // Wir extrahieren das Kürzel aus der ID (z.B. "page-jm" wird zu "jm")
+    const pageKey = id.replace('page-', '');
+    
+    // Wir überschreiben die URL im Browser, damit beim Reload die richtige Seite kommt
+    // Wenn es die Home-Seite ist, leeren wir den Parameter
+    if(pageKey === 'home') {
+        window.history.replaceState({}, '', window.location.pathname);
+    } else {
+        window.history.replaceState({}, '', `?page=${pageKey}`);
+    }
+    
     window.scrollTo(0,0);
 }
-
 // Deep Linking Logik (Springe zu Seite via URL ?page=...)
 function handleDeepLink() {
     const params = new URLSearchParams(window.location.search);
