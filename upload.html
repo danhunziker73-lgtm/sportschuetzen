@@ -6,6 +6,27 @@
 <title>Standblatt Upload</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
+
+<style>
+    /* Spezielle Anpassung für die Anzeige im Iframe */
+    body { 
+        padding: 5px; /* Minimaler Außenabstand */
+        background: transparent; /* Verhindert hässliche weiße Ränder */
+        overflow: hidden; /* Verhindert Scrollen innerhalb des Bodys */
+    }
+    .card { 
+        margin: 0 !important; 
+        padding: 1rem !important; /* Etwas kompakteres Padding */
+        box-shadow: none !important; /* Schatten wird im Iframe meist abgeschnitten */
+        border: 1px solid #eee; /* Ersatz für den Schatten */
+    }
+    h2 { font-size: 1.2rem; margin-bottom: 15px; }
+    .upload-area { padding: 1rem !important; }
+    #preview { max-height: 120px; } /* Begrenzt die Vorschau, damit der Button sichtbar bleibt */
+</style>
+
+
+    
 </head>
 <body>
 
