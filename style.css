@@ -71,6 +71,9 @@ header h1 { margin: 0; font-size: 1.3rem; text-align: center; }
     margin: 0 auto; 
     animation: fadeIn 0.3s ease; 
 }
+.page > .card:first-child {
+    margin-top: 0; /* Entfernt den Abstand der ersten Karte nach oben */
+}
 .active-page { display: block; }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
