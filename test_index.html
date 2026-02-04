@@ -1,34 +1,22 @@
-<!DOCTYPE html>
-<html lang="de">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sportschützen Test App</title>
+<script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+<script>
+  window.OneSignalDeferred = window.OneSignalDeferred || [];
+  OneSignalDeferred.push(async function(OneSignal) {
+    await OneSignal.init({
+      appId: "9d8f1046-5227-4863-a068-11d0a5e57a03",
+      // Automatische Anmeldung deaktivieren, um iOS-Fehler zu vermeiden
+      autoRegister: false, 
+      notifyButton: {
+        enable: true, // Zeigt eine kleine Glocke unten rechts
+      },
+    });
 
-   <link rel="manifest" href="https://danhunziker73-lgtm.github.io/sportschuetzen/test_manifest.json">
-    <link rel="icon" href="data:,">
+    // Prüfen, ob wir auf iOS im Standalone-Modus sind (als App gespeichert)
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
 
-    <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-    
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="default">
-    <meta name="apple-mobile-web-app-title" content="Muhen Test">
-
-    <script src="https://cdn.onesignal.com/sdks/OneSignalSDK.js" defer></script>
-    
-    <script src="test_push-init.js" defer></script>
-
-    <style>
-        body { font-family: -apple-system,BlinkMacSystemFont,sans-serif; background:#f4f6f8; margin:0; padding:15px; }
-        #log { white-space: pre-wrap; font-family: monospace; background:#fff; border:1px solid #ccc; padding:10px; min-height: 200px; max-height: 400px; overflow:auto; }
-    </style>
-</head>
-  <body>
-
-<h2>Sportschützen Push Test</h2>
-<p>Alle Logs werden hier angezeigt und zusätzlich in der Konsole.</p>
-<div id="log">Initialisiere…</div>
-
-</body>
-</html>
+    if (isIOS && !isStandalone) {
+      console.log("Bitte die App zum Homescreen hinzufügen, um Push zu aktivieren.");
+    }
+  });
+</script>
