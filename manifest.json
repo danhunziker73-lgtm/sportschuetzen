@@ -1,12 +1,11 @@
+
 {
-  "id": "/sportschuetzen/",
+  
   "name": "Sportschützen Muhen",
   "short_name": "Muhen",
   "description": "Resultate und Termine der Sportschützen Muhen",
 
-  "start_url": "/sportschuetzen/?source=pwa",
-  "scope": "/sportschuetzen/",
-
+  "start_url": "/",
   "display": "standalone",
   "orientation": "portrait",
 
