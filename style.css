@@ -94,23 +94,23 @@ iframe {
 }
 /* Suche diesen Bereich und ersetze ihn */
 #page-upload {
-    padding: 10px; /* Kleiner Puffer zum Rand der App */
     max-width: 600px;
     margin: 0 auto;
-    display: none; /* Wird via JS auf 'block' gesetzt */
+    padding: 10px 0; /* Oben/Unten etwas Luft, links/rechts bündig */
 }
-
 #page-upload.active-page {
     display: block;
 }
 
+/* In deiner style.css suchen und ersetzen */
 #page-upload iframe {
     width: 100%;
-    /* Die Berechnung muss den Header (70px) und Footer (75px) abziehen */
-    height: calc(100vh - 160px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+    /* Wir verringern den Abzug von 160px auf 140px, um das Fenster nach unten zu verlängern */
+    height: calc(100vh - 140px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
     border: none;
     background: #fff;
     border-radius: 12px;
+    display: block;
 }
 /* Filter */
 .filter-container { display: flex; background: #f1f5f9; padding: 4px; border-radius: 12px; margin-bottom: 20px; }
