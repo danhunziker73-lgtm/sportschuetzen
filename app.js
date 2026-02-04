@@ -113,3 +113,21 @@ function filterTermine(type, btn) {
 }
 
 window.onload = loadTermine;
+
+
+// Prüfen, ob eine Seite via URL-Parameter aufgerufen wurde
+window.addEventListener('load', () => {
+    const params = new URLSearchParams(window.location.search);
+    const targetPage = params.get('page');
+    
+    if (targetPage === 'jm') {
+        nav('page-jm', 'Jahresmeisterschaft', document.querySelector('[onclick*="page-jm"]'));
+    } else if (targetPage === 'upload') {
+        nav('page-upload', 'Upload', document.querySelector('[onclick*="page-upload"]'));
+     } else if (targetPage === '') {
+        nav('page-gruppe', 'Gruppe & Grenzland', document.querySelector('[onclick*="page-gruppe"]'));
+     } else if (targetPage === '') {
+        nav('page-mannschaft', 'Mannschaft', document.querySelector('[onclick*="page-mannschaft"]'));
+    }
+    // usw. für andere Seiten
+});
