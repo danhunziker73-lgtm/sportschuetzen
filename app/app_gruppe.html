@@ -1,99 +1,90 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Schützen-Statistik</title>
-    <style>
-        :root { 
-            --primary: #0f3c5c; 
-            --bg: #f4f6f8; 
-            --text: #333; 
-            --line: #e0e0e0; 
-            --hover: #e6eef5; 
-        }
-        
-        body { 
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; 
-            background: var(--bg); 
-            margin: 0; 
-            padding: 15px; 
-            color: var(--text); 
-            /* Verhindert Gummiband-Effekt des Browsers für sauberen Pull-to-Refresh */
-            overscroll-behavior-y: contain; 
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Schützen-Statistik</title>
+<style>
+:root { 
+    --primary: #0f3c5c; 
+    --bg: #f4f6f8; 
+    --text: #333; 
+    --line: #e0e0e0; 
+    --hover: #e6eef5; 
+}
 
-        .subtitle { color: #666; margin-bottom: 10px; font-size: 14px; font-weight: bold; }
-        .table-wrapper { overflow-x: auto; margin-bottom: 30px; }
-        
-        .separator { display: flex; align-items: center; text-align: center; margin: 40px 0 20px; color: var(--primary); font-weight: bold; font-size: 18px; }
-        .separator::before, .separator::after { content: ''; flex: 1; border-bottom: 2px solid var(--line); }
-        .separator:not(:empty)::before { margin-right: .5em; }
-        .separator:not(:empty)::after { margin-left: .5em; }
+body { 
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; 
+    background: var(--bg); 
+    margin: 0; 
+    padding: 15px; 
+    color: var(--text); 
+    overscroll-behavior-y: contain; 
+}
 
-        table { width: 100%; table-layout: fixed; border-collapse: collapse; background: #fff; box-shadow: 0 2px 6px rgba(0,0,0,.08); border-radius: 6px; overflow: hidden; }
-        th { background: var(--primary); color: #fff; font-size: 14px; height: 50px; padding: 0 10px; position: sticky; top: 0; z-index: 10; }
-        
-        .col-team { width: 55%; text-align: left; padding-left: 15px; }
-        .col-round { width: 15%; text-align: center; }
+.subtitle { color: #666; margin-bottom: 10px; font-size: 14px; font-weight: bold; }
+.table-wrapper { overflow-x: auto; margin-bottom: 30px; }
+.separator { display: flex; align-items: center; text-align: center; margin: 40px 0 20px; color: var(--primary); font-weight: bold; font-size: 18px; }
+.separator::before, .separator::after { content: ''; flex: 1; border-bottom: 2px solid var(--line); }
+.separator:not(:empty)::before { margin-right: .5em; }
+.separator:not(:empty)::after { margin-left: .5em; }
 
-        td { padding: 12px 10px; border-bottom: 1px solid var(--line); font-size: 14px; }
-        td.team { font-weight: bold; text-align: left; color: var(--primary); padding-left: 15px; }
-        .cell { text-align: center; cursor: pointer; transition: background 0.2s; font-weight: bold; }
-        
-        /* HEATMAP COLORS */
-        .hm-mid { background-color: #e6f6ec !important; color: #1f7a3a !important; }
-        .hm-high { background-color: #c3e6cb !important; color: #155724 !important; }
-        .hm-top { background-color: #ffeeba !important; color: #856404 !important; }
+table { width: 100%; table-layout: fixed; border-collapse: collapse; background: #fff; box-shadow: 0 2px 6px rgba(0,0,0,.08); border-radius: 6px; overflow: hidden; }
+th { background: var(--primary); color: #fff; font-size: 14px; height: 50px; padding: 0 10px; position: sticky; top: 0; z-index: 10; }
+.col-team { width: 55%; text-align: left; padding-left: 15px; }
+.col-round { width: 15%; text-align: center; }
 
-        .detail { display: none; background: #f9f9f9; padding: 15px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.05); border-bottom: 2px solid var(--line); }
-        h3 { font-size: 16px; margin: 0 0 10px 0; color: var(--primary); text-align: center; }
+td { padding: 12px 10px; border-bottom: 1px solid var(--line); font-size: 14px; }
+td.team { font-weight: bold; text-align: left; color: var(--primary); padding-left: 15px; }
+.cell { text-align: center; cursor: pointer; transition: background 0.2s; font-weight: bold; }
 
-        .player-gm, .total-row-gm { display: grid; grid-template-columns: 1fr 40px 40px 70px; gap: 10px; padding: 8px 0; align-items: center; }
-        .player-gc, .total-row-gc { display: flex; justify-content: space-between; padding: 8px 0; align-items: center; }
+.hm-mid { background-color: #e6f6ec !important; color: #1f7a3a !important; }
+.hm-high { background-color: #c3e6cb !important; color: #155724 !important; }
+.hm-top { background-color: #ffeeba !important; color: #856404 !important; }
 
-        .player-gm, .player-gc { border-bottom: 1px solid #eee; font-size: 14px; }
-        .total-row-gm, .total-row-gc { margin-top: 10px; border-top: 2px solid var(--primary); color: var(--primary); font-weight: bold; font-size: 16px; }
+.detail { display: none; background: #f9f9f9; padding: 15px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.05); border-bottom: 2px solid var(--line); }
+h3 { font-size: 16px; margin: 0 0 10px 0; color: var(--primary); text-align: center; }
 
-        .trend { font-size: 12px; margin-left: 5px; font-weight: normal; }
-        .up { color: #28a745; }
-        .down { color: #dc3545; }
-        .steady { color: #6c757d; }
+.player-gm, .total-row-gm { display: grid; grid-template-columns: 1fr 40px 40px 70px; gap: 10px; padding: 8px 0; align-items: center; }
+.player-gc, .total-row-gc { display: flex; justify-content: space-between; padding: 8px 0; align-items: center; }
 
-        .name-container { display: flex; align-items: center; gap: 8px; text-align: left; overflow: hidden; }
-        .stellung { font-size: 9px; font-weight: 800; padding: 2px 6px; border-radius: 10px; text-transform: uppercase; white-space: nowrap; }
-        .liegend { background: #e3f0ff; color: #1e5dbf; border: 1px solid #bcd9ff; }
-        .kniend { background: #e6f6ec; color: #1f7a3a; border: 1px solid #c3e6cb; }
+.player-gm, .player-gc { border-bottom: 1px solid #eee; font-size: 14px; }
+.total-row-gm, .total-row-gc { margin-top: 10px; border-top: 2px solid var(--primary); color: var(--primary); font-weight: bold; font-size: 16px; }
 
-        /* PULL SPINNER STYLE */
-        #pull-spinner { 
-            position: fixed; top: -50px; left: 50%; transform: translateX(-50%); 
-            width: 40px; height: 40px; background: var(--primary); border-radius: 50%; 
-            display: flex; align-items: center; justify-content: center; 
-            box-shadow: 0 3px 10px rgba(0,0,0,0.2); z-index: 2001; transition: top 0.1s ease-out;
-        }
-        .spinner-icon { 
-            width: 20px; height: 20px; border: 3px solid rgba(255,255,255,0.3); 
-            border-top-color: #fff; border-radius: 50%; animation: spin 0.8s infinite linear; 
-        }
-        @keyframes spin { to { transform: rotate(360deg); } }
-    </style>
+.trend { font-size: 12px; margin-left: 5px; font-weight: normal; }
+.up { color: #28a745; }
+.down { color: #dc3545; }
+.steady { color: #6c757d; }
+
+.name-container { display: flex; align-items: center; gap: 8px; text-align: left; overflow: hidden; }
+.stellung { font-size: 9px; font-weight: 800; padding: 2px 6px; border-radius: 10px; text-transform: uppercase; white-space: nowrap; }
+.liegend { background: #e3f0ff; color: #1e5dbf; border: 1px solid #bcd9ff; }
+.kniend { background: #e6f6ec; color: #1f7a3a; border: 1px solid #c3e6cb; }
+
+#pull-spinner { 
+    position: fixed; top: -50px; left: 50%; transform: translateX(-50%); 
+    width: 40px; height: 40px; background: var(--primary); border-radius: 50%; 
+    display: flex; align-items: center; justify-content: center; 
+    box-shadow: 0 3px 10px rgba(0,0,0,0.2); z-index: 2001; transition: top 0.1s ease-out;
+}
+.spinner-icon { 
+    width: 20px; height: 20px; border: 3px solid rgba(255,255,255,0.3); 
+    border-top-color: #fff; border-radius: 50%; animation: spin 0.8s infinite linear; 
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+</style>
 </head>
 <body>
 
-    <div id="pull-spinner"><div class="spinner-icon"></div></div>
-
-    <div class="subtitle">Auf Punkte klicken für Details</div>
-    
-    <div class="separator">Gruppe</div>
-    <div id="overview-gm">Lade Daten...</div>
-    
-    <div class="separator">Grenzlandcup</div>
-    <div id="overview-gc">Lade Daten...</div>
+<div id="pull-spinner"><div class="spinner-icon"></div></div>
+<div class="subtitle">Auf Punkte klicken für Details</div>
+<div class="separator">Gruppe</div>
+<div id="overview-gm">Lade Daten...</div>
+<div class="separator">Grenzlandcup</div>
+<div id="overview-gc">Lade Daten...</div>
 
 <script>
-(function () {
-
+/******** CONFIG ********/
 const WORKER_URL = "https://gruppe.dan-hunziker73.workers.dev";
 const selectedYear = "aktuell";
 let rawGM = [], rawGC = [];
@@ -106,63 +97,108 @@ const Cache = {
 };
 
 /******** FETCH ********/
-async function fetchWithRetry(url, retries=3) {
-    for (let i=1;i<=retries;i++) {
-        try {
-            const c = new AbortController();
-            setTimeout(()=>c.abort(),8000);
-            const r = await fetch(url,{signal:c.signal,cache:"no-store"});
-            if(!r.ok) throw r.status;
-            return await r.json();
-        } catch(e) {
+async function fetchWithRetry(url,retries=3){
+    for(let i=1;i<=retries;i++){
+        try{
+            const ctrl = new AbortController();
+            setTimeout(()=>ctrl.abort(),8000);
+            const res = await fetch(url,{signal:ctrl.signal,cache:"no-store"});
+            if(!res.ok) throw res.status;
+            return await res.json();
+        }catch(e){
             if(i===retries) throw e;
             await new Promise(r=>setTimeout(r,400*i));
         }
     }
 }
 
-async function fetchCached(url,key) {
-    try {
-        const d = await fetchWithRetry(url);
-        Cache.set(key,d);
-        return d;
-    } catch {
-        const c = Cache.get(key);
-        if(c) return c.data;
+async function fetchCached(url,key){
+    try{
+        const data = await fetchWithRetry(url);
+        Cache.set(key,data);
+        return data;
+    }catch{
+        const cached = Cache.get(key);
+        if(cached) return cached.data;
         throw "offline";
     }
 }
 
-/******** LOAD ********/
-async function loadAllData() {
-    if (loading) return;
-    loading = true;
-    try {
+/******** BUILD TABLE ********/
+function buildTable(type,data,targetId){
+    if(!Array.isArray(data)||!data.length) return;
+    const teams = [...new Set(data.flatMap(r=>[r.r1Team,r.r2Team,r.r3Team]).filter(Boolean))].sort();
+    let html = `<div class="table-wrapper"><table>
+    <tr><th class="col-team"></th><th class="col-round">R1</th><th class="col-round">R2</th><th class="col-round">R3</th></tr>`;
+    teams.forEach((team,index)=>{
+        html+=`<tr><td class="team">${team}</td>`;
+        for(let r=1;r<=3;r++){
+            const rows = data.filter(p=>p[`r${r}Team`]===team);
+            const sum = rows.reduce((a,b)=>a + (type==="gm"? (b[`r${r}P1`]+b[`r${r}P2`]):b[`r${r}Pkt`]),0);
+            html+=`<td class="cell ${getHMClass(sum,type)}" onclick="toggleDetail('${type}','${team.replace(/'/g,"\\'")}',${r},${index})">${sum||"–"}</td>`;
+        }
+        html+=`</tr><tr><td colspan="4" style="padding:0;border:0;">`;
+        for(let r=1;r<=3;r++) html+=`<div id="detail-${type}-${index}-${r}" class="detail"></div>`;
+        html+=`</td></tr>`;
+    });
+    document.getElementById(targetId).innerHTML = html+`</table></div>`;
+}
+
+/******** HEATMAP ********/
+function getHMClass(val,type){
+    if(!val) return "";
+    if(type==="gm"){
+        if(val>=196) return "hm-top";
+        if(val>=191) return "hm-high";
+        if(val>=186) return "hm-mid";
+    }else{
+        if(val>=98) return "hm-top";
+        if(val>=96) return "hm-high";
+        if(val>=94) return "hm-mid";
+    }
+    return "";
+}
+
+/******** DETAILS ********/
+function toggleDetail(type,team,round,index){
+    const div = document.getElementById(`detail-${type}-${index}-${round}`);
+    if(div.style.display==="block"){ div.style.display="none"; return; }
+    document.querySelectorAll(`.detail[id^="detail-${type}-${index}"]`).forEach(d=>d.style.display="none");
+    const src = type==="gm"? rawGM : rawGC;
+    const list = src.filter(p=>p[`r${round}Team`]===team && (type==="gm"? (p[`r${round}P1`]+p[`r${round}P2`]>0) : p[`r${round}Pkt`]>0));
+    let total=0,html=`<h3>${team} – Runde ${round}</h3>`;
+    list.forEach(p=>{
+        const val = type==="gm"? (p[`r${round}P1`]+p[`r${round}P2`]): p[`r${round}Pkt`];
+        total+=val;
+        html+=type==="gm"?
+        `<div class="player-gm"><div class="name-container"><span>${p.name}</span><span class="stellung ${p.stellung.toLowerCase().includes("liegend")?"liegend":"kniend"}">${p.stellung}</span></div><div>${p[`r${round}P1`]}</div><div>${p[`r${round}P2`]}</div><div class="${getHMClass(val,type)}" style="text-align:right"><strong>${val}</strong></div></div>`:
+        `<div class="player-gc"><span>${p.name}</span><span class="${getHMClass(val,type)}"><strong>${val}</strong></span></div>`;
+    });
+    html+=`<div class="${type==="gm"?"total-row-gm":"total-row-gc"}"><span>Gesamt:</span>${type==="gm"?"<div></div><div></div>":""}<span>${total}</span></div>`;
+    div.innerHTML=html;
+    div.style.display="block";
+}
+
+/******** LOAD ALL ********/
+async function loadAllData(){
+    if(loading) return;
+    loading=true;
+    try{
         [rawGM, rawGC] = await Promise.all([
             fetchCached(`${WORKER_URL}?type=gruppe&jahr=${selectedYear}`,"gruppe-gm"),
             fetchCached(`${WORKER_URL}?type=grenzland&jahr=${selectedYear}`,"gruppe-gc")
         ]);
-        buildTable("gm", rawGM, "overview-gm");
-        buildTable("gc", rawGC, "overview-gc");
-    } finally {
-        loading = false;
-    }
+        buildTable("gm",rawGM,"overview-gm");
+        buildTable("gc",rawGC,"overview-gc");
+    }finally{loading=false;}
 }
 
-/******** RESUME ********/
-window.addEventListener("message", e => {
-    if (e.data?.type === "app:resume") {
-        console.log("🔄 Gruppe Resume");
-        loadAllData();
-    }
-});
-
+/******** EVENTS ********/
 window.addEventListener("load", loadAllData);
-
-})();
+window.addEventListener("message", e=>{
+    if(e.data?.type==="app:resume") loadAllData();
+});
 </script>
 
-
-    
 </body>
 </html>
