@@ -1,177 +1,101 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Schützen-Statistik</title>
-    <style>
-        :root { 
-            --primary: #0f3c5c; 
-            --bg: #f4f6f8; 
-            --text: #333; 
-            --line: #e0e0e0; 
-            --hover: #e6eef5; 
-        }
-        
-        body { 
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; 
-            background: var(--bg); 
-            margin: 0; 
-            padding: 15px; 
-            color: var(--text); 
-            overscroll-behavior-y: contain; 
-        }
-
-        .subtitle { color: #666; margin-bottom: 10px; font-size: 14px; font-weight: bold; }
-        .table-wrapper { overflow-x: auto; margin-bottom: 30px; }
-        
-        .separator { display: flex; align-items: center; text-align: center; margin: 40px 0 20px; color: var(--primary); font-weight: bold; font-size: 18px; }
-        .separator::before, .separator::after { content: ''; flex: 1; border-bottom: 2px solid var(--line); }
-        .separator:not(:empty)::before { margin-right: .5em; }
-        .separator:not(:empty)::after { margin-left: .5em; }
-
-        table { width: 100%; table-layout: fixed; border-collapse: collapse; background: #fff; box-shadow: 0 2px 6px rgba(0,0,0,.08); border-radius: 6px; overflow: hidden; }
-        th { background: var(--primary); color: #fff; font-size: 14px; height: 50px; padding: 0 10px; position: sticky; top: 0; z-index: 10; }
-        
-        .col-team { width: 55%; text-align: left; padding-left: 15px; }
-        .col-round { width: 15%; text-align: center; }
-
-        td { padding: 12px 10px; border-bottom: 1px solid var(--line); font-size: 14px; }
-        td.team { font-weight: bold; text-align: left; color: var(--primary); padding-left: 15px; }
-        .cell { text-align: center; cursor: pointer; transition: background 0.2s; font-weight: bold; }
-
-        /* HEATMAP COLORS */
-        .hm-mid { background-color: #e6f6ec !important; color: #1f7a3a !important; }
-        .hm-high { background-color: #c3e6cb !important; color: #155724 !important; }
-        .hm-top { background-color: #ffeeba !important; color: #856404 !important; }
-
-        .detail { display: none; background: #f9f9f9; padding: 15px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.05); border-bottom: 2px solid var(--line); }
-        h3 { font-size: 16px; margin: 0 0 10px 0; color: var(--primary); text-align: center; }
-
-        .player-gm, .total-row-gm { display: grid; grid-template-columns: 1fr 40px 40px 70px; gap: 10px; padding: 8px 0; align-items: center; }
-        .player-gc, .total-row-gc { display: flex; justify-content: space-between; padding: 8px 0; align-items: center; }
-
-        .player-gm, .player-gc { border-bottom: 1px solid #eee; font-size: 14px; }
-        .total-row-gm, .total-row-gc { margin-top: 10px; border-top: 2px solid var(--primary); color: var(--primary); font-weight: bold; font-size: 16px; }
-
-        .trend { font-size: 12px; margin-left: 5px; font-weight: normal; }
-        .up { color: #28a745; }
-        .down { color: #dc3545; }
-        .steady { color: #6c757d; }
-
-        .name-container { display: flex; align-items: center; gap: 8px; text-align: left; overflow: hidden; }
-        .stellung { font-size: 9px; font-weight: 800; padding: 2px 6px; border-radius: 10px; text-transform: uppercase; white-space: nowrap; }
-        .liegend { background: #e3f0ff; color: #1e5dbf; border: 1px solid #bcd9ff; }
-        .kniend { background: #e6f6ec; color: #1f7a3a; border: 1px solid #c3e6cb; }
-
-        /* PULL SPINNER STYLE */
-        #pull-spinner { 
-            position: fixed; top: -50px; left: 50%; transform: translateX(-50%); 
-            width: 40px; height: 40px; background: var(--primary); border-radius: 50%; 
-            display: flex; align-items: center; justify-content: center; 
-            box-shadow: 0 3px 10px rgba(0,0,0,0.2); z-index: 2001; transition: top 0.1s ease-out;
-        }
-        .spinner-icon { 
-            width: 20px; height: 20px; border: 3px solid rgba(255,255,255,0.3); 
-            border-top-color: #fff; border-radius: 50%; animation: spin 0.8s infinite linear; 
-        }
-        @keyframes spin { to { transform: rotate(360deg); } }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Sportschützen Muhen</title>
+<style>
+    body { font-family: Arial, sans-serif; padding: 10px; background: #f4f6f8; color: #333; }
+    .subtitle { color: #666; margin-bottom: 12px; font-size: 13px; }
+    table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 8px; overflow: hidden; margin-bottom: 20px; }
+    th,td { padding: 10px; border: 1px solid #ccc; text-align: center; }
+    th { background: #0f3c5c; color: #fff; }
+    .team { text-align: left; color: #0f3c5c; font-weight: bold; }
+</style>
 </head>
 <body>
 
-    <div id="pull-spinner"><div class="spinner-icon"></div></div>
-
-    <div class="subtitle">Auf Punkte klicken für Details</div>
-    
-    <div class="separator">Gruppe</div>
-    <div id="overview-gm">Lade Daten...</div>
-    
-    <div class="separator">Grenzlandcup</div>
-    <div id="overview-gc">Lade Daten...</div>
+<div class="subtitle" id="sub-title">Lade Mannschaftsdaten...</div>
+<div id="overview"></div>
 
 <script>
-(function () {
+(function(){
 
-const WORKER_URL = "https://gruppe.dan-hunziker73.workers.dev";
-const selectedYear = "aktuell";
-let rawGM = [], rawGC = [];
-let loading = false;
+const WORKER_URL="https://gruppe.dan-hunziker73.workers.dev";
+const selectedYear="aktuell";
+let raw=[],teams=[],loading=false;
 
 /******** CACHE ********/
-const Cache = {
-    get: k => JSON.parse(localStorage.getItem(k) || "null"),
-    set: (k,d) => localStorage.setItem(k, JSON.stringify({ts:Date.now(),data:d}))
+const Cache={
+    get:k=>JSON.parse(localStorage.getItem(k)||"null"),
+    set:(k,d)=>localStorage.setItem(k,JSON.stringify({ts:Date.now(),data:d}))
 };
 
-/******** FETCH ********/
-async function fetchWithRetry(url, retries=3) {
-    for (let i=1;i<=retries;i++) {
-        try {
-            const c = new AbortController();
+async function fetchWithRetry(url,retries=3){
+    for(let i=1;i<=retries;i++){
+        try{
+            const c=new AbortController();
             setTimeout(()=>c.abort(),8000);
-            const r = await fetch(url,{signal:c.signal,cache:"no-store"});
+            const r=await fetch(url,{signal:c.signal,cache:"no-store"});
             if(!r.ok) throw r.status;
             return await r.json();
-        } catch(e) {
-            if(i===retries) throw e;
+        }catch{
+            if(i===retries) throw i;
             await new Promise(r=>setTimeout(r,400*i));
         }
     }
 }
 
-async function fetchCached(url,key) {
-    try {
-        const d = await fetchWithRetry(url);
-        Cache.set(key,d);
-        return d;
-    } catch {
-        const c = Cache.get(key);
-        if(c) return c.data;
-        throw "offline";
-    }
-}
-
 /******** MINIMAL FIX: buildTable ********/
-function buildTable(type, data, containerId){
-    const container = document.getElementById(containerId);
-    if(!data || data.length===0) {
-        container.innerHTML = "Keine Daten verfügbar";
+function buildTable(){
+    const container=document.getElementById("overview");
+    if(!raw||raw.length===0){
+        container.innerHTML="Keine Daten verfügbar";
         return;
     }
-    let html = `<table><thead><tr><th>Team</th><th>Punkte</th></tr></thead><tbody>`;
-    data.forEach(r => {
-        html += `<tr><td>${r.team || r.name || "?"}</td><td>${r.punkte || "-"}</td></tr>`;
+    let html=`<table><thead><tr><th>Team</th><th>Punkte</th></tr></thead><tbody>`;
+    raw.forEach(r=>{
+        html+=`<tr><td class="team">${r.team||r.name||"?"}</td><td>${r.punkte||"-"}</td></tr>`;
     });
-    html += `</tbody></table>`;
-    container.innerHTML = html;
+    html+=`</tbody></table>`;
+    container.innerHTML=html;
 }
 
 /******** LOAD ********/
-async function loadAllData() {
-    if (loading) return;
-    loading = true;
-    try {
-        [rawGM, rawGC] = await Promise.all([
-            fetchCached(`${WORKER_URL}?type=gruppe&jahr=${selectedYear}`,"gruppe-gm"),
-            fetchCached(`${WORKER_URL}?type=grenzland&jahr=${selectedYear}`,"gruppe-gc")
-        ]);
-        buildTable("gm", rawGM, "overview-gm");
-        buildTable("gc", rawGC, "overview-gc");
-    } finally {
-        loading = false;
+async function loadData(){
+    if(loading) return;
+    loading=true;
+    try{
+        try{
+            raw=await fetchWithRetry(`${WORKER_URL}?type=mannschaft&jahr=${selectedYear}`);
+            Cache.set("mannschaft",raw);
+        }catch{
+            const c=Cache.get("mannschaft");
+            if(!c) throw "offline";
+            raw=c.data;
+        }
+
+        teams=[...new Set(raw.flatMap(r=>{
+            let t=[];
+            for(let i=1;i<=7;i++) if(r[`r${i}Team`]) t.push(r[`r${i}Team`]);
+            return t;
+        }))].sort();
+
+        buildTable();
+    }finally{
+        loading=false;
     }
 }
 
 /******** RESUME ********/
 window.addEventListener("message", e => {
-    if (e.data?.type === "app:resume") {
-        console.log("🔄 Gruppe Resume");
-        loadAllData();
+    if(e.data?.type==="app:resume"){
+        console.log("🔄 Mannschaft Resume");
+        loadData();
     }
 });
 
-window.addEventListener("load", loadAllData);
+window.addEventListener("load", loadData);
 
 })();
 </script>
