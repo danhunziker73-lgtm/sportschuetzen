@@ -8,14 +8,18 @@ const spinner = document.getElementById('pull-spinner');
 // --- EVENT LISTENER ---
 
 // Auto-Update wenn die App wieder geöffnet wird
-document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') {
-        loadTermine(); 
-        document.querySelectorAll('iframe').forEach(iframe => {
-            iframe.src = iframe.src; 
-        });
-    }
+let lastResume = 0;
+
+document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState !== "visible") return;
+
+    const now = Date.now();
+    if (now - lastResume < 1500) return;
+
+    lastResume = now;
+    document.dispatchEvent(new CustomEvent("app:resume"));
 });
+
 
 // Pull-to-Refresh Logik
 document.addEventListener('touchstart', e => { touchStart = e.touches[0].pageY; }, {passive: true});
