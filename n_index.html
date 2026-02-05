@@ -38,6 +38,46 @@
                 console.log("OneSignal: Bitte App zum Homescreen hinzufügen für Push-Support.");
             }
         });
+
+        (function () {
+
+    let lastResume = 0;
+    const MIN_INTERVAL = 1500; // ms
+
+    function fireResume(source) {
+        const now = Date.now();
+        if (now - lastResume < MIN_INTERVAL) return;
+
+        lastResume = now;
+        console.log("📲 App Resume (" + source + ")");
+
+        document.dispatchEvent(
+            new CustomEvent("app:resume", {
+                detail: { source, ts: now }
+            })
+        );
+    }
+
+    // iOS / Android App Wakeup
+    document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "visible") {
+            fireResume("visibility");
+        }
+    });
+
+    // Safari bfcache
+    window.addEventListener("pageshow", e => {
+        if (e.persisted) {
+            fireResume("pageshow");
+        }
+    });
+
+    // Fallback (z. B. App-Switch)
+    window.addEventListener("focus", () => {
+        fireResume("focus");
+    });
+
+})();
     </script>
 
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
