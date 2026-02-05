@@ -116,260 +116,66 @@
 <div id="tooltip" class="tooltip"></div>
 
 <script>
+(function () {
 
-     /*********************
-     * Zentrales Cache-Modul
-     *********************/
+const API_URL =
+ "https://jahresmeisterschaft-muhen.dan-hunziker73.workers.dev?jahr=current";
+let loading = false;
 
+/******** CACHE ********/
 const Cache = {
-    get(key) {
-        try {
-            const raw = localStorage.getItem(key);
-            if (!raw) return null;
-            return JSON.parse(raw);
-        } catch {
-            return null;
-        }
-    },
-    set(key, data) {
-        try {
-            localStorage.setItem(key, JSON.stringify({
-                ts: Date.now(),
-                data
-            }));
-        } catch {}
-    }
+    get:k=>JSON.parse(localStorage.getItem(k)||"null"),
+    set:(k,d)=>localStorage.setItem(k,JSON.stringify({ts:Date.now(),data:d}))
 };
 
-async function fetchWithRetryAndCache(url, cacheKey) {
-    try {
-        const data = await fetchWithRetry(url);
-        Cache.set(cacheKey, data);
-        return { data, fromCache: false };
-    } catch (e) {
-        const cached = Cache.get(cacheKey);
-        if (cached) {
-            console.warn("⚠️ Offline – Cache genutzt:", cacheKey);
-            return { data: cached.data, fromCache: true };
+async function fetchWithRetry(url,retries=3){
+    for(let i=1;i<=retries;i++){
+        try{
+            const c=new AbortController();
+            setTimeout(()=>c.abort(),8000);
+            const r=await fetch(url,{signal:c.signal,cache:"no-store"});
+            if(!r.ok) throw r.status;
+            return await r.json();
+        }catch{
+            if(i===retries) throw i;
+            await new Promise(r=>setTimeout(r,400*i));
         }
-        throw e;
     }
 }
 
-
-
-const { data, fromCache } =
-    await fetchWithRetryAndCache(
-        API_URL,
-        "jm-current"
-    );
-
-if (fromCache) {
-    console.log("📦 JM aus Cache");
+async function loadJMData(){
+    if(loading) return;
+    loading=true;
+    try{
+        let data;
+        try{
+            data=await fetchWithRetry(API_URL);
+            Cache.set("jm-current",data);
+        }catch{
+            const c=Cache.get("jm-current");
+            if(!c) throw "offline";
+            data=c.data;
+        }
+        document.getElementById("content").innerHTML =
+            renderLiga(1,data.liga1)+renderLiga(2,data.liga2);
+    } finally {
+        loading=false;
+    }
 }
 
-
-
-    
-(function () {
-    /*********************
-     * PERF MONITOR
-     *********************/
-    const Perf = {
-        marks: {},
-        mark(name) {
-            this.marks[name] = performance.now();
-        },
-        log(name) {
-            if (!this.marks[name]) return;
-            console.log(
-                `[PERF] ${name}:`,
-                (performance.now() - this.marks[name]).toFixed(1),
-                "ms"
-            );
-        }
-    };
-
-    /*********************
-     * RETRY FETCH
-     *********************/
-    async function fetchWithRetry(url, retries = 3, backoff = 400) {
-        for (let i = 1; i <= retries; i++) {
-            try {
-                const controller = new AbortController();
-                const timeout = setTimeout(() => controller.abort(), 8000);
-
-                const res = await fetch(url, {
-                    cache: "no-store",
-                    signal: controller.signal
-                });
-
-                clearTimeout(timeout);
-
-                if (!res.ok) throw new Error("HTTP " + res.status);
-                return await res.json();
-
-            } catch (e) {
-                console.warn(`JM Fetch Versuch ${i} fehlgeschlagen`, e);
-                if (i === retries) throw e;
-                await new Promise(r =>
-                    setTimeout(r, backoff * Math.pow(2, i - 1))
-                );
-            }
-        }
-    }
-
-    /*********************
-     * PAGE CONFIG
-     *********************/
-    const API_URL =
-        "https://jahresmeisterschaft-muhen.dan-hunziker73.workers.dev?jahr=current";
-
-    const fmt = v => isFinite(v) ? Number(v).toFixed(2) : "0.00";
-    const arr = v => Array.isArray(v) ? v : [];
-
-    let openRow = null;
-    let loading = false;
-
-    /*********************
-     * UI HELPERS
-     *********************/
-    window.toggle = id => {
-        if (openRow && openRow !== id) {
-            const prev = document.getElementById(openRow);
-            if (prev) prev.style.display = "none";
-        }
-        const el = document.getElementById(id);
-        if (!el) return;
-        el.style.display = el.style.display === "table-row" ? "none" : "table-row";
-        openRow = el.style.display === "table-row" ? id : null;
-    };
-
-    function initTooltips(maxValue) {
-        const tip = document.getElementById("tooltip");
-
-        document.querySelectorAll(".max-hint").forEach(el => {
-            el.onclick = e => {
-                e.stopPropagation();
-                const r = el.getBoundingClientRect();
-                tip.textContent = "Maximum: " + maxValue;
-                tip.style.top = (r.top - 35) + "px";
-                tip.style.left = (r.left - 20) + "px";
-                tip.classList.add("show");
-            };
-        });
-
-        document.onclick = () => tip.classList.remove("show");
-    }
-
-    /*********************
-     * RENDER
-     *********************/
-    function renderLiga(ligaNr, data) {
-        let html = `<div class="liga"><h2>Liga ${ligaNr}</h2>
-        <table><thead><tr>
-        <th class="col-rang">Rang</th>
-        <th class="col-name">Name</th>
-        <th class="col-total">Total <span class="max-hint">max</span></th>
-        </tr></thead><tbody>`;
-
-        arr(data).forEach((t, i) => {
-            const id = `l${ligaNr}_${i}`;
-            let rowCls = "neutral", label = "";
-
-            if (ligaNr === 1 && i >= data.length - 2) {
-                rowCls = "absteiger";
-                label = '<span class="status-label text-ab">Abstieg</span>';
-            }
-            if (ligaNr === 2 && i < 2) {
-                rowCls = "aufsteiger";
-                label = '<span class="status-label text-auf">Aufstieg</span>';
-            }
-
-            html += `
-            <tr class="${rowCls}" onclick="toggle('${id}')">
-                <td class="col-rang"><b>${t.rang || "-"}</b>${label}</td>
-                <td class="col-name">${t.name || "-"}</td>
-                <td class="col-total"><b>${fmt(t.total)}</b></td>
-            </tr>
-            <tr id="${id}" class="details"><td colspan="3"><div class="detail-grid">`;
-
-            let used = false, streich = Number(t.streichresultat_prz) || 0;
-
-            html += `<div class="detail-box"><h4><span>Meisterschaft</span><span>Pkt (%)</span></h4><ul class="two-col">`;
-            arr(t.schiessen).forEach(s => {
-                const p = Number(s.prozent);
-                const isStreich = !used && streich > 0 && Math.abs(p - streich) < 0.0001;
-                if (isStreich) used = true;
-                html += `<li class="${isStreich ? "is-streich" : ""}">
-                    <span>${s.name}</span>
-                    <span>${s.punkte} (${fmt(p)}%)</span>
-                </li>`;
-            });
-            html += `</ul></div>`;
-
-            html += `<div class="detail-box"><h4><span>Mannschaft</span><span>Pkt</span></h4><ul class="two-col">`;
-            arr(t.mannschaft).forEach((m, j) => {
-                html += `<li><span>Runde ${j + 1}</span><span>${m.punkte || "-"}</span></li>`;
-            });
-            html += `</ul></div>`;
-
-            html += `<div class="detail-box"><h4><span>Auswärts</span><span>Pkt</span></h4><ul class="two-col">`;
-            const au = arr(t.auswaerts);
-            if (au.length) au.forEach(a =>
-                html += `<li><span>${a.name}</span><span>${a.punkte}</span></li>`
-            );
-            else html += `<li style="color:#999">Keine Resultate</li>`;
-            html += `</ul></div></div></td></tr>`;
-        });
-
-        return html + `</tbody></table></div>`;
-    }
-
-    /*********************
-     * DATA LOAD
-     *********************/
-    async function loadJMData() {
-        if (loading || !navigator.onLine) return;
-        loading = true;
-
-        try {
-            Perf.mark("jm-fetch");
-
-            const data = await fetchWithRetry(
-                API_URL + "&t=" + Date.now()
-            );
-
-            Perf.log("jm-fetch");
-            Perf.mark("jm-render");
-
-            document.getElementById("content").innerHTML =
-                renderLiga(1, data.liga1) + renderLiga(2, data.liga2);
-
-            initTooltips(data.max);
-
-            Perf.log("jm-render");
-
-        } catch (e) {
-            console.error("JM Fehler:", e);
-            document.getElementById("content").innerHTML =
-                "Daten momentan nicht verfügbar.";
-        } finally {
-            loading = false;
-        }
-    }
-
-    /*********************
-     * INIT & RESUME
-     *********************/
-    window.addEventListener("load", loadJMData);
-
-    document.addEventListener("app:resume", () => {
+/******** RESUME ********/
+window.addEventListener("message", e => {
+    if (e.data?.type === "app:resume") {
         console.log("🔄 JM Resume");
         loadJMData();
-    });
+    }
+});
+
+window.addEventListener("load", loadJMData);
 
 })();
+</script>
+
 </script>
 
 </body>
