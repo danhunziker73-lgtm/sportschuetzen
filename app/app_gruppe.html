@@ -142,7 +142,56 @@
     let rawGM = [];
     let rawGC = [];
     let loading = false;
+ /*********************
+     * Zentrales Cache-Modul
+     *********************/
 
+const Cache = {
+    get(key) {
+        try {
+            const raw = localStorage.getItem(key);
+            if (!raw) return null;
+            return JSON.parse(raw);
+        } catch {
+            return null;
+        }
+    },
+    set(key, data) {
+        try {
+            localStorage.setItem(key, JSON.stringify({
+                ts: Date.now(),
+                data
+            }));
+        } catch {}
+    }
+};
+
+async function fetchWithRetryAndCache(url, cacheKey) {
+    try {
+        const data = await fetchWithRetry(url);
+        Cache.set(cacheKey, data);
+        return { data, fromCache: false };
+    } catch (e) {
+        const cached = Cache.get(cacheKey);
+        if (cached) {
+            console.warn("⚠️ Offline – Cache genutzt:", cacheKey);
+            return { data: cached.data, fromCache: true };
+        }
+        throw e;
+    }
+}
+
+    const [{data: gm}, {data: gc}] = await Promise.all([
+    fetchWithRetryAndCache(
+        `${WORKER_URL}?type=gruppe&jahr=${selectedYear}`,
+        "gruppe-gm"
+    ),
+    fetchWithRetryAndCache(
+        `${WORKER_URL}?type=grenzland&jahr=${selectedYear}`,
+        "gruppe-gc"
+    )
+]);
+    
     /*********************
      * DATA LOAD
      *********************/
