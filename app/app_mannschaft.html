@@ -122,254 +122,69 @@
     <div id="overview"></div>
 
 <script>
+(function () {
 
-     /*********************
-     * Zentrales Cache-Modul
-     *********************/
+const WORKER_URL="https://gruppe.dan-hunziker73.workers.dev";
+const selectedYear="aktuell";
+let raw=[], teams=[], loading=false;
 
-const Cache = {
-    get(key) {
-        try {
-            const raw = localStorage.getItem(key);
-            if (!raw) return null;
-            return JSON.parse(raw);
-        } catch {
-            return null;
-        }
-    },
-    set(key, data) {
-        try {
-            localStorage.setItem(key, JSON.stringify({
-                ts: Date.now(),
-                data
-            }));
-        } catch {}
-    }
+/******** CACHE ********/
+const Cache={
+    get:k=>JSON.parse(localStorage.getItem(k)||"null"),
+    set:(k,d)=>localStorage.setItem(k,JSON.stringify({ts:Date.now(),data:d}))
 };
 
-async function fetchWithRetryAndCache(url, cacheKey) {
-    try {
-        const data = await fetchWithRetry(url);
-        Cache.set(cacheKey, data);
-        return { data, fromCache: false };
-    } catch (e) {
-        const cached = Cache.get(cacheKey);
-        if (cached) {
-            console.warn("⚠️ Offline – Cache genutzt:", cacheKey);
-            return { data: cached.data, fromCache: true };
+async function fetchWithRetry(url,retries=3){
+    for(let i=1;i<=retries;i++){
+        try{
+            const c=new AbortController();
+            setTimeout(()=>c.abort(),8000);
+            const r=await fetch(url,{signal:c.signal,cache:"no-store"});
+            if(!r.ok) throw r.status;
+            return await r.json();
+        }catch{
+            if(i===retries) throw i;
+            await new Promise(r=>setTimeout(r,400*i));
         }
-        throw e;
     }
 }
 
-const { data } =
-    await fetchWithRetryAndCache(
-        `${WORKER_URL}?type=mannschaft&jahr=${selectedYear}`,
-        "mannschaft"
-    );
-raw = data;
-
-    
-(function () {
-
-    /*********************
-     * PERF
-     *********************/
-    const Perf = {
-        marks: {},
-        mark(n) { this.marks[n] = performance.now(); },
-        log(n) {
-            if (!this.marks[n]) return;
-            console.log(`[PERF] ${n}:`,
-                (performance.now() - this.marks[n]).toFixed(1), "ms");
-        }
-    };
-
-    /*********************
-     * FETCH WITH RETRY
-     *********************/
-    async function fetchWithRetry(url, retries = 3, timeoutMs = 8000) {
-        for (let i = 1; i <= retries; i++) {
-            try {
-                const ctrl = new AbortController();
-                const t = setTimeout(() => ctrl.abort(), timeoutMs);
-
-                const res = await fetch(url, {
-                    cache: "no-store",
-                    signal: ctrl.signal
-                });
-
-                clearTimeout(t);
-                if (!res.ok) throw new Error("HTTP " + res.status);
-                return await res.json();
-
-            } catch (e) {
-                console.warn(`Fetch Versuch ${i} fehlgeschlagen`, e);
-                if (i === retries) throw e;
-                await new Promise(r => setTimeout(r, 400 * Math.pow(2, i - 1)));
-            }
-        }
-    }
-
-    /*********************
-     * CONFIG / STATE
-     *********************/
-    const WORKER_URL = "https://gruppe.dan-hunziker73.workers.dev";
-    const selectedYear = "aktuell";
-
-    let raw = [];
-    let teams = [];
-    let loading = false;
-
-    /*********************
-     * HEATMAP
-     *********************/
-    function getHeatmapClass(val) {
-        if (!val) return "";
-        if (val >= 197) return "hm-top";
-        if (val >= 191) return "hm-high";
-        if (val >= 185) return "hm-mid";
-        return "hm-low";
-    }
-
-    /*********************
-     * DATA LOAD
-     *********************/
-    async function loadData() {
-        if (loading || !navigator.onLine) return;
-        loading = true;
-
-        try {
-            Perf.mark("mannschaft-fetch");
-
-            raw = await fetchWithRetry(
+async function loadData(){
+    if(loading) return;
+    loading=true;
+    try{
+        try{
+            raw=await fetchWithRetry(
                 `${WORKER_URL}?type=mannschaft&jahr=${selectedYear}`
             );
-
-            Perf.log("mannschaft-fetch");
-            Perf.mark("mannschaft-render");
-
-            teams = [...new Set(raw.flatMap(r => {
-                const t = [];
-                for (let i = 1; i <= 7; i++) {
-                    if (r[`r${i}Team`]) t.push(r[`r${i}Team`]);
-                }
-                return t;
-            }))].sort();
-
-            document.getElementById("sub-title").textContent =
-                "Mannschaft – Klick für Details";
-
-            buildTable();
-            Perf.log("mannschaft-render");
-
-        } catch (e) {
-            console.error("Mannschaft Fehler:", e);
-            document.getElementById("overview").innerHTML =
-                "<p style='padding:20px;'>Daten momentan nicht verfügbar.</p>";
-        } finally {
-            loading = false;
-        }
-    }
-
-    /*********************
-     * TABLE BUILD
-     *********************/
-    function buildTable() {
-        let html = `
-        <div class="table-wrapper">
-        <table>
-        <thead>
-        <tr>
-            <th class="team-header">Team</th>`;
-
-        for (let r = 1; r <= 7; r++) {
-            html += `<th class="round">R${r}</th>`;
+            Cache.set("mannschaft",raw);
+        }catch{
+            const c=Cache.get("mannschaft");
+            if(!c) throw "offline";
+            raw=c.data;
         }
 
-        html += `</tr></thead><tbody>`;
+        teams=[...new Set(raw.flatMap(r=>{
+            let t=[];
+            for(let i=1;i<=7;i++) if(r[`r${i}Team`]) t.push(r[`r${i}Team`]);
+            return t;
+        }))].sort();
 
-        teams.forEach((team, tIdx) => {
-            html += `<tr><td class="team">${team}</td>`;
-
-            for (let r = 1; r <= 7; r++) {
-                const teamData = raw.filter(p =>
-                    p[`r${r}Team`] === team && p[`r${r}Pkt`] > 0
-                );
-
-                const sum = teamData.reduce((a, b) => a + b[`r${r}Pkt`], 0);
-                const avg = teamData.length ? sum / teamData.length : 0;
-
-                html += `
-                <td class="cell ${getHeatmapClass(avg)}"
-                    onclick="toggleDetail('${team.replace(/'/g,"\\'")}',${r},${tIdx})">
-                    ${sum || "–"}
-                </td>`;
-            }
-
-            html += `</tr><tr><td colspan="8" style="padding:0;border:0;">`;
-            for (let r = 1; r <= 7; r++) {
-                html += `<div id="det-${tIdx}-${r}" class="detail"></div>`;
-            }
-            html += `</td></tr>`;
-        });
-
-        document.getElementById("overview").innerHTML =
-            html + `</tbody></table></div>`;
+        buildTable();
+    } finally {
+        loading=false;
     }
+}
 
-    /*********************
-     * DETAILS
-     *********************/
-    window.toggleDetail = function (team, round, tIdx) {
-        const target = document.getElementById(`det-${tIdx}-${round}`);
-        const open = target.style.display === "block";
-
-        document.querySelectorAll(".detail")
-            .forEach(d => d.style.display = "none");
-
-        if (open) return;
-
-        const list = raw.filter(p =>
-            p[`r${round}Team`] === team && p[`r${round}Pkt`] > 0
-        );
-        if (!list.length) return;
-
-        let total = 0;
-        let html = `<h3>${team} – Runde ${round}</h3>`;
-
-        list.forEach(p => {
-            const val = p[`r${round}Pkt`];
-            total += val;
-            html += `
-            <div class="player-row">
-                <span>${p.name}</span>
-                <span class="${getHeatmapClass(val)}"
-                    style="padding:2px 6px;border-radius:4px;font-weight:bold;">
-                    ${val}
-                </span>
-            </div>`;
-        });
-
-        html += `
-        <div class="total-row">
-            <span>Gesamt</span>
-            <span>${total}</span>
-        </div>`;
-
-        target.innerHTML = html;
-        target.style.display = "block";
-    };
-
-    /*********************
-     * INIT / RESUME
-     *********************/
-    window.addEventListener("load", loadData);
-
-    document.addEventListener("app:resume", () => {
+/******** RESUME ********/
+window.addEventListener("message", e => {
+    if (e.data?.type === "app:resume") {
         console.log("🔄 Mannschaft Resume");
         loadData();
-    });
+    }
+});
+
+window.addEventListener("load", loadData);
 
 })();
 </script>
