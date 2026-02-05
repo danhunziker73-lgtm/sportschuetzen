@@ -1,126 +1,3 @@
-<!DOCTYPE html>
-<html lang="de">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Sportschützen Muhen</title>
-    
-    <link rel="manifest" href="/sportschuetzen/manifest.json">
-    <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-    <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
-    <link rel="icon" type="image/png" sizes="512x512" href="icons/icon-512.png">
-    <meta name="theme-color" content="#0f3c5c">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="default">
-    <meta name="apple-mobile-web-app-title" content="Muhen">
-
-    <style>
-        :root {
-            --primary: #0f3c5c;
-            --bg: #f4f6f8;
-            --text: #333;
-            --line: #e0e0e0;
-            --hover: #e6eef5;
-            /* Heatmap Farben */
-            --low: #f8f9fa;
-            --mid: #e6f6ec;
-            --high: #c3e6cb;
-            --top: #ffeeba;
-        }
-
-        * { box-sizing: border-box; }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background: var(--bg);
-            margin: 0;
-            padding: 10px;
-            color: var(--text);
-            overscroll-behavior-y: contain; /* Verhindert Browser-Refresh beim Ziehen */
-        }
-
-        .subtitle { color: #666; margin-bottom: 12px; font-size: 13px; padding-left: 5px; }
-
-        /* TABELLE: STABILES %-LAYOUT */
-        .table-wrapper { width: 100%; overflow: hidden; }
-
-        table {
-            width: 100%;
-            table-layout: fixed; /* Zwingt Spaltenbreiten */
-            border-collapse: collapse;
-            background: #fff;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-            border-radius: 8px;
-            overflow: hidden;
-        }
-
-        thead th {
-            background: var(--primary);
-            color: #fff;
-            font-size: 13px;
-            font-weight: 600;
-            padding: 12px 0;
-            text-align: center;
-        }
-
-        td {
-            padding: 12px 0;
-            text-align: center;
-            border-bottom: 1px solid var(--line);
-            font-size: 14px;
-        }
-
-        /* Spalten-Verteilung: Team 28%, 7 Runden teilen sich den Rest */
-        .team-header, .team { 
-            width: 28%; 
-            text-align: left; 
-            padding-left: 10px; 
-            overflow: hidden; 
-            text-overflow: ellipsis; 
-            white-space: nowrap; 
-        }
-        .round, .cell { width: 10.28%; font-weight: bold; }
-
-        .cell { cursor: pointer; color: var(--primary); transition: background 0.2s; }
-
-        /* HEATMAP KLASSEN */
-        .hm-low { background-color: var(--low); }
-        .hm-mid { background-color: var(--mid); color: #1f7a3a !important; }
-        .hm-high { background-color: var(--high); color: #155724 !important; }
-        .hm-top { background-color: var(--top); color: #856404 !important; }
-
-        /* DETAIL ANSICHT UNTER DER ZEILE */
-        .detail { 
-            display: none; 
-            background: #fdfdfd; 
-            padding: 15px; 
-            border-bottom: 2px solid var(--primary); 
-            animation: fadeIn 0.2s ease-out;
-        }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
-
-        h3 { font-size: 15px; margin: 0 0 12px 0; color: var(--primary); }
-        .player-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #eee; font-size: 14px; }
-        .total-row { display: flex; justify-content: space-between; margin-top: 10px; padding-top: 10px; border-top: 2px solid var(--primary); font-weight: bold; font-size: 15px; }
-
-        /* PULL-TO-REFRESH SPINNER */
-        #pull-spinner {
-            position: fixed; top: -50px; left: 50%; transform: translateX(-50%);
-            width: 40px; height: 40px; background: var(--primary); border-radius: 50%;
-            display: flex; align-items: center; justify-content: center; z-index: 9999; 
-            transition: top 0.1s linear;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
-        }
-        .spinner-icon { width: 18px; height: 18px; border: 3px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.8s infinite linear; }
-        @keyframes spin { to { transform: rotate(360deg); } }
-    </style>
-</head>
-<body>
-
-    <div id="pull-spinner"><div class="spinner-icon"></div></div>
-    <div class="subtitle" id="sub-title">Lade Mannschaftsdaten...</div>
-    <div id="overview"></div>
-
 <script>
 (function () {
 
@@ -149,14 +26,42 @@ async function fetchWithRetry(url,retries=3){
     }
 }
 
+/******** BUILD TABLE ********/
+function buildTable(){
+    if(!raw.length) {
+        document.getElementById("overview").innerHTML = "<p>Keine Daten vorhanden.</p>";
+        return;
+    }
+
+    let html = '<div class="table-wrapper"><table>';
+    html += '<thead><tr><th class="team-header">Team</th>';
+    for(let i=1;i<=7;i++) html += `<th class="round">Runde ${i}</th>`;
+    html += '</tr></thead><tbody>';
+
+    teams.forEach(team=>{
+        const teamRows = raw.filter(r => Object.values(r).includes(team));
+        teamRows.forEach(r=>{
+            html += `<tr>`;
+            html += `<td class="team">${team}</td>`;
+            for(let i=1;i<=7;i++){
+                const val = r[`r${i}`] ?? '';
+                html += `<td class="cell">${val}</td>`;
+            }
+            html += `</tr>`;
+        });
+    });
+
+    html += '</tbody></table></div>';
+    document.getElementById("overview").innerHTML = html;
+}
+
+/******** LOAD DATA ********/
 async function loadData(){
     if(loading) return;
     loading=true;
     try{
         try{
-            raw=await fetchWithRetry(
-                `${WORKER_URL}?type=mannschaft&jahr=${selectedYear}`
-            );
+            raw=await fetchWithRetry(`${WORKER_URL}?type=mannschaft&jahr=${selectedYear}`);
             Cache.set("mannschaft",raw);
         }catch{
             const c=Cache.get("mannschaft");
