@@ -17,68 +17,78 @@
 
     <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
 
-    <script>
-        window.OneSignalDeferred = window.OneSignalDeferred || [];
-        OneSignalDeferred.push(async function(OneSignal) {
-            await OneSignal.init({
-                appId: "975091f5-948b-48d4-9e61-b7f4d43a1021",
-                serviceWorkerParam: { scope: "/sportschuetzen/" },
-                serviceWorkerPath: "OneSignalSDKWorker.js",
-                autoRegister: false,
-                notifyButton: {
-                    enable: true,
-                },
-            });
+  <!-- OneSignal SDK -->
+<script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
 
-            // iOS PWA Check
-            const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-            const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
+<script>
+/************************************************
+ * OneSignal Init (UNVERÄNDERT, MUSS BLEIBEN)
+ ************************************************/
+window.OneSignalDeferred = window.OneSignalDeferred || [];
+OneSignalDeferred.push(async function (OneSignal) {
+    await OneSignal.init({
+        appId: "975091f5-948b-48d4-9e61-b7f4d43a1021",
+        serviceWorkerParam: { scope: "/sportschuetzen/" },
+        serviceWorkerPath: "OneSignalSDKWorker.js",
+        autoRegister: false,
+        notifyButton: { enable: true }
+    });
 
-            if (isIOS && !isStandalone) {
-                console.log("OneSignal: Bitte App zum Homescreen hinzufügen für Push-Support.");
-            }
-        });
+    // iOS PWA Hinweis
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
 
-        (function () {
+    if (isIOS && !isStandalone) {
+        console.log("📢 OneSignal: iOS Push nur als Homescreen-App.");
+    }
+});
+
+/************************************************
+ * ZENTRALE APP-RESUME LOGIK (NEU)
+ ************************************************/
+(function () {
 
     let lastResume = 0;
-    const MIN_INTERVAL = 1500; // ms
+    const MIN_INTERVAL = 1500;
 
     function fireResume(source) {
         const now = Date.now();
         if (now - lastResume < MIN_INTERVAL) return;
-
         lastResume = now;
-        console.log("📲 App Resume (" + source + ")");
 
-        document.dispatchEvent(
-            new CustomEvent("app:resume", {
-                detail: { source, ts: now }
-            })
-        );
+        console.log("📲 App Resume:", source);
+
+        // Resume an alle iFrames senden
+        document.querySelectorAll("iframe").forEach(iframe => {
+            iframe.contentWindow?.postMessage(
+                { type: "app:resume", source, ts: now },
+                "*"
+            );
+        });
     }
 
-    // iOS / Android App Wakeup
+    // App kommt in den Vordergrund
     document.addEventListener("visibilitychange", () => {
         if (document.visibilityState === "visible") {
             fireResume("visibility");
         }
     });
 
-    // Safari bfcache
+    // Safari Back/Forward Cache
     window.addEventListener("pageshow", e => {
         if (e.persisted) {
             fireResume("pageshow");
         }
     });
 
-    // Fallback (z. B. App-Switch)
+    // Fallback (App-Switch, Desktop)
     window.addEventListener("focus", () => {
         fireResume("focus");
     });
 
 })();
-    </script>
+</script>
+
 
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
