@@ -1,65 +1,43 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Jahresmeisterschaft</title>
-<style>
-:root { --primary: #0f3c5c; --bg: #f4f6f8; --text: #333; --line: #e0e0e0; }
-
-body { font-family: Arial, system-ui, -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 15px; color: var(--text); }
-
-#pull-spinner { position: fixed; top: -50px; left: 50%; transform: translateX(-50%); width: 40px; height: 40px; background: var(--primary); border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(0,0,0,0.2); z-index: 9999; transition: top 0.15s ease-out; }
-.spinner-icon { width: 18px; height: 18px; border: 3px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.8s infinite linear; }
-@keyframes spin { to { transform: rotate(360deg); } }
-
-.subtitle { color: #666; font-size: 14px; margin-bottom: 15px; text-align: left; }
-table { width: 100%; border-collapse: collapse; background: #fff; box-shadow: 0 2px 6px rgba(0,0,0,.08); border-radius: 6px; overflow: hidden; table-layout: fixed; }
-thead th { background: var(--primary); color: #fff; font-size: 13px; font-weight: 600; padding: 10px 6px; line-height: 1.2; }
-.col-rang { width: 60px; text-align: center; }
-.col-name { width: auto; text-align: left; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--primary); }
-.col-total { width: 85px; text-align: right; padding-right: 10px; }
-td { padding: 10px 6px; border-bottom: 1px solid var(--line); vertical-align: middle; font-size: 14px; }
-.status-label { display: block; font-size: 9px; font-weight: bold; text-transform: uppercase; margin-top: 2px; }
-.text-auf { color: #27ae60; }
-.text-ab { color: #c0392b; }
-.aufsteiger { border-left: 4px solid #2ecc71; }
-.absteiger { border-left: 4px solid #e74c3c; }
-.neutral { border-left: 4px solid transparent; }
-.details { display: none; background: #f9f9f9; padding: 10px; border-top: 1px solid #ddd; }
-.detail-grid { display: grid; grid-template-columns: 1fr; gap: 15px; }
-@media(min-width:768px){ .detail-grid { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); } }
-.detail-box h4 { display: flex; justify-content: space-between; margin: 0 0 8px; border-bottom: 1px solid #ddd; color: var(--primary); font-size: 14px; }
-.two-col { list-style: none; padding: 0; margin: 0; }
-.two-col li { display: flex; justify-content: space-between; padding: 5px 0; font-size: 13px; border-bottom: 1px solid #eee; }
-.is-streich { color: #e74c3c; text-decoration: line-through; opacity: 0.7; }
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jahresmeisterschaft</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 15px; background: #f4f6f8; color: #333; }
+        h2 { color: #0f3c5c; }
+        table { width: 100%; border-collapse: collapse; background: #fff; margin-bottom: 20px; }
+        th, td { padding: 8px; border: 1px solid #ccc; text-align: center; }
+        th { background: #0f3c5c; color: #fff; }
+        .team { text-align: left; color: #0f3c5c; font-weight: bold; }
+    </style>
 </head>
 <body>
 
-<div id="pull-spinner"><div class="spinner-icon"></div></div>
-<div class="subtitle">Tippe auf einen Schützen für Details</div>
+<h2>Jahresmeisterschaft</h2>
 <div id="content">Lade Daten…</div>
 
 <script>
-const API_URL = "https://jahresmeisterschaft-muhen.dan-hunziker73.workers.dev?jahr=current";
-let loading = false;
+(function(){
+
+const API_URL="https://jahresmeisterschaft-muhen.dan-hunziker73.workers.dev?jahr=current";
+let loading=false;
 
 /******** CACHE ********/
-const Cache = {
-    get: k => JSON.parse(localStorage.getItem(k)||"null"),
-    set: (k,d) => localStorage.setItem(k,JSON.stringify({ts:Date.now(),data:d}))
+const Cache={
+    get:k=>JSON.parse(localStorage.getItem(k)||"null"),
+    set:(k,d)=>localStorage.setItem(k,JSON.stringify({ts:Date.now(),data:d}))
 };
 
-/******** FETCH ********/
 async function fetchWithRetry(url,retries=3){
     for(let i=1;i<=retries;i++){
         try{
-            const ctrl = new AbortController();
-            setTimeout(()=>ctrl.abort(),8000);
-            const res = await fetch(url,{signal:ctrl.signal,cache:"no-store"});
-            if(!res.ok) throw res.status;
-            return await res.json();
+            const c=new AbortController();
+            setTimeout(()=>c.abort(),8000);
+            const r=await fetch(url,{signal:c.signal,cache:"no-store"});
+            if(!r.ok) throw r.status;
+            return await r.json();
         }catch{
             if(i===retries) throw i;
             await new Promise(r=>setTimeout(r,400*i));
@@ -67,24 +45,14 @@ async function fetchWithRetry(url,retries=3){
     }
 }
 
-/******** RENDER ********/
-function renderLiga(num, data){
-    if(!data || !data.length) return `<p>Liga ${num}: keine Daten</p>`;
-    let html = `<div class="liga"><h2>Liga ${num}</h2><table><thead><tr><th class="col-rang">Rang</th><th class="col-name">Name</th><th class="col-total">Total</th></tr></thead><tbody>`;
-    data.forEach((row,i)=>{
-        let statusClass = row.status==='auf'?'aufsteiger':row.status==='ab'?'absteiger':'neutral';
-        html+=`<tr class="${statusClass}"><td class="col-rang">${i+1}</td><td class="col-name">${row.name}</td><td class="col-total">${row.total}</td></tr>`;
-        if(row.details && row.details.length){
-            html+=`<tr class="details"><td colspan="3"><div class="detail-grid">`;
-            row.details.forEach(d=>{
-                html+=`<div class="detail-box"><h4>${d.title}<span>${d.points}</span></h4><ul class="two-col">`;
-                d.items.forEach(it=>html+=`<li>${it.name}<span>${it.value}</span></li>`);
-                html+=`</ul></div>`;
-            });
-            html+=`</div></td></tr>`;
-        }
+/******** MINIMAL FIX: renderLiga ********/
+function renderLiga(ligaNr, data){
+    if(!data||data.length===0) return `<p>Liga ${ligaNr}: Keine Daten</p>`;
+    let html=`<h3>Liga ${ligaNr}</h3><table><thead><tr><th>Rang</th><th>Name</th><th>Punkte</th></tr></thead><tbody>`;
+    data.forEach(r=>{
+        html+=`<tr><td>${r.rang||"-"}</td><td class="team">${r.name||"?"}</td><td>${r.punkte||"-"}</td></tr>`;
     });
-    html += `</tbody></table></div>`;
+    html+=`</tbody></table>`;
     return html;
 }
 
@@ -104,14 +72,22 @@ async function loadJMData(){
         }
         document.getElementById("content").innerHTML =
             renderLiga(1,data.liga1)+renderLiga(2,data.liga2);
-    }finally{loading=false;}
+    }finally{
+        loading=false;
+    }
 }
 
 /******** RESUME ********/
-window.addEventListener("message", e=>{
-    if(e.data?.type==="app:resume") loadJMData();
+window.addEventListener("message", e => {
+    if(e.data?.type==="app:resume"){
+        console.log("🔄 JM Resume");
+        loadJMData();
+    }
 });
-window.addEventListener("load", loadJMData);
+
+window.addEventListener("load",loadJMData);
+
+})();
 </script>
 
 </body>
