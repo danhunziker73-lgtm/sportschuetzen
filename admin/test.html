@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - Sportschützen Muhen</title>
+    <style>
+        body { font-family: sans-serif; margin: 20px; line-height: 1.5; }
+        .section { margin-bottom: 40px; border: 1px solid #ccc; padding: 20px; border-radius: 8px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f4f4f4; }
+        input, select { width: 100%; box-sizing: border-box; padding: 5px; }
+        .btn-save { background: #28a745; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; }
+        .btn-add { background: #007bff; color: white; padding: 5px 10px; border: none; margin-bottom: 10px; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+    <h1>Admin-Konfiguration</h1>
+
+    <div class="section">
+        <h2>{{Platzhalter}} für Dokumente</h2>
+        <div id="platzhalter-fields">
+            <label>GV Nummer: <input type="text" id="gv_nr" value="107"></label><br><br>
+            <label>GV Datum: <input type="text" id="gv_datum" value="12.03.2026"></label>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>Jahresprogramm & Termine</h2>
+        <button class="btn-add" onclick="addNewRow()">+ Termin hinzufügen</button>
+        <table id="termine-table">
+            <thead>
+                <tr>
+                    <th>Anlass</th>
+                    <th>Ort</th>
+                    <th>Kategorie</th>
+                    <th>Status</th>
+                    <th>Aktion</th>
+                </tr>
+            </thead>
+            <tbody id="termine-body">
+                </tbody>
+        </table>
+    </div>
+
+    <button class="btn-save" onclick="saveToGAS()">Alles in Google Sheet speichern</button>
+
+    <script>
+        // Deine Dropdown-Daten
+        const dropdownData = {
+            orte: ["Muhen", "Aarburg", "Thun", "Buchs", "Domat/Ems", "Gretzenbach"],
+            kategorien: ["Jahresprogramm", "Schiesstermine", "Spezial"],
+            status: ["fix", "provisorisch", "abgesagt"]
+        };
+
+        // Beispiel-Daten (würden normalerweise via Worker geladen)
+        let termine = [
+            { anlass: "Generalversammlung", ort: "Muhen", kategorie: "Jahresprogramm", status: "fix" },
+            { anlass: "Mannschaftsmeisterschaft", ort: "Thun", kategorie: "Schiesstermine", status: "provisorisch" }
+        ];
+
+        function renderTable() {
+            const body = document.getElementById('termine-body');
+            body.innerHTML = '';
+            termine.forEach((t, index) => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td><input type="text" value="${t.anlass}" onchange="updateData(${index}, 'anlass', this.value)"></td>
+                    <td>${createDropdown(dropdownData.orte, t.ort, index, 'ort')}</td>
+                    <td>${createDropdown(dropdownData.kategorien, t.kategorie, index, 'kategorie')}</td>
+                    <td>${createDropdown(dropdownData.status, t.status, index, 'status')}</td>
+                    <td><button onclick="removeRow(${index})">X</button></td>
+                `;
+                body.appendChild(row);
+            });
+        }
+
+        function createDropdown(options, selectedValue, index, field) {
+            let html = `<select onchange="updateData(${index}, '${field}', this.value)">`;
+            options.forEach(opt => {
+                html += `<option value="${opt}" ${opt === selectedValue ? 'selected' : ''}>${opt}</option>`;
+            });
+            html += `</select>`;
+            return html;
+        }
+
+        function updateData(index, field, value) {
+            termine[index][field] = value;
+            console.log("Aktualisiert:", termine);
+        }
+
+        function addNewRow() {
+            termine.push({ anlass: "Neuer Anlass", ort: "Muhen", kategorie: "Jahresprogramm", status: "provisorisch" });
+            renderTable();
+        }
+
+        function removeRow(index) {
+            termine.splice(index, 1);
+            renderTable();
+        }
+
+        async function saveToGAS() {
+            const payload = {
+                gv_nr: document.getElementById('gv_nr').value,
+                gv_datum: document.getElementById('gv_datum').value,
+                termine: termine
+            };
+            
+            alert("Daten werden an Google Sheet gesendet: " + JSON.stringify(payload));
+            
+            // Hier kommt dein Fetch-Aufruf zum Cloudflare Worker hin:
+            // await fetch('DEIN_WORKER_URL', { method: 'POST', body: JSON.stringify(payload) });
+        }
+
+        // Initiales Rendern
+        renderTable();
+    </script>
+</body>
+</html>
