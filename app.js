@@ -181,6 +181,40 @@ function filterTermine(type, btn) {
     else renderTermine(allTermine.filter(t => t.typ === type));
 }
 
+function applyRundenPrefix(termine) {
+    const rules = {
+        "Gruppenmeisterschaft SSV": 3,
+        "Gruppenmeisterschaft AGSV": 3,
+        "Grenzland-Cup": 3,
+        "Mannschaftsmeisterschaft": 7
+    };
+
+    const counters = {};
+
+    return termine.map(t => {
+        const title = t.titel.trim();
+
+        // Finals oder Sonderformen NICHT anfassen
+        if (title.toLowerCase().startsWith("final")) return t;
+
+        for (const baseTitle in rules) {
+            if (title === baseTitle) {
+                counters[baseTitle] = (counters[baseTitle] || 0) + 1;
+
+                // Sicherheit: nicht über max. Runden hinaus
+                if (counters[baseTitle] <= rules[baseTitle]) {
+                    return {
+                        ...t,
+                        titel: `${counters[baseTitle]}. Runde ${title}`
+                    };
+                }
+            }
+        }
+        return t;
+    });
+}
+
+
 // --- INITIALISIERUNG ---
 
 window.addEventListener('load', () => {
