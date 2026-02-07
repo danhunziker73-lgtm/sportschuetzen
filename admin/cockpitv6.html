@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin-Panel 3.0 | Muhen</title>
+    <style>
+        :root { 
+            --primary: #4f46e5; --secondary: #1e293b; --success: #10b981; 
+            --danger: #ef4444; --warning: #f59e0b; --bg: #f8fafc; --card-bg: #ffffff;
+            --border: #e2e8f0; --text: #334155;
+        }
+        body { font-family: 'Inter', -apple-system, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 25px; line-height: 1.5; }
+        .container { max-width: 1700px; margin: auto; }
+        
+        /* Header & Sticky Actions */
+        header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; background: var(--card-bg); padding: 20px 35px; border-radius: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); border: 1px solid var(--border); }
+        h1 { margin: 0; font-size: 1.5rem; font-weight: 800; color: var(--secondary); letter-spacing: -0.025em; }
+
+        /* Card System */
+        .card { background: var(--card-bg); padding: 30px; border-radius: 16px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); margin-bottom: 30px; border: 1px solid var(--border); }
+        h2 { margin-top: 0; font-size: 1.1rem; font-weight: 700; color: var(--secondary); margin-bottom: 25px; display: flex; align-items: center; gap: 10px; }
+        h2::before { content: ''; width: 4px; height: 18px; background: var(--primary); border-radius: 4px; }
+
+        /* GV-Raster: 2 Spalten */
+        .gv-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
+        .gv-item { background: #fcfcfd; padding: 15px; border-radius: 12px; border: 1px solid var(--border); }
+        .gv-item label { display: block; font-weight: 600; font-size: 0.85rem; color: #64748b; margin-bottom: 8px; }
+
+        /* Tabelle Modern */
+        .table-wrapper { border-radius: 12px; overflow: hidden; border: 1px solid var(--border); }
+        table { width: 100%; border-collapse: collapse; background: white; }
+        th { background: #f1f5f9; color: #475569; text-align: left; padding: 14px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
+        td { padding: 12px; border-bottom: 1px solid var(--border); transition: all 0.2s; }
+
+        /* Status Styling */
+        .row-warn { background-color: #fff1f2; }
+        .row-provisorisch { background-color: #fefce8; }
+        .row-abgesagt { opacity: 0.6; background-color: #f8fafc; text-decoration: line-through; }
+
+        input, select { 
+            padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 0.9rem; width: 100%; box-sizing: border-box; transition: 0.2s; 
+            background: white; color: var(--text);
+        }
+        input:focus { border-color: var(--primary); outline: none; box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1); }
+        input[readonly] { background: #f1f5f9; color: #64748b; cursor: not-allowed; }
+        .empty-field { border: 2px solid var(--danger); background: #fff1f2; }
+
+        /* Buttons */
+        .btn { padding: 10px 20px; border: none; border-radius: 10px; cursor: pointer; font-weight: 600; transition: 0.2s; display: inline-flex; align-items: center; gap: 8px; }
+        .btn-save { background: var(--primary); color: white; box-shadow: 0 4px 14px rgba(79, 70, 229, 0.4); }
+        .btn-save:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(79, 70, 229, 0.5); }
+        .btn-add { background: #eef2ff; color: var(--primary); margin-bottom: 20px; border: 1px dashed var(--primary); }
+        .btn-del { background: #fef2f2; color: var(--danger); padding: 8px; }
+
+        /* Mail-Tags & Dropdown */
+        .mail-wrapper { display: flex; flex-direction: column; gap: 8px; }
+        .tag-box { display: flex; flex-wrap: wrap; gap: 6px; background: #fff; padding: 6px; border: 1px solid var(--border); border-radius: 8px; min-height: 44px; align-items: center; }
+        .tag { background: #e0e7ff; color: #4338ca; padding: 3px 10px; border-radius: 6px; font-size: 0.8rem; font-weight: 600; display: flex; align-items: center; gap: 5px; }
+        .tag span { color: #ef4444; cursor: pointer; font-size: 1.1rem; }
+
+        .loader { position: fixed; inset: 0; background: var(--bg); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 9999; }
+        .spinner { width: 48px; height: 48px; border: 5px solid #e2e8f0; border-top-color: var(--primary); border-radius: 50%; animation: spin 1s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+
+<div id="loader" class="loader"><div class="spinner"></div><p style="margin-top:15px; font-weight:600; color:var(--secondary)">Daten werden synchronisiert...</p></div>
+
+<div class="container">
+    <header>
+        <h1>Sportschützen Muhen Admin</h1>
+        <button class="btn btn-save" onclick="saveAll()">💾 Cloud-Update durchführen</button>
+    </header>
+
+    <div class="card">
+        <h2>GV & Haupt-Konfiguration</h2>
+        <div id="platzhalter-list" class="gv-grid"></div>
+    </div>
+
+    <div class="card">
+        <h2>Jahresprogramm & Termine</h2>
+        <button class="btn btn-add" onclick="addTermin()">+ Neuer Termin hinzufügen</button>
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width:170px">Datum</th>
+                        <th style="width:120px">Zeit</th>
+                        <th>Anlass (TerminAnlass)</th>
+                        <th>Austragungsort</th>
+                        <th>Map (Info)</th>
+                        <th style="width:160px">Kategorie</th>
+                        <th style="width:140px">Status</th>
+                        <th style="width:50px"></th>
+                    </tr>
+                </thead>
+                <tbody id="termine-body"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>Stammdaten-Editor</h2>
+        <div class="gv-grid">
+            <div class="gv-item">
+                <label>Anlass-Typen (Dropdown-Optionen)</label>
+                <div id="edit-anlaesse"></div>
+                <button class="btn btn-add" onclick="state.dropdowns.anlaesse.push(''); renderAll();" style="margin-top:10px; width:100%">+ Typ hinzufügen</button>
+            </div>
+            <div class="gv-item">
+                <label>Orte & Google Maps Links</label>
+                <div id="edit-orte"></div>
+                <button class="btn btn-add" onclick="state.dropdowns.orteMitMaps.push(['','']); renderAll();" style="margin-top:10px; width:100%">+ Ort hinzufügen</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>Mail-Empfänger & App-Info</h2>
+        <div id="app-info-list" class="gv-grid"></div>
+    </div>
+</div>
+
+<script>
+    const WORKER_URL = "https://termine.dan-hunziker73.workers.dev/"; 
+    let state = { platzhalter: [], termine: [], app_info: [], members: [], dropdowns: { anlaesse:[], orteMitMaps:[], kategorien:[], status:[] } };
+
+    const toIsoDate = (v) => (v && typeof v === 'string' && v.includes('T')) ? v.split('T')[0] : v;
+    const toIsoTime = (v) => (v && typeof v === 'string' && v.includes('T')) ? v.split('T')[1].substring(0,5) : (v || "");
+
+    async function loadData() {
+        try {
+            const resp = await fetch(`${WORKER_URL}?action=loadAdminData`);
+            state = await resp.json();
+            renderAll();
+            document.getElementById('loader').style.display = 'none';
+        } catch (err) { alert("Ladefehler: " + err); }
+    }
+
+    function renderAll() {
+        renderPlatzhalter();
+        renderTermine();
+        renderStammdaten();
+        renderAppInfo();
+    }
+
+    function renderPlatzhalter() {
+        const container = document.getElementById('platzhalter-list');
+        container.innerHTML = state.platzhalter.map((p, i) => {
+            const isMail = p.platzhaltername?.includes('Mail_Anmeldeliste') || p.platzhaltername?.includes('Mail_Präsenzliste');
+            const isId = p.platzhaltername?.includes('_ID');
+            
+            return `<div class="gv-item">
+                <label>${p.platzhaltername}</label>
+                ${isMail ? renderMailComponent(p.inhalt, (val) => { state.platzhalter[i].inhalt = val; renderAll(); }) : 
+                  `<input type="text" value="${p.inhalt}" onchange="${isId?'extractId(this, '+i+')':'state.platzhalter['+i+'].inhalt=this.value'}">`}
+                <small style="display:block; margin-top:5px; color:#94a3b8">${p.erklärung || ''}</small>
+            </div>`;
+        }).join('');
+    }
+
+    function extractId(input, idx) {
+        const match = input.value.match(/[-\w]{25,}/);
+        state.platzhalter[idx].inhalt = match ? match[0] : input.value;
+        renderAll();
+    }
+
+    function renderTermine() {
+        const body = document.getElementById('termine-body');
+        const ortsNamen = state.dropdowns.orteMitMaps.map(o => o[0]);
+        
+        body.innerHTML = state.termine.map((t, i) => {
+            const d = toIsoDate(t.datum);
+            const wd = d ? new Date(d).toLocaleDateString('de-DE', {weekday:'short'}) : '-';
+            const status = (t.status || "").toLowerCase();
+            let rowClass = status === 'provisorisch' ? 'row-provisorisch' : (status === 'abgesagt' ? 'row-abgesagt' : '');
+            if (!t.datum || !t['anlass_/_titel'] || !t.startzeit) rowClass = "row-warn";
+
+            return `<tr class="${rowClass}">
+                <td><div style="display:flex; gap:8px; align-items:center;"><b style="color:var(--primary); width:35px">${wd}</b><input type="date" class="${!t.datum?'empty-field':''}" value="${d}" onchange="state.termine[${i}].datum=this.value; renderAll();"></div></td>
+                <td><div style="display:flex; flex-direction:column; gap:4px"><input type="time" class="${!t.startzeit?'empty-field':''}" value="${toIsoTime(t.startzeit)}" onchange="state.termine[${i}].startzeit=this.value"><input type="time" value="${toIsoTime(t.endzeit)}" onchange="state.termine[${i}].endzeit=this.value"></div></td>
+                <td><select class="${!t['anlass_/_titel']?'empty-field':''}" onchange="state.termine[${i}]['anlass_/_titel']=this.value; renderAll();"><option value="">-- Typ wählen --</option>${state.dropdowns.anlaesse.map(o => `<option value="${o}" ${o===t['anlass_/_titel']?'selected':''}>${o}</option>`).join('')}</select></td>
+                <td><select onchange="updateOrt(${i}, this.value)"><option value="">- Ort -</option>${ortsNamen.map(o => `<option value="${o}" ${o===t.ort?'selected':''}>${o}</option>`).join('')}</select></td>
+                <td><input type="text" readonly value="${t.austragungsorte_map || ''}" style="font-size:0.7rem"></td>
+                <td>${createSelect(state.dropdowns.kategorien, t.kategorie, i, 'kategorie')}</td>
+                <td>${createSelect(state.dropdowns.status, t.status, i, 'status')}</td>
+                <td><button class="btn btn-del" onclick="state.termine.splice(${i},1); renderAll();">✕</button></td>
+            </tr>`;
+        }).join('');
+    }
+
+    function renderMailComponent(currentStr, updateFn) {
+        const selected = currentStr ? currentStr.split(';').map(m => m.trim()).filter(m => m) : [];
+        const uniqueID = Math.random().toString(36).substring(7);
+        
+        setTimeout(() => {
+            const select = document.getElementById('sel-' + uniqueID);
+            if(select) {
+                select.onchange = (e) => {
+                    if(!e.target.value) return;
+                    const newVal = [...selected, e.target.value].join('; ');
+                    updateFn(newVal);
+                };
+            }
+        }, 10);
+
+        return `<div class="mail-wrapper">
+            <div class="tag-box">${selected.map(m => `<div class="tag">${m}<span onclick="const n='${selected.filter(x=>x!==m).join('; ')}'; (window['updateFn_${uniqueID}'] || ((v)=>{}))(n); window.renderAll();">×</span></div>`).join('')}</div>
+            <select id="sel-${uniqueID}"><option value="">+ Adresse hinzufügen...</option>${state.members.map(m => `<option value="${m}">${m}</option>`).join('')}</select>
+        </div>`;
+    }
+
+    function renderAppInfo() {
+        const container = document.getElementById('app-info-list');
+        container.innerHTML = state.app_info.map((info, i) => `
+            <div class="gv-item">
+                <label>${info.bezeichnung}</label>
+                ${renderMailComponent(info.mailempfänger, (val) => { state.app_info[i].mailempfänger = val; renderAll(); })}
+                <small style="display:block; margin-top:5px; color:#94a3b8">${info.bemerkung || ''}</small>
+            </div>`).join('');
+    }
+
+    // Hilfsfunktion für die Tags (muss global für die onclicks erreichbar sein)
+    window.updateMailList = (idx, type, newVal) => {
+        if(type === 'gv') state.platzhalter[idx].inhalt = newVal;
+        else state.app_info[idx].mailempfänger = newVal;
+        renderAll();
+    };
+
+    function updateOrt(idx, ort) {
+        state.termine[idx].ort = ort;
+        const pair = state.dropdowns.orteMitMaps.find(p => p[0] === ort);
+        state.termine[idx].austragungsorte_map = pair ? pair[1] : "";
+        renderAll();
+    }
+
+    function renderStammdaten() {
+        document.getElementById('edit-anlaesse').innerHTML = state.dropdowns.anlaesse.map((a, i) => `
+            <div style="display:flex; gap:5px; margin-bottom:8px;"><input type="text" value="${a}" onchange="state.dropdowns.anlaesse[${i}]=this.value"><button class="btn btn-del" onclick="state.dropdowns.anlaesse.splice(${i},1); renderAll();">✕</button></div>`).join('');
+        document.getElementById('edit-orte').innerHTML = state.dropdowns.orteMitMaps.map((o, i) => `
+            <div style="display:flex; gap:5px; margin-bottom:8px;"><input type="text" placeholder="Ort" value="${o[0]}" onchange="state.dropdowns.orteMitMaps[${i}][0]=this.value"><input type="text" placeholder="Link" value="${o[1]}" onchange="state.dropdowns.orteMitMaps[${i}][1]=this.value"><button class="btn btn-del" onclick="state.dropdowns.orteMitMaps.splice(${i},1); renderAll();">✕</button></div>`).join('');
+    }
+
+    function createSelect(opts, sel, idx, field) {
+        return `<select onchange="state.termine[${idx}]['${field}']=this.value; renderAll();">${(opts||[]).map(o => `<option value="${o}" ${o===sel?'selected':''}>${o}</option>`).join('')}</select>`;
+    }
+
+    function addTermin() {
+        state.termine.unshift({ datum: "", startzeit: "", endzeit: "", "anlass_/_titel": "", ort: "", austragungsorte_map: "", kategorie: "Jahresprogramm", status: "provisorisch" });
+        renderAll();
+    }
+
+    async function saveAll() {
+        const btn = document.querySelector('.btn-save'); btn.innerText = "⏳ Speichere...";
+        try {
+            await fetch(`${WORKER_URL}?action=saveAdminData`, { method: 'POST', body: JSON.stringify(state) });
+            alert("✅ Erfolgreich in der Cloud gespeichert!");
+        } catch (e) { alert("Speicherfehler: " + e); }
+        btn.innerText = "💾 Cloud-Update durchführen";
+    }
+
+    window.onload = loadData;
+</script>
+</body>
+</html>
