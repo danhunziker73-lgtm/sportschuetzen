@@ -4,11 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sportschützen Muhen - Admin Zentrale</title>
+    <link rel="icon" href="data:,">
     <style>
         :root { --primary: #007bff; --success: #28a745; --danger: #dc3545; --bg: #f4f7f6; }
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg); margin: 0; padding: 20px; }
         
-        /* Container auf maximale Breite für die Tabelle */
         .container { max-width: 1600px; margin: auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
         
         h1, h2 { color: #2c3e50; border-bottom: 3px solid #eee; padding-bottom: 10px; margin-top: 40px; }
@@ -22,22 +22,19 @@
 
         /* Tabelle Styling */
         .table-wrapper { overflow-x: auto; margin-top: 20px; }
-        table { width: 100%; border-collapse: collapse; font-size: 0.9em; table-layout: auto; }
-        th { background: #f8f9fa; color: #555; font-weight: 600; text-transform: uppercase; font-size: 0.75rem; padding: 12px; border: 1px solid #dee2e6; }
-        td { padding: 10px; border: 1px solid #dee2e6; vertical-align: middle; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.85em; table-layout: auto; }
+        th { background: #f8f9fa; color: #555; font-weight: 600; text-transform: uppercase; font-size: 0.7rem; padding: 12px; border: 1px solid #dee2e6; }
+        td { padding: 8px; border: 1px solid #dee2e6; vertical-align: middle; }
 
         /* Form Elemente */
-        input, select { width: 100%; padding: 8px; border: 1px solid #ced4da; border-radius: 4px; font-size: 0.95em; transition: border-color 0.2s; }
-        input:focus { border-color: var(--primary); outline: none; box-shadow: 0 0 0 2px rgba(0,123,255,0.1); }
-        input[readonly] { background-color: #f1f3f5; cursor: not-allowed; }
+        input, select { width: 100%; padding: 8px; border: 1px solid #ced4da; border-radius: 4px; font-size: 0.95em; box-sizing: border-box; }
+        input:focus { border-color: var(--primary); outline: none; }
 
         .time-box { display: flex; flex-direction: column; gap: 4px; }
-        .time-box span { font-size: 0.7em; color: #888; text-align: center; }
 
         /* Buttons */
         .btn { padding: 12px 20px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; transition: all 0.2s; }
-        .btn-save { background: var(--success); color: white; font-size: 1.2em; box-shadow: 0 4px 10px rgba(40,167,69,0.3); }
-        .btn-save:hover { background: #218838; transform: translateY(-1px); }
+        .btn-save { background: var(--success); color: white; font-size: 1.2em; }
         .btn-add { background: var(--primary); color: white; margin-bottom: 15px; }
         .btn-del { background: var(--danger); color: white; padding: 6px 10px; font-size: 0.8em; }
 
@@ -50,7 +47,7 @@
 
 <div id="loading" class="loading-overlay">
     <div class="spinner"></div>
-    <div>Daten werden aus Google Sheets geladen...</div>
+    <div>Lade Daten aus Google Sheets...</div>
 </div>
 
 <div class="container">
@@ -60,24 +57,24 @@
     </h1>
 
     <div class="section">
-        <h2>GV Konfiguration (Platzhalter & Daten)</h2>
+        <h2>GV Konfiguration (Platzhalter)</h2>
         <div id="platzhalter-list"></div>
     </div>
 
     <div class="section">
         <h2>Jahresprogramm & Schiesstermine</h2>
-        <button class="btn btn-add" onclick="addTermin()">+ Neuer Termin hinzufügen</button>
+        <button class="btn btn-add" onclick="addTermin()">+ Neuer Termin</button>
         <div class="table-wrapper">
             <table>
                 <thead>
                     <tr>
-                        <th style="width:140px">Datum / Tag</th>
+                        <th style="width:150px">Datum / Tag</th>
                         <th style="width:100px">Zeit (Start/Ende)</th>
-                        <th>Anlass / Titel (Dropdown)</th>
+                        <th>Anlass / Titel</th>
                         <th>Ort</th>
-                        <th style="width:50px">Map</th>
-                        <th style="width:140px">Kategorie</th>
-                        <th style="width:120px">Status</th>
+                        <th style="width:40px">Map</th>
+                        <th style="width:150px">Kategorie</th>
+                        <th style="width:130px">Status</th>
                         <th style="width:40px"></th>
                     </tr>
                 </thead>
@@ -87,28 +84,48 @@
     </div>
 
     <div class="section">
-        <h2>System Info & Mail-Empfänger</h2>
+        <h2>Mail-Verteiler (App Info)</h2>
         <div id="app-info-list"></div>
     </div>
 </div>
 
 <script>
-    // URL DEINES CLOUDFLARE WORKERS
+    // URL DEINES CLOUDFLARE WORKERS - BITTE ANPASSEN!
     const WORKER_URL = "https://termine.dan-hunziker73.workers.dev/"; 
 
-    let state = { platzhalter: [], termine: [], app_info: [], dropdowns: { anlaesse:[], orte:[], kategorien:[], status:[] } };
+    let state = { 
+        platzhalter: [], 
+        termine: [], 
+        app_info: [], 
+        dropdowns: { anlaesse:[], orte:[], kategorien:[], status:[] } 
+    };
 
-    // Formatter für HTML Inputs
-    const toIsoDate = (val) => (val && val.includes('T')) ? val.split('T')[0] : val;
-    const toIsoTime = (val) => (val && val.includes('T')) ? val.split('T')[1].substring(0,5) : val;
+    // Helfer für Datums-Anzeige
+    const toIsoDate = (val) => (val && typeof val === 'string' && val.includes('T')) ? val.split('T')[0] : val;
+    const toIsoTime = (val) => {
+        if (!val || typeof val !== 'string') return "";
+        if (val.includes('T')) return val.split('T')[1].substring(0,5);
+        const match = val.match(/(\d{2}:\d{2})/);
+        return match ? match[1] : val;
+    };
 
     async function loadData() {
         try {
             const resp = await fetch(`${WORKER_URL}?action=loadAdminData`);
-            state = await resp.json();
+            const data = await resp.json();
+            
+            // Sicherheits-Check: Falls Felder fehlen, leere Arrays setzen
+            state = {
+                platzhalter: data.platzhalter || [],
+                termine: data.termine || [],
+                app_info: data.app_info || [],
+                dropdowns: data.dropdowns || { anlaesse:[], orte:[], kategorien:[], status:["fix","provisorisch","abgesagt"] }
+            };
+            
             renderAll();
             document.getElementById('loading').style.display = 'none';
         } catch (err) {
+            console.error(err);
             alert("Fehler beim Laden: " + err);
         }
     }
@@ -121,26 +138,31 @@
 
     function renderPlatzhalter() {
         const container = document.getElementById('platzhalter-list');
+        if (!state.platzhalter.length) { container.innerHTML = "Keine Daten."; return; }
+        
         container.innerHTML = state.platzhalter.map((p, i) => {
-            const isDate = p.platzhaltername.toLowerCase().includes('datum') || p.platzhaltername.toLowerCase().includes('bis');
-            const isTime = p.platzhaltername.toLowerCase().includes('uhrzeit');
+            const name = p.platzhaltername || "";
+            const isDate = name.toLowerCase().includes('datum') || name.toLowerCase().includes('bis');
+            const isTime = name.toLowerCase().includes('uhrzeit');
             let type = "text";
-            let val = p.inhalt;
+            let val = p.inhalt || "";
 
             if(isDate) { type = "date"; val = toIsoDate(p.inhalt); }
             if(isTime) { type = "time"; val = toIsoTime(p.inhalt); }
 
             return `
                 <div class="grid-row">
-                    <strong>${p.platzhaltername}</strong>
+                    <strong>${name}</strong>
                     <input type="${type}" value="${val}" onchange="state.platzhalter[${i}].inhalt = this.value">
-                    <small style="color:#666">${p.erklärung}</small>
+                    <small style="color:#666">${p.erklärung || ''}</small>
                 </div>`;
         }).join('');
     }
 
     function renderTermine() {
         const body = document.getElementById('termine-body');
+        if (!state.termine.length) { body.innerHTML = "<tr><td colspan='8'>Keine Termine.</td></tr>"; return; }
+
         body.innerHTML = state.termine.map((t, i) => {
             const d = toIsoDate(t.datum);
             const weekday = d ? new Date(d).toLocaleDateString('de-DE', {weekday: 'short'}) : "---";
@@ -149,7 +171,7 @@
             <tr>
                 <td>
                     <div style="display:flex; align-items:center; gap:5px;">
-                        <span style="font-weight:bold; color:var(--primary); min-width:30px;">${weekday}</span>
+                        <span style="font-weight:bold; color:var(--primary); min-width:35px;">${weekday}</span>
                         <input type="date" value="${d}" onchange="state.termine[${i}].datum = this.value; renderTermine();">
                     </div>
                 </td>
@@ -159,11 +181,11 @@
                         <input type="time" value="${toIsoTime(t.endzeit)}" onchange="state.termine[${i}].endzeit = this.value">
                     </div>
                 </td>
-                <td>${createSelect(state.dropdowns.anlaesse, t['anlass_/_titel'], i, 'anlass_/_titel')}</td>
-                <td>${createSelect(state.dropdowns.orte, t.ort, i, 'ort')}</td>
-                <td style="text-align:center"><a href="${t.austragungsorte_map || '#'}" target="_blank" title="Map Link">📍</a></td>
-                <td>${createSelect(state.dropdowns.kategorien, t.kategorie, i, 'kategorie')}</td>
-                <td>${createSelect(state.dropdowns.status, t.status, i, 'status')}</td>
+                <td>${createSelect(state.dropdowns.anlaesse || [], t['anlass_/_titel'], i, 'anlass_/_titel')}</td>
+                <td>${createSelect(state.dropdowns.orte || [], t.ort, i, 'ort')}</td>
+                <td style="text-align:center"><a href="${t.austragungsorte_map || '#'}" target="_blank">📍</a></td>
+                <td>${createSelect(state.dropdowns.kategorien || [], t.kategorie, i, 'kategorie')}</td>
+                <td>${createSelect(state.dropdowns.status || [], t.status, i, 'status')}</td>
                 <td><button class="btn btn-del" onclick="deleteTermin(${i})">X</button></td>
             </tr>`;
         }).join('');
@@ -171,18 +193,19 @@
 
     function renderAppInfo() {
         const container = document.getElementById('app-info-list');
+        if (!state.app_info.length) { container.innerHTML = "Keine Info-Daten."; return; }
+        
         container.innerHTML = state.app_info.map((info, i) => `
             <div class="grid-row">
-                <strong>${info.bezeichnung}</strong>
-                <input type="text" value="${info.mailempfänger}" onchange="state.app_info[${i}].mailempfänger = this.value">
+                <strong>${info.bezeichnung || ''}</strong>
+                <input type="text" value="${info.mailempfänger || ''}" onchange="state.app_info[${i}].mailempfänger = this.value">
                 <small>${info.bemerkung || ''}</small>
             </div>`).join('');
     }
 
     function createSelect(options, selected, index, field) {
-        return `<select onchange="state.termine[${index}]['${field}'] = this.value">
-            ${options.map(o => `<option value="${o}" ${o === selected ? 'selected' : ''}>${o}</option>`).join('')}
-        </select>`;
+        let opts = options.map(o => `<option value="${o}" ${o === selected ? 'selected' : ''}>${o}</option>`).join('');
+        return `<select onchange="state.termine[${index}]['${field}'] = this.value">${opts}</select>`;
     }
 
     function addTermin() {
@@ -190,7 +213,7 @@
             datum: new Date().toISOString().split('T')[0], 
             startzeit: "17:30", 
             endzeit: "21:00", 
-            "anlass_/_titel": state.dropdowns.anlaesse[0] || "", 
+            "anlass_/_titel": (state.dropdowns.anlaesse && state.dropdowns.anlaesse[0]) || "", 
             ort: "Muhen", 
             kategorie: "Jahresprogramm", 
             status: "fix" 
