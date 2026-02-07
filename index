@@ -326,6 +326,8 @@ input[type=number] {
                 };
                 return parse(a) - parse(b);
             });
+// 🔥 HIER EINSETZEN
+allTermine = applyRundenPrefix(allTermine);
 
             renderTermine(allTermine);
         } catch (e) { wrap.innerHTML = "Fehler beim Laden."; }
