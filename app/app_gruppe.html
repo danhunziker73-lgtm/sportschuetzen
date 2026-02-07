@@ -165,13 +165,21 @@
         div.innerHTML = html; div.style.display = "block";
     }
 
-    // --- HILFSFUNKTIONEN ---
-    function getHMClass(val, type, stellung = "") {
-        if (!val || val === 0) return "";
-        let bonus = stellung.toLowerCase().includes("kniend") ? 3 : 0;
-        if (type === "gm") {
-            if (val + bonus >= 196) return "hm-top";
-            if (val + bonus >= 191) return "hm-high";
-            if (val + bonus >= 186) return "hm-mid";
-        } else {
-            if (val >=
+    <script>
+function getHMClass(val, type, stellung = "") {
+    if (!val || val === 0) return "";
+
+    let bonus = stellung.toLowerCase().includes("kniend") ? 3 : 0;
+
+    if (type === "gm") {
+        if (val + bonus >= 196) return "hm-top";
+        if (val + bonus >= 191) return "hm-high";
+        if (val + bonus >= 186) return "hm-mid";
+    } else {
+        if (val >= 98) return "hm-top";
+        if (val >= 95) return "hm-high";
+        if (val >= 92) return "hm-mid";
+    }
+    return "";
+}
+</script>
