@@ -131,7 +131,8 @@ async function loadTermine() {
             };
             return parse(a) - parse(b);
         });
-
+allTermine = applyRundenPrefix(allTermine);
+        
         renderTermine(allTermine);
     } catch (e) { wrap.innerHTML = "Fehler beim Laden."; }
 }
