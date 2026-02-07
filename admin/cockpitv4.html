@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Master-Admin | Sportschützen Muhen</title>
+    <link rel="icon" href="data:,">
+    <style>
+        :root { 
+            --primary: #4a90e2; --secondary: #2c3e50; --success: #27ae60; 
+            --danger: #e74c3c; --bg: #f0f2f5; --card-bg: #ffffff;
+        }
+        body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--secondary); margin: 0; padding: 20px; }
+        .container { max-width: 1750px; margin: auto; }
+        
+        header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; background: var(--card-bg); padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+        
+        .card { background: var(--card-bg); padding: 25px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); margin-bottom: 25px; }
+        h2 { margin-top: 0; font-size: 1.2rem; border-left: 5px solid var(--primary); padding-left: 15px; margin-bottom: 20px; }
+        h3 { font-size: 1rem; color: #666; }
+
+        .config-grid { display: grid; grid-template-columns: 250px 1fr 250px; gap: 15px; border-bottom: 1px solid #eee; padding: 10px 0; align-items: center; }
+        
+        table { width: 100%; border-collapse: collapse; }
+        th { background: var(--secondary); color: white; text-align: left; padding: 12px; font-size: 0.75rem; }
+        td { padding: 8px; border-bottom: 1px solid #edf2f7; }
+        
+        input, select { padding: 8px; border: 1px solid #e2e8f0; border-radius: 6px; width: 100%; box-sizing: border-box; }
+        input[readonly] { background: #f8fafc; cursor: not-allowed; border-color: #eee; }
+
+        .btn { padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; display: inline-flex; align-items: center; gap: 5px; }
+        .btn-save { background: var(--success); color: white; font-size: 1.1rem; }
+        .btn-add { background: var(--primary); color: white; margin-bottom: 15px; font-size: 0.8rem; }
+        .btn-del { background: #fee2e2; color: var(--danger); padding: 5px 10px; }
+
+        /* Multi-Select Tags */
+        .mail-tag-container { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 5px; padding: 5px; border: 1px solid #e2e8f0; border-radius: 6px; min-height: 38px; }
+        .tag { background: #e0f2fe; color: #0369a1; padding: 2px 8px; border-radius: 4px; font-size: 0.8rem; display: flex; align-items: center; gap: 5px; }
+        .tag span { cursor: pointer; font-weight: bold; }
+
+        .loader-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(240,242,245,0.9); display:flex; justify-content:center; align-items:center; z-index:9999; }
+        .spinner { width: 40px; height: 40px; border: 4px solid #d1d5db; border-top-color: var(--primary); border-radius: 50%; animation: spin 1s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+
+<div id="loader" class="loader-overlay"><div class="spinner"></div></div>
+
+<div class="container">
+    <header>
+        <h1>Vereins-Admin Panel</h1>
+        <button class="btn btn-save" onclick="saveAll()">💾 Cloud-Speicher aktualisieren</button>
+    </header>
+
+    <div class="card">
+        <h2>GV & Haupt-Konfiguration</h2>
+        <div id="platzhalter-list"></div>
+    </div>
+
+    <div class="card">
+        <h2>Jahresprogramm & Schiessplan</h2>
+        <button class="btn btn-add" onclick="addTermin()">+ Neuer Termin</button>
+        <div style="overflow-x:auto">
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width:160px">Datum</th>
+                        <th style="width:100px">Zeit</th>
+                        <th>Anlass</th>
+                        <th>Austragungsort</th>
+                        <th>Map (Info)</th>
+                        <th style="width:150px">Kategorie</th>
+                        <th style="width:120px">Status</th>
+                        <th style="width:40px"></th>
+                    </tr>
+                </thead>
+                <tbody id="termine-body"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>Stammdaten-Verwaltung (Dropdown-Optionen)</h2>
+        <div style="display: grid; grid-template-columns: 1fr 1.5fr; gap: 30px;">
+            <div>
+                <h3>Anlass-Typen</h3>
+                <div id="edit-anlaesse"></div>
+                <button class="btn btn-add" onclick="state.dropdowns.anlaesse.push(''); renderAll();">+ Anlass-Typ</button>
+            </div>
+            <div>
+                <h3>Orte & Google Maps Links</h3>
+                <div id="edit-orte"></div>
+                <button class="btn btn-add" onclick="state.dropdowns.orteMitMaps.push(['','']); renderAll();">+ Ort & Link</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>Mail-Verteiler (App Info)</h2>
+        <div id="app-info-list"></div>
+    </div>
+</div>
+
+<script>
+    const WORKER_URL = "https://termine.dan-hunziker73.workers.dev/"; 
+
+    let state = { 
+        platzhalter: [], termine: [], app_info: [], 
+        members: [], // Liste aller Mailadressen aus dem Verein
+        dropdowns: { anlaesse:[], orteMitMaps:[], kategorien:[], status:[] } 
+    };
+
+    const toIsoDate = (v) => (v && typeof v === 'string' && v.includes('T')) ? v.split('T')[0] : v;
+    const toIsoTime = (v) => (v && typeof v === 'string' && v.includes('T')) ? v.split('T')[1].substring(0,5) : (v || "");
+
+    async function loadData() {
+        try {
+            const resp = await fetch(`${WORKER_URL}?action=loadAdminData`);
+            const data = await resp.json();
+            state = data;
+            renderAll();
+            document.getElementById('loader').style.display = 'none';
+        } catch (err) { alert("Fehler: " + err); }
+    }
+
+    function renderAll() {
+        renderPlatzhalter();
+        renderTermine();
+        renderStammdaten();
+        renderAppInfo();
+    }
+
+    function renderPlatzhalter() {
+        const container = document.getElementById('platzhalter-list');
+        container.innerHTML = state.platzhalter.map((p, i) => {
+            const isDate = p.platzhaltername?.toLowerCase().includes('datum');
+            return `<div class="config-grid">
+                <strong>${p.platzhaltername}</strong>
+                <input type="${isDate?'date':'text'}" value="${isDate?toIsoDate(p.inhalt):p.inhalt}" onchange="state.platzhalter[${i}].inhalt=this.value">
+                <small>${p.erklärung || ''}</small>
+            </div>`;
+        }).join('');
+    }
+
+    function renderTermine() {
+        const body = document.getElementById('termine-body');
+        const ortsNamen = state.dropdowns.orteMitMaps.map(o => o[0]);
+        body.innerHTML = state.termine.map((t, i) => {
+            const d = toIsoDate(t.datum);
+            const wd = d ? new Date(d).toLocaleDateString('de-DE', {weekday:'short'}) : '-';
+            return `<tr>
+                <td><div style="display:flex; gap:5px; align-items:center;"><b>${wd}</b><input type="date" value="${d}" onchange="state.termine[${i}].datum=this.value; renderTermine();"></div></td>
+                <td><div style="display:flex; flex-direction:column; gap:2px;"><input type="time" value="${toIsoTime(t.startzeit)}" onchange="state.termine[${i}].startzeit=this.value"><input type="time" value="${toIsoTime(t.endzeit)}" onchange="state.termine[${i}].endzeit=this.value"></div></td>
+                <td>${createSelect(state.dropdowns.anlaesse, t['anlass_/_titel'], i, 'anlass_/_titel')}</td>
+                <td><select onchange="updateOrt(${i}, this.value)"><option value="">- Ort -</option>${ortsNamen.map(o => `<option value="${o}" ${o===t.ort?'selected':''}>${o}</option>`).join('')}</select></td>
+                <td><input type="text" readonly value="${t.austragungsorte_map || ''}"></td>
+                <td>${createSelect(state.dropdowns.kategorien, t.kategorie, i, 'kategorie')}</td>
+                <td>${createSelect(state.dropdowns.status, t.status, i, 'status')}</td>
+                <td><button class="btn btn-del" onclick="state.termine.splice(${i},1); renderTermine();">✕</button></td>
+            </tr>`;
+        }).join('');
+    }
+
+    function updateOrt(idx, ort) {
+        state.termine[idx].ort = ort;
+        const pair = state.dropdowns.orteMitMaps.find(p => p[0] === ort);
+        state.termine[idx].austragungsorte_map = pair ? pair[1] : "";
+        renderTermine();
+    }
+
+    function renderStammdaten() {
+        document.getElementById('edit-anlaesse').innerHTML = state.dropdowns.anlaesse.map((a, i) => `
+            <div style="display:flex; gap:5px; margin-bottom:5px;">
+                <input type="text" value="${a}" onchange="state.dropdowns.anlaesse[${i}]=this.value">
+                <button class="btn btn-del" onclick="state.dropdowns.anlaesse.splice(${i},1); renderAll();">✕</button>
+            </div>`).join('');
+
+        document.getElementById('edit-orte').innerHTML = state.dropdowns.orteMitMaps.map((o, i) => `
+            <div style="display:flex; gap:5px; margin-bottom:5px;">
+                <input type="text" placeholder="Ort" value="${o[0]}" onchange="state.dropdowns.orteMitMaps[${i}][0]=this.value">
+                <input type="text" placeholder="Map-Link" value="${o[1]}" onchange="state.dropdowns.orteMitMaps[${i}][1]=this.value">
+                <button class="btn btn-del" onclick="state.dropdowns.orteMitMaps.splice(${i},1); renderAll();">✕</button>
+            </div>`).join('');
+    }
+
+    function renderAppInfo() {
+        const container = document.getElementById('app-info-list');
+        container.innerHTML = state.app_info.map((info, i) => {
+            const selectedMails = info.mailempfänger ? info.mailempfänger.split(';').map(m => m.trim()).filter(m => m) : [];
+            return `
+            <div class="config-grid">
+                <strong>${info.bezeichnung}</strong>
+                <div>
+                    <div class="mail-tag-container">${selectedMails.map(m => `<div class="tag">${m}<span onclick="removeMail(${i}, '${m}')">×</span></div>`).join('')}</div>
+                    <select onchange="addMail(${i}, this.value); this.value='';">
+                        <option value="">+ Adresse hinzufügen...</option>
+                        ${state.members.map(m => `<option value="${m}">${m}</option>`).join('')}
+                    </select>
+                </div>
+                <small>${info.bemerkung || ''}</small>
+            </div>`;
+        }).join('');
+    }
+
+    function addMail(idx, mail) {
+        if (!mail) return;
+        let current = state.app_info[idx].mailempfänger ? state.app_info[idx].mailempfänger.split(';').map(m => m.trim()) : [];
+        if (!current.includes(mail)) {
+            current.push(mail);
+            state.app_info[idx].mailempfänger = current.join('; ');
+            renderAppInfo();
+        }
+    }
+
+    function removeMail(idx, mail) {
+        let current = state.app_info[idx].mailempfänger.split(';').map(m => m.trim());
+        state.app_info[idx].mailempfänger = current.filter(m => m !== mail).join('; ');
+        renderAppInfo();
+    }
+
+    function createSelect(opts, sel, idx, field) {
+        return `<select onchange="state.termine[${idx}]['${field}']=this.value">${(opts||[]).map(o => `<option value="${o}" ${o===sel?'selected':''}>${o}</option>`).join('')}</select>`;
+    }
+
+    function addTermin() {
+        state.termine.unshift({ datum: "", startzeit: "17:30", endzeit: "21:00", ort: "", austragungsorte_map: "", kategorie: "Jahresprogramm", status: "fix" });
+        renderTermine();
+    }
+
+    async function saveAll() {
+        const btn = document.querySelector('.btn-save'); btn.innerText = "⏳ Speichere...";
+        try {
+            await fetch(`${WORKER_URL}?action=saveAdminData`, {
+                method: 'POST', body: JSON.stringify(state)
+            });
+            alert("Erfolgreich in Google Sheets gespeichert!");
+        } catch (e) { alert("Fehler: " + e); }
+        btn.innerText = "💾 Cloud-Speicher aktualisieren";
+    }
+
+    window.onload = loadData;
+</script>
+</body>
+</html>
