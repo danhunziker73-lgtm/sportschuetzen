@@ -12,6 +12,7 @@
         canvas { width: 100% !important; height: 100% !important; touch-action: none; }
         .spinner-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.8); z-index: 9999; justify-content: center; align-items: center; flex-direction: column; }
         .nav-btn { font-weight: bold; border-radius: 10px; padding: 10px 20px; }
+        .form-label { font-size: 0.9rem; }
     </style>
 </head>
 <body>
@@ -39,12 +40,14 @@
                 <div class="row">
                     <div class="col-md-6 border-end">
                         <label class="form-label fw-bold">Aktion</label>
-                        <select id="select-action" class="form-select mb-3">
+                        <select id="select-action" class="form-select mb-3" onchange="toggleZustandFields()">
                             <option value="checkout">📤 Ausgabe</option>
                             <option value="checkin">📥 Rückgabe</option>
                         </select>
+                        
                         <label class="form-label fw-bold">Mitglied</label>
                         <select id="select-mitglied" class="form-select mb-3" required></select>
+                        
                         <label class="form-label fw-bold">Kategorie</label>
                         <select id="select-kategorie" class="form-select mb-3" onchange="updateSubOptions()">
                             <option value="gewehr">Gewehr</option>
@@ -52,34 +55,50 @@
                             <option value="kleidung">Kleidung</option>
                             <option value="schiessbekleidung">Schiessbekleidung</option>
                         </select>
+                        
                         <label class="form-label fw-bold">Gegenstand</label>
                         <select id="select-gegenstand" class="form-select mb-3" required></select>
-                        
-                        <div class="row mt-3">
+
+                        <div id="container-zustand-abgabe">
+                            <label class="form-label fw-bold text-primary">Zustand bei Abgabe</label>
+                            <select id="select-zustand-abgabe" class="form-select mb-3"></select>
+                        </div>
+                        <div id="container-zustand-rueckgabe" class="d-none">
+                            <label class="form-label fw-bold text-danger">Zustand bei Rückgabe</label>
+                            <select id="select-zustand-rueckgabe" class="form-select mb-3"></select>
+                        </div>
+
+                        <label class="form-label fw-bold">Bemerkungen</label>
+                        <textarea id="trans-bemerkungen" class="form-control mb-3" rows="2" placeholder="Besonderheiten, Mängel..."></textarea>
+
+                        <div class="row g-2">
                             <div class="col-4">
-                                <label class="form-label small fw-bold">Pfandbetrag</label>
+                                <label class="form-label fw-bold small">Pfandbetrag</label>
                                 <input type="number" id="pfand-betrag" class="form-control" placeholder="0.00">
                             </div>
                             <div class="col-4">
-                                <label class="form-label small fw-bold">Einnahme</label>
+                                <label class="form-label fw-bold small">Einnahme</label>
                                 <select id="pfand-einnahme" class="form-select"><option value="Nein">Nein</option><option value="Ja">Ja</option></select>
                             </div>
                             <div class="col-4">
-                                <label class="form-label small fw-bold">Retour</label>
+                                <label class="form-label fw-bold small">Retour</label>
                                 <select id="pfand-retour" class="form-select"><option value="Nein">Nein</option><option value="Ja">Ja</option></select>
                             </div>
                         </div>
                     </div>
+
                     <div class="col-md-6">
                         <label class="form-label fw-bold">Unterschrift Mitglied</label>
                         <div class="sig-container mb-2"><canvas id="sig-mitglied"></canvas></div>
                         <button type="button" class="btn btn-sm btn-link text-danger p-0 mb-3" onclick="sigPadMitglied.clear()">Löschen</button>
-                        <label class="form-label fw-bold">Visum Vorstand</label>
+                        
+                        <label class="form-label fw-bold">Visum Vorstand (Verantwortlich)</label>
+                        <select id="select-verantwortlicher" class="form-select mb-2" required></select>
                         <div class="sig-container mb-2"><canvas id="sig-vorstand"></canvas></div>
                         <button type="button" class="btn btn-sm btn-link text-danger p-0" onclick="sigPadVorstand.clear()">Löschen</button>
                     </div>
                 </div>
-                <button type="submit" class="btn btn-success w-100 mt-4 py-3 fw-bold main-submit">Transaktion bestätigen</button>
+                <button type="submit" class="btn btn-success w-100 mt-4 py-3 fw-bold main-submit">Transaktion verbindlich buchen</button>
             </form>
         </div>
     </div>
@@ -157,16 +176,32 @@
 
     function fillDropdowns() {
         if(!inventarData || !inventarData.mitglieder) return;
-        const mSelect = document.getElementById('select-mitglied');
         
-        // Sortieren nach Nachname, dann Vorname
         const sorted = [...inventarData.mitglieder].sort((a, b) => 
             (a.Nachname || "").localeCompare(b.Nachname || "") || (a.Vorname || "").localeCompare(b.Vorname || "")
         );
 
-        mSelect.innerHTML = '<option value="">-- Mitglied wählen --</option>' + 
+        const optionsHtml = '<option value="">-- wählen --</option>' + 
             sorted.map(m => `<option value="${m.ID}">${m.Nachname} ${m.Vorname}</option>`).join('');
+        
+        document.getElementById('select-mitglied').innerHTML = optionsHtml;
+        document.getElementById('select-verantwortlicher').innerHTML = optionsHtml;
+
+        // Zustands-Dropdowns füllen
+        if(inventarData.config) {
+            const zOptions = '<option value="">-- wählen --</option>' + 
+                inventarData.config.map(c => c.Transaktion_Zustand).filter(v => v).map(v => `<option value="${v}">${v}</option>`).join('');
+            document.getElementById('select-zustand-abgabe').innerHTML = zOptions;
+            document.getElementById('select-zustand-rueckgabe').innerHTML = zOptions;
+        }
+
         updateSubOptions();
+    }
+
+    function toggleZustandFields() {
+        const action = document.getElementById('select-action').value;
+        document.getElementById('container-zustand-abgabe').classList.toggle('d-none', action === 'checkin');
+        document.getElementById('container-zustand-rueckgabe').classList.toggle('d-none', action === 'checkout');
     }
 
     function updateSubOptions() {
@@ -175,7 +210,7 @@
         const keyMap = { "gewehr": "gewehre", "schluessel": "schluessel", "kleidung": "kleidung", "schiessbekleidung": "schiessbekleidung" };
         const items = inventarData[keyMap[kat]] || [];
         document.getElementById('select-gegenstand').innerHTML = items.map(i => {
-            let info = (kat === 'gewehr') ? `${i.Hersteller} ${i.Modell} (${i.Laufnummer || 'Keine Nr.'})` : 
+            let info = (kat === 'gewehr') ? `${i.Hersteller} ${i.Modell} (${i.Laufnummer || 'Nr fehlt'})` : 
                        (kat === 'schluessel') ? `${i.Bezeichnung} (${i.Nummer || ''})` : `${i.Typ} (${i.Groesse || ''})`;
             return `<option value="${i.ID}">${info} ${i.Aktueller_Besitzer_ID ? '🔴' : '🟢'}</option>`;
         }).join('');
@@ -189,7 +224,7 @@
 
         const configs = {
             "Personendaten": ["PersonNumber", "Vorname", "Nachname", "email", "BirthDate", "Status"],
-            "Inventar_Gewehre": ["Hersteller", "Modell", "Laufnummer", "Diopter", "Ringkorn", "Distanz", "Status"],
+            "Inventar_Gewehre": ["Hersteller", "Modell", "Laufnummer", "Diopter", "Ringkorn", "Zubehoer", "Spezielles", "Distanz", "Status"],
             "Inventar_Schluessel": ["Bezeichnung", "Nummer", "Status"],
             "Inventar_Kleidung": ["Typ", "Groesse", "Kaufdatum", "Status"],
             "Inventar_Schiessbekleidung": ["Typ", "Groesse", "Kaufdatum", "Status"]
@@ -220,12 +255,10 @@
     function renderInventoryTable() {
         if(!inventarData) return;
         const target = document.getElementById('filter-liste').value;
-        const keyMap = {
-            "Inventar_Gewehre":"gewehre", "Inventar_Schluessel":"schluessel", 
-            "Inventar_Kleidung":"kleidung", "Inventar_Schiessbekleidung":"schiessbekleidung", 
-            "Personendaten":"mitglieder"
-        };
-        const data = inventarData[keyMap[target]];
+        const keyMap = { "gewehre": "gewehre", "schluessel": "schluessel", "kleidung": "kleidung", "schiessbekleidung": "schiessbekleidung", "mitglieder": "mitglieder" };
+        // Korrektur für Filter-Value zu KeyMap
+        const dataKey = target === "Personendaten" ? "mitglieder" : target === "Inventar_Gewehre" ? "gewehre" : target === "Inventar_Schluessel" ? "schluessel" : target === "Inventar_Kleidung" ? "kleidung" : "schiessbekleidung";
+        const data = inventarData[dataKey];
         const table = document.getElementById('inventory-table');
         if(!data || data.length === 0) { table.innerHTML = "<thead><tr><th>Keine Daten</th></tr></thead>"; return; }
         
@@ -249,6 +282,10 @@
             mitgliedId: document.getElementById('select-mitglied').value,
             kategorie: document.getElementById('select-kategorie').value,
             itemId: document.getElementById('select-gegenstand').value,
+            zustandAbgabe: document.getElementById('select-zustand-abgabe').value,
+            zustandRueckgabe: document.getElementById('select-zustand-rueckgabe').value,
+            bemerkungen: document.getElementById('trans-bemerkungen').value,
+            verantwortlicheId: document.getElementById('select-verantwortlicher').value,
             pfandBetrag: document.getElementById('pfand-betrag').value,
             pfandEinnahme: document.getElementById('pfand-einnahme').value,
             pfandRetour: document.getElementById('pfand-retour').value,
@@ -256,11 +293,14 @@
             sigVorstand: sigPadVorstand.toDataURL()
         };
         try {
-            await fetch(WORKER_URL, { method: 'POST', body: JSON.stringify(payload) });
-            e.target.reset(); sigPadMitglied.clear(); sigPadVorstand.clear();
-            await loadData();
-            alert("Erfolgreich gebucht!");
-        } catch(e) { alert("Fehler!"); }
+            const res = await fetch(WORKER_URL, { method: 'POST', body: JSON.stringify(payload) });
+            const result = await res.json();
+            if(result.status === "success") {
+                e.target.reset(); sigPadMitglied.clear(); sigPadVorstand.clear();
+                await loadData();
+                alert("Buchung erfolgreich im Sheet gespeichert!");
+            } else { alert("Fehler: " + result.message); }
+        } catch(e) { alert("Serverfehler!"); }
         setBusy(false);
     }
 
@@ -280,7 +320,7 @@
     }
 
     async function deleteItem(target, id) {
-        if(!confirm("Löschen?")) return;
+        if(!confirm("Eintrag wirklich löschen?")) return;
         setBusy(true);
         try {
             await fetch(WORKER_URL, { method: 'POST', body: JSON.stringify({ action: "deleteItem", targetSheet: target, itemId: id }) });
@@ -292,7 +332,8 @@
     function showSection(id) {
         localStorage.setItem('activeTab', id);
         document.querySelectorAll('.section-content').forEach(s => s.classList.add('d-none'));
-        document.getElementById('section-' + id).classList.remove('d-none');
+        const el = document.getElementById('section-' + id);
+        if(el) el.classList.remove('d-none');
         document.querySelectorAll('.nav-btn').forEach(b => b.classList.replace('btn-primary', 'btn-outline-secondary'));
         const active = document.getElementById('btn-' + id);
         if(active) active.classList.replace('btn-outline-secondary', 'btn-primary');
