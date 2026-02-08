@@ -165,40 +165,47 @@
     }
 
     // JOURNAL TABELLEN RENDERN
-    function renderJournalTables() {
-        if(!inventarData) return;
-        
-        // Transaktionen
-        const transTable = document.getElementById('table-transaktionen');
-        if(inventarData.transaktionen && inventarData.transaktionen.length > 0) {
-            let html = `<thead><tr class="table-dark"><th>Datum</th><th>Person</th><th>Aktion</th><th>Gegenstand</th><th>Bemerkung</th></tr></thead><tbody>`;
-            inventarData.transaktionen.slice().reverse().forEach(t => {
-                html += `<tr>
-                    <td>${new Date(t.Zeitstempel).toLocaleDateString()}</td>
-                    <td>${getNameFromId(t.Aktueller_Besitzer_ID)}</td>
-                    <td>${t.Aktion === 'checkout' ? '📤' : '📥'}</td>
-                    <td>${t.Inventar_ID}</td>
-                    <td>${t.Bemerkungen || ''}</td>
-                </tr>`;
-            });
-            transTable.innerHTML = html + "</tbody>";
-        }
-
-        // Protokoll
-        const logTable = document.getElementById('table-protokoll');
-        if(inventarData.protokoll && inventarData.protokoll.length > 0) {
-            let html = `<thead><tr class="table-secondary"><th>Zeit</th><th>Aktion</th><th>Tabelle</th><th>Info</th></tr></thead><tbody>`;
-            inventarData.protokoll.slice().reverse().forEach(p => {
-                html += `<tr>
-                    <td>${new Date(p.Zeitstempel).toLocaleString()}</td>
-                    <td>${p.Aktion}</td>
-                    <td>${p.Tabelle}</td>
-                    <td>${p.Details}</td>
-                </tr>`;
-            });
-            logTable.innerHTML = html + "</tbody>";
-        }
+function renderJournalTables() {
+    if(!inventarData) return;
+    
+    // Material Transaktionen
+    const transTable = document.getElementById('table-transaktionen');
+    if(inventarData.transaktionen && inventarData.transaktionen.length > 0) {
+        let html = `<thead><tr class="table-dark"><th>Datum</th><th>Mitglied</th><th>Aktion</th><th>ID</th><th>Bemerkung</th></tr></thead><tbody>`;
+        // Die letzten 30 Einträge anzeigen, neueste zuerst
+        [...inventarData.transaktionen].reverse().slice(0, 30).forEach(t => {
+            const date = t.Zeitstempel ? new Date(t.Zeitstempel).toLocaleDateString('de-CH') : '-';
+            html += `<tr>
+                <td>${date}</td>
+                <td>${getNameFromId(t.Aktueller_Besitzer_ID)}</td>
+                <td>${t.Aktion === 'checkout' ? '📤' : '📥'}</td>
+                <td><small class="text-muted">${t.Inventar_ID}</small></td>
+                <td>${t.Bemerkungen || ''}</td>
+            </tr>`;
+        });
+        transTable.innerHTML = html + "</tbody>";
+    } else {
+        transTable.innerHTML = "<tr><td>Noch keine Transaktionen geloggt.</td></tr>";
     }
+
+    // Admin Protokoll
+    const logTable = document.getElementById('table-protokoll');
+    if(inventarData.protokoll && inventarData.protokoll.length > 0) {
+        let html = `<thead><tr class="table-secondary"><th>Zeit</th><th>Aktion</th><th>Tabelle</th><th>Details</th></tr></thead><tbody>`;
+        [...inventarData.protokoll].reverse().slice(0, 20).forEach(p => {
+            const time = p.Zeitstempel ? new Date(p.Zeitstempel).toLocaleString('de-CH', {hour:'2-digit', minute:'2-digit', day:'2-digit', month:'2-digit'}) : '-';
+            html += `<tr>
+                <td><small>${time}</small></td>
+                <td><strong>${p.Aktion}</strong></td>
+                <td><small>${p.Tabelle}</small></td>
+                <td><small>${p.Details}</small></td>
+            </tr>`;
+        });
+        logTable.innerHTML = html + "</tbody>";
+    } else {
+        logTable.innerHTML = "<tr><td>Keine Admin-Aktionen protokolliert.</td></tr>";
+    }
+}
 
     function fillDropdowns() {
         if(!inventarData || !inventarData.mitglieder) return;
@@ -268,25 +275,59 @@
         }).join('');
     }
 
-    function renderInventoryTable() {
-        if(!inventarData) return;
-        const target = document.getElementById('filter-liste').value;
-        const keyMap = { "Inventar_Gewehre":"gewehre", "Inventar_Schluessel":"schluessel", "Inventar_Kleidung":"kleidung", "Inventar_Schiessbekleidung":"schiessbekleidung", "Personendaten":"mitglieder" };
-        const data = inventarData[keyMap[target]];
-        const table = document.getElementById('inventory-table');
-        if(!data || data.length === 0) { table.innerHTML = "<thead><tr><th>Keine Daten</th></tr></thead>"; return; }
-        let html = `<thead><tr class="table-dark">${Object.keys(data[0]).map(k => `<th>${k}</th>`).join('')}<th>Aktion</th></tr></thead><tbody>`;
-        html += data.map(row => {
-            let cells = Object.entries(row).map(([key, val]) => {
-                if(key.endsWith("_ID")) return `<td>${getNameFromId(val) || '<span class="text-muted">-</span>'}</td>`;
-                if(key === "Status" && val === "Im Lager") return `<td><span class="badge bg-success">Lager</span></td>`;
-                if(key === "Status" && val === "Ausgegeben") return `<td><span class="badge bg-warning text-dark">Ausgeliehen</span></td>`;
-                return `<td>${val || ''}</td>`;
-            }).join('');
-            return `<tr>${cells}<td><button class="btn btn-sm btn-danger" onclick="deleteItem('${target}', '${row.ID}')">🗑️</button></td></tr>`;
-        }).join('');
-        table.innerHTML = html + "</tbody>";
+function renderInventoryTable() {
+    if(!inventarData) return;
+    const target = document.getElementById('filter-liste').value;
+    const keyMap = { 
+        "Inventar_Gewehre":"gewehre", 
+        "Inventar_Schluessel":"schluessel", 
+        "Inventar_Kleidung":"kleidung", 
+        "Inventar_Schiessbekleidung":"schiessbekleidung", 
+        "Personendaten":"mitglieder" 
+    };
+    const data = inventarData[keyMap[target]];
+    const table = document.getElementById('inventory-table');
+    
+    if(!data || data.length === 0) { 
+        table.innerHTML = "<thead><tr><th>Keine Daten vorhanden</th></tr></thead>"; 
+        return; 
     }
+    
+    // Header generieren
+    let headers = Object.keys(data[0]);
+    let html = `<thead><tr class="table-dark">`;
+    headers.forEach(h => html += `<th>${h.replace(/_/g, ' ')}</th>`);
+    html += `<th>Aktion</th></tr></thead><tbody>`;
+    
+    // Zeilen generieren
+    html += data.map(row => {
+        let cells = headers.map(key => {
+            let val = row[key];
+            
+            // Namen für IDs auflösen
+            if(key.endsWith("_ID")) {
+                return `<td>${getNameFromId(val) || '<span class="text-muted">-</span>'}</td>`;
+            }
+            
+            // Status-Badges
+            if(key === "Status") {
+                if(val === "Im Lager") return `<td><span class="badge bg-success">Lager</span></td>`;
+                if(val === "Ausgegeben") return `<td><span class="badge bg-warning text-dark">Ausgeliehen</span></td>`;
+            }
+            
+            // Depot-Hervorhebung (falls vorhanden)
+            if(key === "Depot") {
+                return `<td class="fw-bold text-primary">${val || '0.00'}</td>`;
+            }
+            
+            return `<td>${val || ''}</td>`;
+        }).join('');
+        
+        return `<tr>${cells}<td><button class="btn btn-sm btn-danger" onclick="deleteItem('${target}', '${row.ID}')">🗑️</button></td></tr>`;
+    }).join('');
+    
+    table.innerHTML = html + "</tbody>";
+}
 
     async function handleFormSubmit(e) {
         e.preventDefault();
