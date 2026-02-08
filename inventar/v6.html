@@ -169,7 +169,14 @@
         document.getElementById('inventory-table').innerHTML = html + "</tbody>";
     }
 
-function renderAdminFields(target) {
+
+    function renderAdminFields(target) {
+
+    if (!inventarData || !inventarData.config) {
+        console.warn("Inventardaten noch nicht geladen");
+        return;
+    }
+
     const fieldsDiv = document.getElementById('dynamic-fields');
     const saveBtn = document.getElementById('btn-admin-save');
 
