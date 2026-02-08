@@ -293,42 +293,50 @@ function renderInventoryTable() {
         return; 
     }
     
-    // Header generieren
-    let headers = Object.keys(data[0]);
+    // Header generieren (ID ausschliessen)
+    let allHeaders = Object.keys(data[0]);
+    let displayHeaders = allHeaders.filter(h => h !== "ID"); // ID wegfiltern
+    
     let html = `<thead><tr class="table-dark">`;
-    headers.forEach(h => html += `<th>${h.replace(/_/g, ' ')}</th>`);
+    displayHeaders.forEach(h => html += `<th>${h.replace(/_/g, ' ')}</th>`);
     html += `<th>Aktion</th></tr></thead><tbody>`;
     
     // Zeilen generieren
     html += data.map(row => {
-        let cells = headers.map(key => {
+        let cells = displayHeaders.map(key => {
             let val = row[key];
             
-            // Namen für IDs auflösen
-            if(key.endsWith("_ID")) {
+            // Namen für IDs auflösen (z.B. Besitzer_ID)
+            if(key.endsWith("_ID") || key === "Aktueller_Besitzer_ID") {
                 return `<td>${getNameFromId(val) || '<span class="text-muted">-</span>'}</td>`;
             }
             
             // Status-Badges
             if(key === "Status") {
                 if(val === "Im Lager") return `<td><span class="badge bg-success">Lager</span></td>`;
-                if(val === "Ausgegeben") return `<td><span class="badge bg-warning text-dark">Ausgeliehen</span></td>`;
+                if(val === "Ausgegeben") return `<td><span class="badge bg-warning text-dark">Ausleihe</span></td>`;
+            }
+
+            // Zeitstempel schön formatieren
+            if(key === "Zeitstempel" && val) {
+                try { return `<td>${new Date(val).toLocaleDateString('de-CH')}</td>`; } 
+                catch(e) { return `<td>${val}</td>`; }
             }
             
-            // Depot-Hervorhebung (falls vorhanden)
-            if(key === "Depot") {
-                return `<td class="fw-bold text-primary">${val || '0.00'}</td>`;
+            // Währungsformat für Pfand/Depot
+            if(key.toLowerCase().includes("pfand") || key === "Depot") {
+                return `<td class="fw-bold">${val ? parseFloat(val).toFixed(2) : '0.00'}</td>`;
             }
             
             return `<td>${val || ''}</td>`;
         }).join('');
         
+        // Die ID wird für den Lösch-Button trotzdem im Hintergrund benötigt
         return `<tr>${cells}<td><button class="btn btn-sm btn-danger" onclick="deleteItem('${target}', '${row.ID}')">🗑️</button></td></tr>`;
     }).join('');
     
     table.innerHTML = html + "</tbody>";
 }
-
     async function handleFormSubmit(e) {
         e.preventDefault();
         setBusy(true);
