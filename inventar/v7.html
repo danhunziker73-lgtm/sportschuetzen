@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inventar-Verwaltung Sportschützen Muhen</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f4f7f6; font-family: sans-serif; }
+        .card { border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); margin-bottom: 20px; border:none; }
+        .sig-container { border: 1px solid #ccc; background: white; height: 160px; border-radius: 8px; }
+        canvas { width: 100% !important; height: 100% !important; touch-action: none; }
+        .spinner-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.8); z-index: 9999; justify-content: center; align-items: center; flex-direction: column; }
+        .nav-btn { font-weight: bold; border-radius: 10px; padding: 10px 20px; }
+    </style>
+</head>
+<body>
+
+<div id="loading-overlay" class="spinner-overlay">
+    <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;"></div>
+    <div class="mt-2 fw-bold">Daten werden synchronisiert...</div>
+</div>
+
+<div class="container py-4">
+    <div class="text-center mb-4">
+        <h2>🎯 Materialverwaltung</h2>
+        <p class="text-muted">Sportschützen Muhen</p>
+    </div>
+
+    <div class="d-flex justify-content-center gap-2 mb-4">
+        <button class="btn btn-primary nav-btn" id="btn-ausgabe" onclick="showSection('ausgabe')">📤 Buchung</button>
+        <button class="btn btn-outline-secondary nav-btn" id="btn-liste" onclick="showSection('liste')">📋 Bestand</button>
+        <button class="btn btn-outline-dark nav-btn" id="btn-admin" onclick="showSection('admin')">⚙️ Admin</button>
+    </div>
+
+    <div id="section-ausgabe" class="section-content">
+        <div class="card p-4">
+            <form id="form-ausgabe" onsubmit="handleFormSubmit(event)">
+                <div class="row">
+                    <div class="col-md-6 border-end">
+                        <label class="form-label fw-bold">Aktion</label>
+                        <select id="select-action" class="form-select mb-3"><option value="checkout">📤 Ausgabe</option><option value="checkin">📥 Rückgabe</option></select>
+                        <label class="form-label fw-bold">Mitglied</label>
+                        <select id="select-mitglied" class="form-select mb-3" required></select>
+                        <label class="form-label fw-bold">Kategorie</label>
+                        <select id="select-kategorie" class="form-select mb-3" onchange="updateSubOptions()">
+                            <option value="gewehr">Gewehr</option><option value="schluessel">Schlüssel</option><option value="kleidung">Kleidung</option><option value="schiessbekleidung">Schiessbekleidung</option>
+                        </select>
+                        <label class="form-label fw-bold">Gegenstand</label>
+                        <select id="select-gegenstand" class="form-select mb-3" required></select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">Unterschrift Mitglied</label>
+                        <div class="sig-container mb-2"><canvas id="sig-mitglied"></canvas></div>
+                        <button type="button" class="btn btn-sm btn-link text-danger p-0 mb-3" onclick="sigPadMitglied.clear()">Löschen</button>
+                        <label class="form-label fw-bold">Visum Vorstand</label>
+                        <div class="sig-container mb-2"><canvas id="sig-vorstand"></canvas></div>
+                        <button type="button" class="btn btn-sm btn-link text-danger p-0" onclick="sigPadVorstand.clear()">Löschen</button>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-success w-100 mt-4 py-3 fw-bold main-submit">Transaktion bestätigen</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="section-liste" class="section-content d-none">
+        <div class="card p-4">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h4>Bestandsliste</h4>
+                <select id="filter-liste" class="form-select w-auto" onchange="renderInventoryTable()">
+                    <option value="Inventar_Gewehre">Gewehre</option><option value="Inventar_Schluessel">Schlüssel</option><option value="Inventar_Kleidung">Kleidung</option><option value="Inventar_Schiessbekleidung">Schiessbekleidung</option><option value="Mitglieder">Mitglieder</option>
+                </select>
+            </div>
+            <div class="table-responsive"><table class="table table-hover table-sm" id="inventory-table"></table></div>
+        </div>
+    </div>
+
+    <div id="section-admin" class="section-content d-none">
+        <div class="card p-4">
+            <h4>Neuen Eintrag erfassen</h4>
+            <select id="admin-target" class="form-select mb-4" onchange="renderAdminFields(this.value)">
+                <option value="">-- Typ wählen --</option>
+                <option value="Mitglieder">👤 Mitglied</option>
+                <option value="Inventar_Gewehre">🔫 Gewehr</option>
+                <option value="Inventar_Schluessel">🔑 Schlüssel</option>
+                <option value="Inventar_Kleidung">👕 Kleidung</option>
+                <option value="Inventar_Schiessbekleidung">🎯 Schiessbekleidung</option>
+            </select>
+            <form id="adminForm" onsubmit="saveNewItem(event)">
+                <div id="dynamic-fields" class="row"></div>
+                <button type="submit" class="btn btn-success mt-4 d-none main-submit" id="btn-admin-save">Speichern</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/signature_pad@4.0.0/dist/signature_pad.umd.min.js"></script>
+<script>
+    const WORKER_URL = 'https://inventar.dan-hunziker73.workers.dev/';
+    let inventarData = null;
+    let sigPadMitglied, sigPadVorstand;
+
+    window.onload = async () => {
+        sigPadMitglied = new SignaturePad(document.getElementById('sig-mitglied'));
+        sigPadVorstand = new SignaturePad(document.getElementById('sig-vorstand'));
+        const saved = localStorage.getItem('activeTab') || 'ausgabe';
+        await loadData();
+        showSection(saved);
+    };
+
+    function setBusy(status) {
+        document.getElementById('loading-overlay').style.display = status ? 'flex' : 'none';
+        document.querySelectorAll('.main-submit').forEach(b => b.disabled = status);
+    }
+
+    async function loadData() {
+        setBusy(true);
+        try {
+            const res = await fetch(`${WORKER_URL}?action=getInventarData`);
+            inventarData = await res.json();
+            fillDropdowns();
+            renderInventoryTable();
+            // Falls Admin-Sektion aktiv, Felder aktualisieren
+            const adminVal = document.getElementById('admin-target').value;
+            if(adminVal) renderAdminFields(adminVal);
+        } catch (e) { console.error("Ladefehler:", e); }
+        setBusy(false);
+    }
+
+    function getMitgliedName(id) {
+        if(!id || id === "") return '<span class="badge bg-success">Lager</span>';
+        if(!inventarData) return id;
+        const m = inventarData.mitglieder.find(member => member.ID.toString() === id.toString());
+        return m ? `${m.Vorname} ${m.Nachname}` : `ID: ${id}`;
+    }
+
+    function fillDropdowns() {
+        if(!inventarData) return;
+        const mSelect = document.getElementById('select-mitglied');
+        mSelect.innerHTML = '<option value="">-- wählen --</option>' + 
+            inventarData.mitglieder.map(m => `<option value="${m.ID}">${m.Vorname} ${m.Nachname}</option>`).join('');
+        updateSubOptions();
+    }
+
+    function updateSubOptions() {
+        if(!inventarData) return;
+        const kat = document.getElementById('select-kategorie').value;
+        const keyMap = { "gewehr": "gewehre", "schluessel": "schluessel", "kleidung": "kleidung", "schiessbekleidung": "schiessbekleidung" };
+        const items = inventarData[keyMap[kat]] || [];
+        document.getElementById('select-gegenstand').innerHTML = items.map(i => {
+            let info = (kat === 'gewehr') ? `${i.Hersteller} ${i.Modell} (${i.Seriennummer})` : 
+                       (kat === 'schluessel') ? `${i.Bezeichnung} (${i.Nummer})` : `${i.Typ} (${i.Groesse})`;
+            return `<option value="${i.ID}">${info} ${i.Aktueller_Besitzer_ID ? '🔴' : '🟢'}</option>`;
+        }).join('');
+    }
+
+    function renderInventoryTable() {
+        if(!inventarData) return;
+        const target = document.getElementById('filter-liste').value;
+        const keyMap = {"Inventar_Gewehre":"gewehre", "Inventar_Schluessel":"schluessel", "Inventar_Kleidung":"kleidung", "Inventar_Schiessbekleidung":"schiessbekleidung", "Mitglieder":"mitglieder"};
+        const data = inventarData[keyMap[target]];
+        const table = document.getElementById('inventory-table');
+        if(!data || data.length === 0) { table.innerHTML = ""; return; }
+        
+        let html = `<thead><tr class="table-dark">${Object.keys(data[0]).map(k => `<th>${k}</th>`).join('')}<th>Aktion</th></tr></thead><tbody>`;
+        html += data.map(row => {
+            let cells = Object.entries(row).map(([key, val]) => {
+                if(key === "Aktueller_Besitzer_ID") return `<td>${getMitgliedName(val)}</td>`;
+                return `<td>${val}</td>`;
+            }).join('');
+            return `<tr>${cells}<td><button class="btn btn-sm btn-danger" onclick="deleteItem('${target}', '${row.ID}')">🗑️</button></td></tr>`;
+        }).join('');
+        table.innerHTML = html + "</tbody>";
+    }
+
+    function renderAdminFields(target) {
+        if (!inventarData) return;
+        const fieldsDiv = document.getElementById('dynamic-fields');
+        const saveBtn = document.getElementById('btn-admin-save');
+
+        if (!target) {
+            fieldsDiv.innerHTML = "";
+            saveBtn.classList.add('d-none');
+            return;
+        }
+
+        saveBtn.classList.remove('d-none');
+        const configs = {
+            "Mitglieder": ["PersonNumber", "Vorname", "Nachname", "email", "BirthDate", "Status"],
+            "Inventar_Gewehre": ["Seriennummer", "Hersteller", "Modell", "Zubehoer", "Fix_zugeteilt"],
+            "Inventar_Schluessel": ["Bezeichnung", "Nummer", "Status", "Schlüssel_Kaution_hinterlegt"],
+            "Inventar_Kleidung": ["Typ", "Groesse", "Zustand", "Status"],
+            "Inventar_Schiessbekleidung": ["Typ", "Groesse", "Zustand", "Status"]
+        };
+
+        const dropdownMapping = {
+            "Status": "MG_Status", "Typ": "Kleidung_Typ", "Groesse": "Kleider_Groesse", 
+            "Zustand": "Zustand", "Fix_zugeteilt": "Mitglieder"
+        };
+
+        fieldsDiv.innerHTML = (configs[target] || []).map(field => {
+            if (dropdownMapping[field]) {
+                const configKey = dropdownMapping[field];
+                let options = "";
+                if(configKey === "Mitglieder") {
+                    options = inventarData.mitglieder.map(m => `<option value="${m.ID}">${m.Vorname} ${m.Nachname}</option>`).join('');
+                } else {
+                    options = inventarData.config.filter(c => c[configKey]).map(c => `<option value="${c[configKey]}">${c[configKey]}</option>`).join('');
+                }
+                return `<div class="col-md-6 mb-3"><label class="fw-bold">${field}</label><select name="${field}" class="form-select" required><option value="">-- wählen --</option>${options}</select></div>`;
+            }
+            return `<div class="col-md-6 mb-3"><label class="fw-bold">${field}</label><input type="text" name="${field}" class="form-control" required></div>`;
+        }).join('');
+    }
+
+    async function handleFormSubmit(e) {
+        e.preventDefault();
+        setBusy(true);
+        const payload = {
+            action: "checkout",
+            type: document.getElementById('select-action').value,
+            mitgliedId: document.getElementById('select-mitglied').value,
+            kategorie: document.getElementById('select-kategorie').value,
+            itemId: document.getElementById('select-gegenstand').value,
+            sigMitglied: sigPadMitglied.toDataURL(),
+            sigVorstand: sigPadVorstand.toDataURL()
+        };
+        try {
+            await fetch(WORKER_URL, { method: 'POST', body: JSON.stringify(payload) });
+            e.target.reset(); sigPadMitglied.clear(); sigPadVorstand.clear();
+            await loadData();
+            alert("Buchung erfolgreich!");
+        } catch(e) { alert("Fehler!"); }
+        setBusy(false);
+    }
+
+    async function saveNewItem(e) {
+        e.preventDefault();
+        setBusy(true);
+        const target = document.getElementById('admin-target').value;
+        const fields = {};
+        new FormData(e.target).forEach((v, k) => fields[k] = v);
+        try {
+            await fetch(WORKER_URL, { method: 'POST', body: JSON.stringify({ action: "addNewItem", targetSheet: target, fields }) });
+            e.target.reset(); document.getElementById('admin-target').value = ""; renderAdminFields("");
+            await loadData();
+            alert("Eintrag gespeichert!");
+        } catch(e) { alert("Fehler!"); }
+        setBusy(false);
+    }
+
+    async function deleteItem(target, id) {
+        if(!confirm("Löschen?")) return;
+        setBusy(true);
+        try {
+            await fetch(WORKER_URL, { method: 'POST', body: JSON.stringify({ action: "deleteItem", targetSheet: target, itemId: id }) });
+            await loadData();
+        } catch(e) { alert("Fehler!"); }
+        setBusy(false);
+    }
+
+    function showSection(id) {
+        localStorage.setItem('activeTab', id);
+        document.querySelectorAll('.section-content').forEach(s => s.classList.add('d-none'));
+        document.getElementById('section-' + id).classList.remove('d-none');
+        document.querySelectorAll('.nav-btn').forEach(b => b.classList.replace('btn-primary', 'btn-outline-secondary'));
+        const active = document.getElementById('btn-' + id);
+        if(active) active.classList.replace('btn-outline-secondary', 'btn-primary');
+    }
+</script>
+</body>
+</html>
