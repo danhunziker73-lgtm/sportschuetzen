@@ -240,11 +240,14 @@
 
 /* Helfer: liest Konfiguration korrekt */
 function getConfigValues(key) {
+    if (!inventarData || !Array.isArray(inventarData.config)) {
+        return [];
+    }
+
     return inventarData.config
         .filter(c => c[key])
         .map(c => ({ value: c[key], label: c[key] }));
 }
-
 
     async function handleFormSubmit(e) {
         e.preventDefault();
