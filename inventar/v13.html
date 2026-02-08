@@ -12,7 +12,7 @@
         canvas { width: 100% !important; height: 100% !important; touch-action: none; }
         .spinner-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.8); z-index: 9999; justify-content: center; align-items: center; flex-direction: column; }
         .nav-btn { font-weight: bold; border-radius: 10px; padding: 10px 20px; }
-        .table-sm { font-size: 0.85rem; }
+        .table-sm { font-size: 0.85rem; } /* Für bessere Lesbarkeit der Logs */
     </style>
 </head>
 <body>
@@ -28,7 +28,7 @@
         <p class="text-muted">Sportschützen Muhen</p>
     </div>
 
-    <div class="d-flex justify-content-center flex-wrap gap-2 mb-4">
+    <div class="d-flex justify-content-center gap-2 mb-4">
         <button class="btn btn-primary nav-btn" id="btn-ausgabe" onclick="showSection('ausgabe')">📤 Buchung</button>
         <button class="btn btn-outline-secondary nav-btn" id="btn-liste" onclick="showSection('liste')">📋 Bestand</button>
         <button class="btn btn-outline-secondary nav-btn" id="btn-journal" onclick="showSection('journal')">📖 Journal</button>
@@ -70,7 +70,7 @@
                         <label class="form-label fw-bold">Unterschrift Mitglied</label>
                         <div class="sig-container mb-2"><canvas id="sig-mitglied"></canvas></div>
                         <button type="button" class="btn btn-sm btn-link text-danger p-0 mb-3" onclick="sigPadMitglied.clear()">Löschen</button>
-                        <label class="form-label fw-bold">Verantwortlicher Vorstand</label>
+                        <label class="form-label fw-bold">Verantwortlicher Vorstand (Login)</label>
                         <select id="select-verantwortlicher" class="form-select mb-2" required></select>
                         <div class="sig-container mb-2"><canvas id="sig-vorstand"></canvas></div>
                         <button type="button" class="btn btn-sm btn-link text-danger p-0" onclick="sigPadVorstand.clear()">Löschen</button>
@@ -99,19 +99,12 @@
 
     <div id="section-journal" class="section-content d-none">
         <div class="card p-4 mb-4">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <h4>Material-Bewegungen</h4>
-                <button class="btn btn-sm btn-outline-primary" onclick="loadData()">Aktualisieren</button>
-            </div>
-            <div class="table-responsive">
-                <table class="table table-hover table-sm" id="table-transaktionen"></table>
-            </div>
+            <h4>📖 Material-Bewegungen</h4>
+            <div class="table-responsive"><table class="table table-hover table-sm" id="table-transaktionen"></table></div>
         </div>
         <div class="card p-4">
-            <h4>Admin-Protokoll</h4>
-            <div class="table-responsive">
-                <table class="table table-hover table-sm text-muted" id="table-protokoll"></table>
-            </div>
+            <h4>🛡️ Admin-Protokoll</h4>
+            <div class="table-responsive"><table class="table table-hover table-sm text-muted" id="table-protokoll"></table></div>
         </div>
     </div>
 
@@ -136,7 +129,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.0.0/dist/signature_pad.umd.min.js"></script>
 <script>
-    const WORKER_URL = 'DEINE_WEB_APP_URL'; 
+    const WORKER_URL = 'https://inventar.dan-hunziker73.workers.dev/';
     let inventarData = null;
     let sigPadMitglied, sigPadVorstand;
 
@@ -147,7 +140,10 @@
         showSection(localStorage.getItem('activeTab') || 'ausgabe');
     };
 
-    // ... (Andere Hilfsfunktionen wie setBusy, getNameFromId etc. bleiben gleich)
+    function setBusy(status) {
+        document.getElementById('loading-overlay').style.display = status ? 'flex' : 'none';
+        document.querySelectorAll('.main-submit').forEach(b => b.disabled = status);
+    }
 
     async function loadData() {
         setBusy(true);
@@ -156,49 +152,204 @@
             inventarData = await res.json();
             fillDropdowns();
             renderInventoryTable();
-            renderJournalTables(); // NEU
-        } catch (e) { console.error("Fehler beim Laden:", e); }
+            renderJournalTables(); // Funktion für die neuen Tabellen
+        } catch (e) { console.error("Ladefehler:", e); }
         setBusy(false);
     }
 
-    // NEU: Journal-Tabellen rendern
+    function getNameFromId(id) {
+        if(!id || id === "" || id === 0 || id === "0") return "";
+        if(!inventarData || !inventarData.mitglieder) return id;
+        const m = inventarData.mitglieder.find(member => member.ID.toString() === id.toString());
+        return m ? `${m.Nachname} ${m.Vorname}` : id;
+    }
+
+    // JOURNAL TABELLEN RENDERN
     function renderJournalTables() {
         if(!inventarData) return;
         
-        // Material Transaktionen
+        // Transaktionen
         const transTable = document.getElementById('table-transaktionen');
         if(inventarData.transaktionen && inventarData.transaktionen.length > 0) {
-            let html = `<thead class="table-light"><tr><th>Zeit</th><th>Mitglied</th><th>Aktion</th><th>Gegenstand</th><th>Bemerkung</th></tr></thead><tbody>`;
-            // Zeige die letzten 20 Transaktionen
-            inventarData.transaktionen.slice(-20).reverse().map(t => {
+            let html = `<thead><tr class="table-dark"><th>Datum</th><th>Person</th><th>Aktion</th><th>Gegenstand</th><th>Bemerkung</th></tr></thead><tbody>`;
+            inventarData.transaktionen.slice().reverse().forEach(t => {
                 html += `<tr>
                     <td>${new Date(t.Zeitstempel).toLocaleDateString()}</td>
                     <td>${getNameFromId(t.Aktueller_Besitzer_ID)}</td>
                     <td>${t.Aktion === 'checkout' ? '📤' : '📥'}</td>
                     <td>${t.Inventar_ID}</td>
-                    <td><small>${t.Bemerkungen || '-'}</small></td>
+                    <td>${t.Bemerkungen || ''}</td>
                 </tr>`;
             });
             transTable.innerHTML = html + "</tbody>";
-        } else { transTable.innerHTML = "Keine Daten vorhanden."; }
+        }
 
-        // Admin Protokoll
+        // Protokoll
         const logTable = document.getElementById('table-protokoll');
         if(inventarData.protokoll && inventarData.protokoll.length > 0) {
-            let html = `<thead class="table-light"><tr><th>Zeit</th><th>Aktion</th><th>Tabelle</th><th>Details</th></tr></thead><tbody>`;
-            inventarData.protokoll.slice(-15).reverse().map(p => {
+            let html = `<thead><tr class="table-secondary"><th>Zeit</th><th>Aktion</th><th>Tabelle</th><th>Info</th></tr></thead><tbody>`;
+            inventarData.protokoll.slice().reverse().forEach(p => {
                 html += `<tr>
-                    <td>${new Date(p.Zeitstempel).toLocaleString([], {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'})}</td>
+                    <td>${new Date(p.Zeitstempel).toLocaleString()}</td>
                     <td>${p.Aktion}</td>
                     <td>${p.Tabelle}</td>
-                    <td><small>${p.Details}</small></td>
+                    <td>${p.Details}</td>
                 </tr>`;
             });
             logTable.innerHTML = html + "</tbody>";
-        } else { logTable.innerHTML = "Keine Protokolleinträge."; }
+        }
     }
 
-    // (Die restlichen Funktionen handleFormSubmit, deleteItem, showSection etc. bleiben wie zuvor)
+    function fillDropdowns() {
+        if(!inventarData || !inventarData.mitglieder) return;
+        const sorted = [...inventarData.mitglieder].sort((a, b) => (a.Nachname || "").localeCompare(b.Nachname || ""));
+        const optionsHtml = '<option value="">-- wählen --</option>' + 
+            sorted.map(m => `<option value="${m.ID}">${m.Nachname} ${m.Vorname}</option>`).join('');
+        
+        document.getElementById('select-mitglied').innerHTML = optionsHtml;
+        document.getElementById('select-verantwortlicher').innerHTML = optionsHtml;
+
+        if(inventarData.config) {
+            const zOptions = '<option value="">-- wählen --</option>' + 
+                inventarData.config.map(c => c.Transaktion_Zustand).filter(v => v).map(v => `<option value="${v}">${v}</option>`).join('');
+            document.getElementById('select-zustand-abgabe').innerHTML = zOptions;
+            document.getElementById('select-zustand-rueckgabe').innerHTML = zOptions;
+        }
+        updateSubOptions();
+    }
+
+    function toggleBookingFields() {
+        const action = document.getElementById('select-action').value;
+        const isCheckout = (action === 'checkout');
+        document.getElementById('container-zustand-abgabe').classList.toggle('d-none', !isCheckout);
+        document.getElementById('container-zustand-rueckgabe').classList.toggle('d-none', isCheckout);
+        document.getElementById('container-pfand-einnahme').classList.toggle('d-none', !isCheckout);
+        document.getElementById('container-pfand-retour').classList.toggle('d-none', isCheckout);
+    }
+
+    function updateSubOptions() {
+        if(!inventarData) return;
+        const kat = document.getElementById('select-kategorie').value;
+        const keyMap = { "gewehr": "gewehre", "schluessel": "schluessel", "kleidung": "kleidung", "schiessbekleidung": "schiessbekleidung" };
+        const items = inventarData[keyMap[kat]] || [];
+        document.getElementById('select-gegenstand').innerHTML = items.map(i => {
+            let info = (kat === 'gewehr') ? `${i.Hersteller} ${i.Modell} (${i.Laufnummer})` : 
+                       (kat === 'schluessel') ? `${i.Bezeichnung} (${i.Nummer})` : `${i.Typ} (${i.Groesse})`;
+            return `<option value="${i.ID}">${info} ${i.Aktueller_Besitzer_ID ? '🔴' : '🟢'}</option>`;
+        }).join('');
+    }
+
+    function renderAdminFields(target) {
+        const fieldsDiv = document.getElementById('dynamic-fields');
+        const saveBtn = document.getElementById('btn-admin-save');
+        if (!target || !inventarData) { fieldsDiv.innerHTML = ""; saveBtn.classList.add('d-none'); return; }
+        saveBtn.classList.remove('d-none');
+        const configs = {
+            "Personendaten": ["PersonNumber", "Vorname", "Nachname", "email", "BirthDate", "Status"],
+            "Inventar_Gewehre": ["Hersteller", "Modell", "Laufnummer", "Diopter", "Ringkorn", "Zubehoer", "Spezielles", "Distanz", "Eigentümer_ID", "Gespendet_ID", "Kauf_Spender_Jahr", "Verkaeufer_ID"],
+            "Inventar_Schluessel": ["Bezeichnung", "Nummer"],
+            "Inventar_Kleidung": ["Typ", "Groesse", "Kaufdatum"],
+            "Inventar_Schiessbekleidung": ["Typ", "Groesse", "Kaufdatum"]
+        };
+        fieldsDiv.innerHTML = (configs[target] || []).map(field => {
+            if (field.endsWith("_ID")) {
+                const sorted = [...inventarData.mitglieder].sort((a, b) => (a.Nachname || "").localeCompare(b.Nachname || ""));
+                const options = sorted.map(m => `<option value="${m.ID}">${m.Nachname} ${m.Vorname}</option>`).join('');
+                return `<div class="col-md-6 mb-3"><label class="fw-bold">${field}</label><select name="${field}" class="form-select"><option value="">-- Mitglied wählen --</option>${options}</select></div>`;
+            }
+            const dropdownMapping = { "Status": "MG_Status", "Bezeichnung": "Schluessel_Bezeichnung", "Distanz": "Gewehre_Distanz", "Typ": (target === "Inventar_Schiessbekleidung") ? "Schiessbekleidung_Typ" : "Kleidung_Typ", "Groesse": "Kleidung_Schiessbekleidung_Groesse" };
+            if (dropdownMapping[field]) {
+                const configKey = dropdownMapping[field];
+                const options = inventarData.config.map(c => c[configKey]).filter(v => v).map(v => `<option value="${v}">${v}</option>`).join('');
+                return `<div class="col-md-6 mb-3"><label class="fw-bold">${field}</label><select name="${field}" class="form-select"><option value="">-- wählen --</option>${options}</select></div>`;
+            }
+            const type = field.includes("datum") || field.includes("Date") || field.includes("Jahr") ? "date" : "text";
+            return `<div class="col-md-6 mb-3"><label class="fw-bold">${field}</label><input type="${type}" name="${field}" class="form-control"></div>`;
+        }).join('');
+    }
+
+    function renderInventoryTable() {
+        if(!inventarData) return;
+        const target = document.getElementById('filter-liste').value;
+        const keyMap = { "Inventar_Gewehre":"gewehre", "Inventar_Schluessel":"schluessel", "Inventar_Kleidung":"kleidung", "Inventar_Schiessbekleidung":"schiessbekleidung", "Personendaten":"mitglieder" };
+        const data = inventarData[keyMap[target]];
+        const table = document.getElementById('inventory-table');
+        if(!data || data.length === 0) { table.innerHTML = "<thead><tr><th>Keine Daten</th></tr></thead>"; return; }
+        let html = `<thead><tr class="table-dark">${Object.keys(data[0]).map(k => `<th>${k}</th>`).join('')}<th>Aktion</th></tr></thead><tbody>`;
+        html += data.map(row => {
+            let cells = Object.entries(row).map(([key, val]) => {
+                if(key.endsWith("_ID")) return `<td>${getNameFromId(val) || '<span class="text-muted">-</span>'}</td>`;
+                if(key === "Status" && val === "Im Lager") return `<td><span class="badge bg-success">Lager</span></td>`;
+                if(key === "Status" && val === "Ausgegeben") return `<td><span class="badge bg-warning text-dark">Ausgeliehen</span></td>`;
+                return `<td>${val || ''}</td>`;
+            }).join('');
+            return `<tr>${cells}<td><button class="btn btn-sm btn-danger" onclick="deleteItem('${target}', '${row.ID}')">🗑️</button></td></tr>`;
+        }).join('');
+        table.innerHTML = html + "</tbody>";
+    }
+
+    async function handleFormSubmit(e) {
+        e.preventDefault();
+        setBusy(true);
+        const payload = {
+            action: "checkout",
+            type: document.getElementById('select-action').value,
+            mitgliedId: document.getElementById('select-mitglied').value,
+            kategorie: document.getElementById('select-kategorie').value,
+            itemId: document.getElementById('select-gegenstand').value,
+            zustandAbgabe: document.getElementById('select-zustand-abgabe').value,
+            zustandRueckgabe: document.getElementById('select-zustand-rueckgabe').value,
+            bemerkungen: document.getElementById('trans-bemerkungen').value,
+            verantwortlicheId: document.getElementById('select-verantwortlicher').value,
+            pfandBetrag: document.getElementById('pfand-betrag').value,
+            pfandEinnahme: document.getElementById('pfand-einnahme').value,
+            pfandRetour: document.getElementById('pfand-retour').value,
+            sigMitglied: sigPadMitglied.toDataURL(),
+            sigVorstand: sigPadVorstand.toDataURL()
+        };
+        try {
+            await fetch(WORKER_URL, { method: 'POST', body: JSON.stringify(payload) });
+            e.target.reset(); sigPadMitglied.clear(); sigPadVorstand.clear();
+            await loadData();
+            alert("Buchung erfolgreich!");
+        } catch(e) { alert("Fehler!"); }
+        setBusy(false);
+    }
+
+    async function saveNewItem(e) {
+        e.preventDefault();
+        setBusy(true);
+        const target = document.getElementById('admin-target').value;
+        const fields = {};
+        new FormData(e.target).forEach((v, k) => fields[k] = v);
+        try {
+            await fetch(WORKER_URL, { method: 'POST', body: JSON.stringify({ action: "addNewItem", targetSheet: target, fields }) });
+            e.target.reset(); document.getElementById('admin-target').value = ""; renderAdminFields("");
+            await loadData();
+            alert("Gespeichert!");
+        } catch(e) { alert("Fehler!"); }
+        setBusy(false);
+    }
+
+    async function deleteItem(target, id) {
+        if(!confirm("Löschen?")) return;
+        setBusy(true);
+        try {
+            await fetch(WORKER_URL, { method: 'POST', body: JSON.stringify({ action: "deleteItem", targetSheet: target, itemId: id }) });
+            await loadData();
+        } catch(e) { alert("Fehler!"); }
+        setBusy(false);
+    }
+
+    function showSection(id) {
+        localStorage.setItem('activeTab', id);
+        document.querySelectorAll('.section-content').forEach(s => s.classList.add('d-none'));
+        const el = document.getElementById('section-' + id);
+        if(el) el.classList.remove('d-none');
+        document.querySelectorAll('.nav-btn').forEach(b => b.classList.replace('btn-primary', 'btn-outline-secondary'));
+        const active = document.getElementById('btn-' + id);
+        if(active) active.classList.replace('btn-outline-secondary', 'btn-primary');
+    }
 </script>
 </body>
 </html>
