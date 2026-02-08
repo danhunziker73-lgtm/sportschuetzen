@@ -188,12 +188,16 @@
         "Inventar_Schiessbekleidung": ["Typ", "Groesse", "Zustand", "Status"]
     };
 
-    const dropdownMapping = { 
-        "Status": "MG_Status", 
-        "Typ": "Kleidung_Typ", 
-        "Groesse": "Kleider_Groesse", 
-        "Fix_zugeteilt": "Mitglieder" 
-    };
+   const dropdownMapping = {
+  Status: "MG_Status",
+  Typ: "Kleidung_Typ",
+  Groesse: "Kleider_Groesse",
+  Fix_zugeteilt: "Mitglieder",
+  Distanz: "Distanz",
+  Schiessbekleidung_Typ: "Schiessbekleidung_Typ",
+  Schluessel_Bez: "Schuessel_Bez"
+};
+
 
     if (!configs[target]) {
         fieldsDiv.innerHTML = "<div class='alert alert-warning'>Konfiguration für " + target + " nicht gefunden.</div>";
