@@ -154,24 +154,7 @@
         }).join('');
     }
 
-    function renderInventoryTable() {
-        if(!inventarData) return;
-        const target = document.getElementById('filter-liste').value;
-        const keyMap = {"Inventar_Gewehre":"gewehre", "Inventar_Schluessel":"schluessel", "Inventar_Kleidung":"kleidung", "Inventar_Schiessbekleidung":"schiessbekleidung", "Mitglieder":"mitglieder"};
-        const data = inventarData[keyMap[target]];
-        const table = document.getElementById('inventory-table');
-        if(!data || data.length === 0) { table.innerHTML = ""; return; }
-        
-        let html = `<thead><tr class="table-dark">${Object.keys(data[0]).map(k => `<th>${k}</th>`).join('')}<th>Aktion</th></tr></thead><tbody>`;
-        html += data.map(row => {
-            let cells = Object.entries(row).map(([key, val]) => {
-                if(key === "Aktueller_Besitzer_ID") return `<td>${getMitgliedName(val)}</td>`;
-                return `<td>${val}</td>`;
-            }).join('');
-            return `<tr>${cells}<td><button class="btn btn-sm btn-danger" onclick="deleteItem('${target}', '${row.ID}')">🗑️</button></td></tr>`;
-        }).join('');
-        table.innerHTML = html + "</tbody>";
-    }
+  // ... (oberer Teil des Scripts bleibt gleich)
 
     function renderAdminFields(target) {
         if (!inventarData) return;
@@ -185,34 +168,70 @@
         }
 
         saveBtn.classList.remove('d-none');
+        
+        // EXAKT an deinen Blueprint angepasst:
         const configs = {
-            "Mitglieder": ["PersonNumber", "Vorname", "Nachname", "email", "BirthDate", "Status"],
-            "Inventar_Gewehre": ["Seriennummer", "Hersteller", "Modell", "Zubehoer", "Fix_zugeteilt"],
-            "Inventar_Schluessel": ["Bezeichnung", "Nummer", "Status", "Schlüssel_Kaution_hinterlegt"],
-            "Inventar_Kleidung": ["Typ", "Groesse", "Zustand", "Status"],
-            "Inventar_Schiessbekleidung": ["Typ", "Groesse", "Zustand", "Status"]
+            "Personendaten": ["PersonNumber", "Vorname", "Nachname", "email", "BirthDate", "Status"],
+            "Inventar_Gewehre": ["Hersteller", "Modell", "Laufnummer", "Diopter", "Ringkorn", "Distanz", "Status"],
+            "Inventar_Schluessel": ["Bezeichnung", "Nummer", "Status"],
+            "Inventar_Kleidung": ["Typ", "Groesse", "Kaufdatum", "Status"],
+            "Inventar_Schiessbekleidung": ["Typ", "Groesse", "Kaufdatum", "Status"]
         };
 
+        // Mapping der Felder zu den Spalten im Tab "Dropdown"
         const dropdownMapping = {
-            "Status": "MG_Status", "Typ": "Kleidung_Typ", "Groesse": "Kleider_Groesse", 
-            "Zustand": "Zustand", "Fix_zugeteilt": "Mitglieder"
+            "Status": "MG_Status", 
+            "Status": "MG_Status", // Falls Status bei allen gleich ist
+            "Typ": "Kleidung_Typ", 
+            "Groesse": "Kleidung_Schiessbekleidung_Groesse",
+            "Distanz": "Gewehre_Distanz",
+            "Bezeichnung": "Schluessel_Bezeichnung"
         };
 
         fieldsDiv.innerHTML = (configs[target] || []).map(field => {
             if (dropdownMapping[field]) {
                 const configKey = dropdownMapping[field];
                 let options = "";
-                if(configKey === "Mitglieder") {
-                    options = inventarData.mitglieder.map(m => `<option value="${m.ID}">${m.Vorname} ${m.Nachname}</option>`).join('');
-                } else {
-                    options = inventarData.config.filter(c => c[configKey]).map(c => `<option value="${c[configKey]}">${c[configKey]}</option>`).join('');
-                }
+                // Werte aus dem Dropdown-Tab filtern
+                options = inventarData.config
+                    .filter(c => c[configKey])
+                    .map(c => `<option value="${c[configKey]}">${c[configKey]}</option>`)
+                    .join('');
+                
                 return `<div class="col-md-6 mb-3"><label class="fw-bold">${field}</label><select name="${field}" class="form-select" required><option value="">-- wählen --</option>${options}</select></div>`;
             }
             return `<div class="col-md-6 mb-3"><label class="fw-bold">${field}</label><input type="text" name="${field}" class="form-control" required></div>`;
         }).join('');
     }
 
+    // Anpassung der Bestandsliste (Keys für das Mapping)
+    function renderInventoryTable() {
+        if(!inventarData) return;
+        const target = document.getElementById('filter-liste').value;
+        // Mapping: SheetName -> Key im JSON-Objekt
+        const keyMap = {
+            "Inventar_Gewehre":"gewehre", 
+            "Inventar_Schluessel":"schluessel", 
+            "Inventar_Kleidung":"kleidung", 
+            "Inventar_Schiessbekleidung":"schiessbekleidung", 
+            "Personendaten":"mitglieder"
+        };
+        const data = inventarData[keyMap[target]];
+        const table = document.getElementById('inventory-table');
+        if(!data || data.length === 0) { table.innerHTML = "Keine Daten gefunden"; return; }
+        
+        let html = `<thead><tr class="table-dark">${Object.keys(data[0]).map(k => `<th>${k}</th>`).join('')}<th>Aktion</th></tr></thead><tbody>`;
+        html += data.map(row => {
+            let cells = Object.entries(row).map(([key, val]) => {
+                if(key === "Aktueller_Besitzer_ID") return `<td>${getMitgliedName(val)}</td>`;
+                return `<td>${val}</td>`;
+            }).join('');
+            return `<tr>${cells}<td><button class="btn btn-sm btn-danger" onclick="deleteItem('${target}', '${row.ID}')">🗑️</button></td></tr>`;
+        }).join('');
+        table.innerHTML = html + "</tbody>";
+    }
+
+// ... (Rest bleibt gleich)
     async function handleFormSubmit(e) {
         e.preventDefault();
         setBusy(true);
