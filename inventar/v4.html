@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inventar-Verwaltung Sportschützen Muhen</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f4f7f6; }
+        .card { border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        .sig-container { border: 1px solid #ccc; background: white; height: 150px; }
+        canvas { width: 100% !important; height: 100% !important; }
+        /* Spinner Style */
+        .spinner-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.7); z-index: 9999; justify-content: center; align-items: center; flex-direction: column; }
+    </style>
+</head>
+<body>
+
+<div id="loading-overlay" class="spinner-overlay">
+    <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;"></div>
+    <div class="mt-2 fw-bold">Daten werden verarbeitet...</div>
+</div>
+
+<div class="container py-4">
+    <div class="text-center mb-4"><h2>🎯 Inventar & Material</h2></div>
+
+    <div class="d-flex justify-content-center gap-2 mb-4">
+        <button class="btn btn-primary nav-btn" id="btn-nav-ausgabe" onclick="showSection('ausgabe')">📤 Ausgabe</button>
+        <button class="btn btn-secondary nav-btn" id="btn-nav-liste" onclick="showSection('liste')">📋 Liste</button>
+        <button class="btn btn-dark nav-btn" id="btn-nav-admin" onclick="showSection('admin')">⚙️ Admin</button>
+    </div>
+
+    <div id="section-ausgabe" class="section-content">
+        <div class="card p-4">
+            <form id="form-ausgabe" onsubmit="handleFormSubmit(event)">
+                <div class="row">
+                    <div class="col-md-6">
+                        <label>Aktion</label>
+                        <select id="select-action" class="form-select mb-2"><option value="checkout">Ausgabe</option><option value="checkin">Rückgabe</option></select>
+                        <label>Mitglied</label>
+                        <select id="select-mitglied" class="form-select mb-2"></select>
+                        <label>Kategorie</label>
+                        <select id="select-kategorie" class="form-select mb-2" onchange="updateSubOptions()"><option value="gewehr">Gewehr</option><option value="schluessel">Schlüssel</option><option value="kleidung">Kleidung</option></select>
+                        <label>Gegenstand</label>
+                        <select id="select-gegenstand" class="form-select mb-2"></select>
+                    </div>
+                    <div class="col-md-6">
+                        <label>Unterschrift Mitglied</label><div class="sig-container"><canvas id="sig-mitglied"></canvas></div>
+                        <label>Visum Vorstand</label><div class="sig-container"><canvas id="sig-vorstand"></canvas></div>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-success w-100 mt-3 main-submit">Buchen & PDF erstellen</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="section-liste" class="section-content d-none">
+        <div class="card p-4">
+            <h4>Bestandsliste</h4>
+            <select id="filter-liste" class="form-select mb-3" onchange="renderInventoryTable()"><option value="Inventar_Gewehre">Gewehre</option><option value="Inventar_Schluessel">Schlüssel</option><option value="Inventar_Kleidung">Kleidung</option><option value="Mitglieder">Mitglieder</option></select>
+            <div class="table-responsive"><table class="table table-sm table-hover" id="inventory-table"></table></div>
+        </div>
+    </div>
+
+    <div id="section-admin" class="section-content d-none">
+        <div class="card p-4">
+            <h4>Hinzufügen</h4>
+            <select id="admin-target" class="form-select mb-3" onchange="renderAdminFields()"><option value="">-- Typ wählen --</option><option value="Mitglieder">👤 Mitglied</option><option value="Inventar_Gewehre">🔫 Gewehr</option><option value="Inventar_Schluessel">🔑 Schlüssel</option><option value="Inventar_Kleidung">👕 Kleidung</option></select>
+            <form id="adminForm" onsubmit="saveNewItem(event)"><div id="dynamic-fields" class="row"></div><button type="submit" class="btn btn-success mt-3 d-none main-submit" id="btn-admin-save">Speichern</button></form>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/signature_pad@4.0.0/dist/signature_pad.umd.min.js"></script>
+<script>
+    const WORKER_URL = 'https://inventar.dan-hunziker73.workers.dev/';
+    let inventarData = null;
+    let sigPadMitglied, sigPadVorstand;
+    let currentSection = 'ausgabe';
+
+    window.onload = async () => {
+        sigPadMitglied = new SignaturePad(document.getElementById('sig-mitglied'));
+        sigPadVorstand = new SignaturePad(document.getElementById('sig-vorstand'));
+        const savedSec = localStorage.getItem('lastSection');
+        if(savedSec) currentSection = savedSec;
+        await loadData();
+        showSection(currentSection);
+    };
+
+    function setBusy(isBusy) {
+        document.getElementById('loading-overlay').style.display = isBusy ? 'flex' : 'none';
+        document.querySelectorAll('.main-submit').forEach(b => b.disabled = isBusy);
+    }
+
+    async function loadData() {
+        setBusy(true);
+        const res = await fetch(`${WORKER_URL}?action=getInventarData`);
+        inventarData = await res.json();
+        fillDropdowns();
+        renderInventoryTable();
+        setBusy(false);
+    }
+
+    function getMitgliedName(id) {
+        if(!id) return "-";
+        const m = inventarData.mitglieder.find(member => member.ID.toString() === id.toString());
+        return m ? `${m.Vorname} ${m.Nachname}` : `ID: ${id}`;
+    }
+
+    function fillDropdowns() {
+        const mSelect = document.getElementById('select-mitglied');
+        mSelect.innerHTML = inventarData.mitglieder.map(m => `<option value="${m.ID}">${m.Vorname} ${m.Nachname}</option>`).join('');
+        updateSubOptions();
+    }
+
+    function updateSubOptions() {
+        const kat = document.getElementById('select-kategorie').value;
+        const key = kat === 'gewehr' ? 'gewehre' : (kat === 'schluessel' ? 'schluessel' : 'kleidung');
+        document.getElementById('select-gegenstand').innerHTML = inventarData[key].map(i => `<option value="${i.ID}">${Object.values(i).slice(1,4).join(' ')}</option>`).join('');
+    }
+
+    function renderInventoryTable() {
+        const target = document.getElementById('filter-liste').value;
+        const keyMap = {"Inventar_Gewehre":"gewehre", "Inventar_Schluessel":"schluessel", "Inventar_Kleidung":"kleidung", "Mitglieder":"mitglieder"};
+        const data = inventarData[keyMap[target]];
+        if(!data || data.length === 0) return;
+        
+        let html = `<thead><tr>${Object.keys(data[0]).map(k => `<th>${k}</th>`).join('')}<th>Aktion</th></tr></thead><tbody>`;
+        html += data.map(row => {
+            let cells = Object.entries(row).map(([key, val]) => {
+                // Ersetze ID durch Namen in der Anzeige
+                if(key === "Aktueller_Besitzer_ID") return `<td><b>${getMitgliedName(val)}</b></td>`;
+                return `<td>${val}</td>`;
+            }).join('');
+            return `<tr>${cells}<td><button class="btn btn-sm btn-outline-danger" onclick="deleteItem('${target}', '${row.ID}')">🗑️</button></td></tr>`;
+        }).join('');
+        document.getElementById('inventory-table').innerHTML = html + "</tbody>";
+    }
+
+    async function deleteItem(target, id) {
+        if(!confirm("Eintrag unwiderruflich löschen?")) return;
+        setBusy(true);
+        await fetch(WORKER_URL, { method: 'POST', body: JSON.stringify({ action: "deleteItem", targetSheet: target, itemId: id }) });
+        await loadData();
+    }
+
+    function renderAdminFields() {
+        const target = document.getElementById('admin-target').value;
+        const fieldsDiv = document.getElementById('dynamic-fields');
+        if(!target) return;
+        document.getElementById('btn-admin-save').classList.remove('d-none');
+
+        const configs = {
+            "Mitglieder": { "Status": "MG_Status" },
+            "Inventar_Gewehre": { "Fix_zugeteilt": "Mitglieder" },
+            "Inventar_Schluessel": { "Status": "Schuessel_Bez" },
+            "Inventar_Kleidung": { "Typ": "Kleidung_Typ", "Groesse": "Kleider_Groesse" }
+        };
+
+        const currentConfig = {
+            "Mitglieder": ["PersonNumber", "Vorname", "Nachname", "email", "BirthDate", "Status"],
+            "Inventar_Gewehre": ["Seriennummer", "Hersteller", "Modell", "Zubehoer", "Fix_zugeteilt"],
+            "Inventar_Schluessel": ["Bezeichnung", "Nummer", "Status", "Schlüssel_Kaution_hinterlegt"],
+            "Inventar_Kleidung": ["Typ", "Groesse", "Zustand", "Status"]
+        };
+
+        fieldsDiv.innerHTML = currentConfig[target].map(f => {
+            // Check if special dropdown needed
+            if (configs[target] && configs[target][f]) {
+                const configKey = configs[target][f];
+                let options = "";
+                if(configKey === "Mitglieder") {
+                    options = inventarData.mitglieder.map(m => `<option value="${m.ID}">${m.Vorname} ${m.Nachname}</option>`).join('');
+                } else {
+                    options = inventarData.config.map(c => c[configKey] ? `<option value="${c[configKey]}">${c[configKey]}</option>` : '').join('');
+                }
+                return `<div class="col-md-6 mb-2"><label>${f}</label><select name="${f}" class="form-select">${options}</select></div>`;
+            }
+            return `<div class="col-md-6 mb-2"><label>${f}</label><input type="text" name="${f}" class="form-control" required></div>`;
+        }).join('');
+    }
+
+    async function saveNewItem(e) {
+        e.preventDefault();
+        setBusy(true);
+        const fields = {};
+        new FormData(e.target).forEach((v, k) => fields[k] = v);
+        await fetch(WORKER_URL, { method: 'POST', body: JSON.stringify({ action: "addNewItem", targetSheet: document.getElementById('admin-target').value, fields }) });
+        await loadData();
+    }
+
+    async function handleFormSubmit(e) {
+        e.preventDefault();
+        setBusy(true);
+        const payload = {
+            action: "checkout",
+            type: document.getElementById('select-action').value,
+            mitgliedId: document.getElementById('select-mitglied').value,
+            kategorie: document.getElementById('select-kategorie').value,
+            itemId: document.getElementById('select-gegenstand').value,
+            sigMitglied: sigPadMitglied.toDataURL(),
+            sigVorstand: sigPadVorstand.toDataURL()
+        };
+        await fetch(WORKER_URL, { method: 'POST', body: JSON.stringify(payload) });
+        sigPadMitglied.clear(); sigPadVorstand.clear();
+        await loadData();
+    }
+
+    function showSection(id) {
+        currentSection = id;
+        localStorage.setItem('lastSection', id);
+        document.querySelectorAll('.section-content').forEach(s => s.classList.add('d-none'));
+        document.querySelectorAll('.nav-btn').forEach(b => b.classList.replace('btn-primary', 'btn-outline-primary'));
+        
+        document.getElementById('section-' + id).classList.remove('d-none');
+        const activeBtn = document.querySelector(`[onclick="showSection('${id}')"]`);
+        if(activeBtn) activeBtn.classList.replace('btn-outline-primary', 'btn-primary');
+    }
+</script>
+</body>
+</html>
