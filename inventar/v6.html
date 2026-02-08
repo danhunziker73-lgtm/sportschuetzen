@@ -166,58 +166,82 @@
         document.getElementById('inventory-table').innerHTML = html + "</tbody>";
     }
 
- function renderAdminFields() {
+<script>
+function renderAdminFields() {
     const target = document.getElementById('admin-target').value;
     const fieldsDiv = document.getElementById('dynamic-fields');
     const saveBtn = document.getElementById('btn-admin-save');
-    
-    if(!target) { 
-        fieldsDiv.innerHTML = ""; 
-        saveBtn.classList.add('d-none'); 
-        return; 
-    }
-    
-    saveBtn.classList.remove('d-none');
 
-    // WICHTIG: Die Keys hier müssen exakt den Werten im <select id="admin-target"> entsprechen!
-    const configs = {
-        "Mitglieder": ["PersonNumber", "Vorname", "Nachname", "email", "BirthDate", "Status"],
-        "Inventar_Gewehre": ["Seriennummer", "Hersteller", "Modell", "Zubehoer", "Fix_zugeteilt"],
-        "Inventar_Schluessel": ["Bezeichnung", "Nummer", "Status", "Schlüssel_Kaution_hinterlegt"],
-        "Inventar_Kleidung": ["Typ", "Groesse", "Zustand", "Status"],
-        "Inventar_Schiessbekleidung": ["Typ", "Groesse", "Zustand", "Status"]
-    };
-
-   const dropdownMapping = {
-  Status: "MG_Status",
-  Typ: "Kleidung_Typ",
-  Groesse: "Kleider_Groesse",
-  Fix_zugeteilt: "Mitglieder",
-  Distanz: "Distanz",
-  Schiessbekleidung_Typ: "Schiessbekleidung_Typ",
-  Schluessel_Bez: "Schuessel_Bez"
-};
-
-
-    if (!configs[target]) {
-        fieldsDiv.innerHTML = "<div class='alert alert-warning'>Konfiguration für " + target + " nicht gefunden.</div>";
+    if (!target) {
+        fieldsDiv.innerHTML = "";
+        saveBtn.classList.add('d-none');
         return;
     }
 
-    fieldsDiv.innerHTML = configs[target].map(f => {
-        if (dropdownMapping[f]) {
-            const configKey = dropdownMapping[f];
-            let opts = "";
-            if(configKey === "Mitglieder") {
-                opts = inventarData.mitglieder.map(m => `<option value="${m.ID}">${m.Vorname} ${m.Nachname}</option>`).join('');
-            } else {
-                opts = inventarData.config.map(c => c[configKey] ? `<option value="${c[configKey]}">${c[configKey]}</option>` : '').join('');
+    saveBtn.classList.remove('d-none');
+
+    /* exakt wie im Google Sheet */
+    const configs = {
+        Mitglieder: ["PersonNumber", "Vorname", "Nachname", "email", "BirthDate", "Status"],
+        Inventar_Gewehre: ["Seriennummer", "Hersteller", "Modell", "Zubehoer", "Fix_zugeteilt"],
+        Inventar_Schluessel: ["Bezeichnung", "Nummer", "Status", "Schlüssel_Kaution_hinterlegt"],
+        Inventar_Kleidung: ["Typ", "Groesse", "Zustand", "Status"],
+        Inventar_Schiessbekleidung: ["Typ", "Groesse", "Zustand", "Aktueller_Besitzer_ID", "Status", "Fix_zugeteilt"]
+    };
+
+    /* Dropdown-Quellen */
+    const dropdownSources = {
+        Status: () => getConfigValues("MG_Status"),
+        Typ: () => getConfigValues("Kleidung_Typ"),
+        Groesse: () => getConfigValues("Kleider_Groesse"),
+        Zustand: () => getConfigValues("Zustand"),
+        Fix_zugeteilt: () =>
+            inventarData.mitglieder.map(m => ({
+                value: m.ID,
+                label: `${m.Vorname} ${m.Nachname}`
+            }))
+    };
+
+    if (!configs[target]) {
+        fieldsDiv.innerHTML =
+            `<div class="alert alert-warning">Keine Felddefinition für ${target}</div>`;
+        return;
+    }
+
+    fieldsDiv.innerHTML = configs[target]
+        .map(field => {
+            if (dropdownSources[field]) {
+                const opts = dropdownSources[field]()
+                    .map(o => `<option value="${o.value}">${o.label}</option>`)
+                    .join("");
+
+                return `
+                <div class="col-md-6 mb-3">
+                    <label class="fw-bold">${field}</label>
+                    <select name="${field}" class="form-select" required>
+                        <option value="">-- wählen --</option>
+                        ${opts}
+                    </select>
+                </div>`;
             }
-            return `<div class="col-md-6 mb-3"><label class="fw-bold">${f}</label><select name="${f}" class="form-select">${opts}</select></div>`;
-        }
-        return `<div class="col-md-6 mb-3"><label class="fw-bold">${f}</label><input type="text" name="${f}" class="form-control" required></div>`;
-    }).join('');
+
+            return `
+            <div class="col-md-6 mb-3">
+                <label class="fw-bold">${field}</label>
+                <input type="text" name="${field}" class="form-control" required>
+            </div>`;
+        })
+        .join("");
 }
+
+/* Helfer: liest Konfiguration korrekt */
+function getConfigValues(key) {
+    return inventarData.config
+        .filter(c => c[key])
+        .map(c => ({ value: c[key], label: c[key] }));
+}
+</script>
+
     async function handleFormSubmit(e) {
         e.preventDefault();
         setBusy(true);
