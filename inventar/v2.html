@@ -73,96 +73,79 @@
 
 <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.0.0/dist/signature_pad.umd.min.js"></script>
 <script>
-    let inventarData = null;
+let inventarData = null;
     let signaturePad;
 
     window.onload = async () => {
         const canvas = document.getElementById('signature-pad');
         signaturePad = new SignaturePad(canvas);
-        
-        // Canvas Größe anpassen
-        function resizeCanvas() {
-            const ratio = Math.max(window.devicePixelRatio || 1, 1);
-            canvas.width = canvas.offsetWidth * ratio;
-            canvas.height = canvas.offsetHeight * ratio;
-            canvas.getContext("2d").scale(ratio, ratio);
-            signaturePad.clear();
-        }
-        window.onresize = resizeCanvas;
-        resizeCanvas();
-
         await loadData();
+        initScanner(); // QR Scanner starten
     };
 
     async function loadData() {
         try {
+            // WICHTIG: Action Parameter für GAS
             const response = await fetch('https://inventar.dan-hunziker73.workers.dev/?action=getInventarData');
             inventarData = await response.json();
             fillDropdowns();
         } catch (e) {
-            alert("Fehler beim Laden der Daten. Prüfe den Worker!");
+            console.error(e);
+            alert("Fehler beim Laden: " + e.message);
         }
     }
 
     function fillDropdowns() {
         const mSelect = document.getElementById('select-mitglied');
-        mSelect.innerHTML = inventarData.mitglieder.map(m => 
-            `<option value="${m.id}">${m.vorname} ${m.nachname}</option>`
-        ).join('');
+        mSelect.innerHTML = '<option value="">-- Mitglied wählen --</option>' + 
+            inventarData.mitglieder.map(m => `<option value="${m.id}">${m.vorname} ${m.nachname}</option>`).join('');
         updateSubOptions();
     }
 
     function updateSubOptions() {
         const kat = document.getElementById('select-kategorie').value;
         const gSelect = document.getElementById('select-gegenstand');
-        let items = [];
+        
+        // KORREKTUR: Mapping auf die Sheet-Namen im inventarData Objekt
+        // Wir nutzen die Namen, die wir im GAS definiert haben
+        let key = kat;
+        if (kat === 'gewehr') key = 'gewehre';
+        if (kat === 'schluessel') key = 'schluessel';
+        if (kat === 'kleidung') key = 'kleidung';
 
-        // Mapping der Kategorien auf die Datenstruktur
-        if (kat === 'gewehr') items = inventarData.gewehre;
-        else if (kat === 'schluessel') items = inventarData.schluessel;
-        else if (kat === 'kleidung') items = inventarData.kleidung;
+        let items = inventarData[key] || [];
 
-        gSelect.innerHTML = items.map(i => 
-            `<option value="${i.id}">${i.modell || i.bezeichnung || i.typ} (ID: ${i.id})</option>`
-        ).join('');
+        // Mehr Details anzeigen: Modell/Bezeichnung + ID + Status
+        gSelect.innerHTML = items.map(i => {
+            const detail = i.modell || i.bezeichnung || i.typ || "Unbekannt";
+            const extra = i.hersteller ? ` | ${i.hersteller}` : "";
+            const num = i.nummer || i.schlüsselnummer || "";
+            return `<option value="${i.id}">${detail}${extra} ${num} (ID: ${i.id}) - [${i.status}]</option>`;
+        }).join('');
     }
 
-    function clearSignature() { signaturePad.clear(); }
-
-    function showSection(id) {
-        document.querySelectorAll('.section-content').forEach(s => s.classList.add('d-none'));
-        document.getElementById('section-' + id).classList.remove('d-none');
-    }
-
-    async function save(event) {
-        event.preventDefault(); // Verhindert Neuladen der Seite
-
-        if (signaturePad.isEmpty()) {
-            return alert("Bitte unterschreiben!");
+    // QR-CODE LOGIK
+    function initScanner() {
+        // Hier könnte man eine Library wie html5-qrcode einbinden
+        // Einfache Demo: Wenn URL-Parameter "id" vorhanden ist
+        const urlParams = new URLSearchParams(window.location.search);
+        const scanId = urlParams.get('scan');
+        if (scanId) {
+            autoSelectByScan(scanId);
         }
+    }
 
-        const signatureData = signaturePad.toDataURL("image/png");
-
-        const payload = {
-            action: "checkout",
-            mitgliedId: document.getElementById('select-mitglied').value,
-            kategorie: document.getElementById('select-kategorie').value, 
-            itemId: document.getElementById('select-gegenstand').value,
-            unterschrift: signatureData 
-        };
-
-        try {
-            const response = await fetch("https://inventar.dan-hunziker73.workers.dev/", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(payload)
-            });
-
-            const result = await response.text();
-            alert("Antwort: " + result);
-            signaturePad.clear();
-        } catch (error) {
-            alert("Fehler beim Senden: " + error);
+    function autoSelectByScan(id) {
+        // Suche in allen Kategorien nach der ID
+        const kategorien = ['gewehre', 'schluessel', 'kleidung'];
+        for (let kat of kategorien) {
+            const item = inventarData[kat].find(i => i.id.toString() === id.toString());
+            if (item) {
+                document.getElementById('select-kategorie').value = kat.replace('gewehre', 'gewehr');
+                updateSubOptions();
+                document.getElementById('select-gegenstand').value = id;
+                return;
+            }
         }
     }
 </script>
