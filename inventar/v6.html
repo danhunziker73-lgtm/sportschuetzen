@@ -79,7 +79,10 @@
     <div id="section-admin" class="section-content d-none">
         <div class="card p-4">
             <h4>Neuen Eintrag erfassen</h4>
-            <select id="admin-target" class="form-select mb-4" onchange="renderAdminFields()">
+            <select id="admin-target"
+        class="form-select mb-4"
+        onchange="renderAdminFields(this.value)">
+
                 <option value="">-- Typ wählen --</option>
                 <option value="Mitglieder">👤 Mitglied</option>
                 <option value="Inventar_Gewehre">🔫 Gewehr</option>
@@ -166,9 +169,7 @@
         document.getElementById('inventory-table').innerHTML = html + "</tbody>";
     }
 
-
-function renderAdminFields() {
-    const target = document.getElementById('admin-target').value;
+function renderAdminFields(target) {
     const fieldsDiv = document.getElementById('dynamic-fields');
     const saveBtn = document.getElementById('btn-admin-save');
 
@@ -180,7 +181,6 @@ function renderAdminFields() {
 
     saveBtn.classList.remove('d-none');
 
-    /* exakt wie im Google Sheet */
     const configs = {
         Mitglieder: ["PersonNumber", "Vorname", "Nachname", "email", "BirthDate", "Status"],
         Inventar_Gewehre: ["Seriennummer", "Hersteller", "Modell", "Zubehoer", "Fix_zugeteilt"],
@@ -189,7 +189,6 @@ function renderAdminFields() {
         Inventar_Schiessbekleidung: ["Typ", "Groesse", "Zustand", "Aktueller_Besitzer_ID", "Status", "Fix_zugeteilt"]
     };
 
-    /* Dropdown-Quellen */
     const dropdownSources = {
         Status: () => getConfigValues("MG_Status"),
         Typ: () => getConfigValues("Kleidung_Typ"),
@@ -208,30 +207,28 @@ function renderAdminFields() {
         return;
     }
 
-    fieldsDiv.innerHTML = configs[target]
-        .map(field => {
-            if (dropdownSources[field]) {
-                const opts = dropdownSources[field]()
-                    .map(o => `<option value="${o.value}">${o.label}</option>`)
-                    .join("");
-
-                return `
-                <div class="col-md-6 mb-3">
-                    <label class="fw-bold">${field}</label>
-                    <select name="${field}" class="form-select" required>
-                        <option value="">-- wählen --</option>
-                        ${opts}
-                    </select>
-                </div>`;
-            }
+    fieldsDiv.innerHTML = configs[target].map(field => {
+        if (dropdownSources[field]) {
+            const opts = dropdownSources[field]()
+                .map(o => `<option value="${o.value}">${o.label}</option>`)
+                .join("");
 
             return `
             <div class="col-md-6 mb-3">
                 <label class="fw-bold">${field}</label>
-                <input type="text" name="${field}" class="form-control" required>
+                <select name="${field}" class="form-select" required>
+                    <option value="">-- wählen --</option>
+                    ${opts}
+                </select>
             </div>`;
-        })
-        .join("");
+        }
+
+        return `
+        <div class="col-md-6 mb-3">
+            <label class="fw-bold">${field}</label>
+            <input type="text" name="${field}" class="form-control" required>
+        </div>`;
+    }).join("");
 }
 
 /* Helfer: liest Konfiguration korrekt */
