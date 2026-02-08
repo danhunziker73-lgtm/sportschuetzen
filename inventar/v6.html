@@ -117,16 +117,26 @@
         document.querySelectorAll('.main-submit').forEach(b => b.disabled = status);
     }
 
-    async function loadData() {
-        setBusy(true);
-        try {
-            const res = await fetch(`${WORKER_URL}?action=getInventarData`);
-            inventarData = await res.json();
-            fillDropdowns();
-            renderInventoryTable();
-        } catch (e) { console.error(e); }
-        setBusy(false);
+async function loadData() {
+    setBusy(true);
+    try {
+        const res = await fetch(`${WORKER_URL}?action=getInventarData`);
+        inventarData = await res.json();
+        fillDropdowns();
+        renderInventoryTable();
+
+        // 🔑 WICHTIG: Admin neu aufbauen, falls aktiv
+        const adminSelect = document.getElementById('admin-target');
+        if (adminSelect && adminSelect.value) {
+            renderAdminFields(adminSelect.value);
+        }
+
+    } catch (e) {
+        console.error(e);
     }
+    setBusy(false);
+}
+
 
     function getMitgliedName(id) {
         if(!id || id === "") return '<span class="badge bg-success">Im Lager</span>';
@@ -291,6 +301,9 @@ function getConfigValues(key) {
         const active = document.getElementById('btn-' + id);
         if(active) active.classList.replace('btn-outline-secondary', 'btn-primary');
     }
+
+ 
+
 </script>
 </body>
 </html>
