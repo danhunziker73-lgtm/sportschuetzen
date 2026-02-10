@@ -304,4 +304,35 @@
     }
 
     function renderEditor() {
-        document.getElementById('edit-anlaesse').innerHTML = state.dropdowns.anlaesse.map((a, i) =>
+        document.getElementById('edit-anlaesse').innerHTML = state.dropdowns.anlaesse.map((a, i) => `
+            <div style="display:flex; gap:5px; margin-bottom:5px">
+                <input type="text" value="${a}" onchange="state.dropdowns.anlaesse[${i}]=this.value">
+                <button class="btn-del" onclick="state.dropdowns.anlaesse.splice(${i},1); renderAll()">🗑️</button>
+            </div>`).join('');
+        document.getElementById('edit-orte').innerHTML = state.dropdowns.orteMitMaps.map((o, i) => `
+            <div style="display:flex; gap:5px; margin-bottom:5px">
+                <input type="text" placeholder="Ort" value="${o[0]}" onchange="state.dropdowns.orteMitMaps[${i}][0]=this.value">
+                <input type="text" placeholder="Maps Link" value="${o[1]}" onchange="state.dropdowns.orteMitMaps[${i}][1]=this.value">
+                <button class="btn-del" onclick="state.dropdowns.orteMitMaps.splice(${i},1); renderAll()">🗑️</button>
+            </div>`).join('');
+    }
+
+    function addTermin() {
+        state.termine.unshift({ datum: "", startzeit: "", endzeit: "", "anlass_/_titel": "", ort: "", kategorie: "Jahresprogramm", status: "provisorisch" });
+        renderAll();
+    }
+
+    async function saveAll() {
+        const btn = document.querySelector('.nav-save');
+        btn.style.opacity = "0.5";
+        try {
+            await fetch(`${WORKER_URL}?action=saveAdminData`, { method: 'POST', body: JSON.stringify(state) });
+            alert("✅ Daten erfolgreich in der Cloud gespeichert!");
+        } catch (e) { alert("Fehler: " + e); }
+        btn.style.opacity = "1";
+    }
+
+    window.onload = loadData;
+</script>
+</body>
+</html>
