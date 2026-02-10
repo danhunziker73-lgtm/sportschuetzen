@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin-Panel 4.0 | Sportschützen Muhen</title>
+    <style>
+        :root { 
+            --primary: #4f46e5; --secondary: #1e293b; --success: #10b981; 
+            --danger: #ef4444; --warning: #f59e0b; --bg: #f8fafc; --card-bg: #ffffff;
+            --border: #e2e8f0; --text: #334155; --sidebar-w: 240px;
+        }
+        body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); margin: 0; display: flex; min-height: 100vh; }
+        
+        /* Sidebar Navigation */
+        nav { width: var(--sidebar-w); background: var(--secondary); color: white; padding: 20px; display: flex; flex-direction: column; gap: 10px; position: fixed; height: 100vh; }
+        nav h2 { font-size: 1.2rem; margin-bottom: 30px; padding-left: 10px; }
+        .nav-btn { padding: 12px 15px; border-radius: 8px; cursor: pointer; transition: 0.2s; border: none; background: transparent; color: #94a3b8; text-align: left; font-size: 0.95rem; font-weight: 500; }
+        .nav-btn:hover { background: rgba(255,255,255,0.05); color: white; }
+        .nav-btn.active { background: var(--primary); color: white; }
+
+        /* Main Content Area */
+        main { margin-left: var(--sidebar-w); flex: 1; padding: 30px; max-width: 1400px; }
+        header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
+        
+        /* Tab Control */
+        .tab-content { display: none; animation: fadeIn 0.3s ease; }
+        .tab-content.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Cards & UI */
+        .card { background: var(--card-bg); padding: 25px; border-radius: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); border: 1px solid var(--border); margin-bottom: 25px; }
+        h3 { margin-top: 0; font-size: 1.1rem; display: flex; align-items: center; gap: 10px; color: var(--secondary); }
+        h3::before { content: ''; width: 4px; height: 18px; background: var(--primary); border-radius: 4px; }
+
+        .gv-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
+        .gv-item { background: #fcfcfd; padding: 15px; border-radius: 12px; border: 1px solid var(--border); }
+        .gv-item label { display: block; font-weight: 600; font-size: 0.85rem; color: #64748b; margin-bottom: 8px; }
+
+        /* Tables */
+        .table-wrapper { border-radius: 12px; overflow: hidden; border: 1px solid var(--border); background: white; }
+        table { width: 100%; border-collapse: collapse; }
+        th { background: #f1f5f9; padding: 12px; text-align: left; font-size: 0.75rem; text-transform: uppercase; color: #64748b; }
+        td { padding: 10px 12px; border-bottom: 1px solid var(--border); font-size: 0.9rem; }
+        .row-warn { background-color: #fff1f2; }
+        .row-abgesagt { opacity: 0.5; text-decoration: line-through; }
+
+        /* Form Elements */
+        input, select { padding: 8px 12px; border: 1px solid var(--border); border-radius: 8px; width: 100%; box-sizing: border-box; }
+        input:focus { border-color: var(--primary); outline: none; }
+        .btn { padding: 10px 20px; border-radius: 10px; cursor: pointer; font-weight: 600; border: none; transition: 0.2s; display: inline-flex; align-items: center; gap: 8px; }
+        .btn-save { background: var(--primary); color: white; }
+        .btn-add { background: #eef2ff; color: var(--primary); border: 1px dashed var(--primary); margin-bottom: 15px; }
+        .btn-del { background: #fef2f2; color: var(--danger); }
+
+        /* Tags */
+        .tag-box { display: flex; flex-wrap: wrap; gap: 5px; background: white; border: 1px solid var(--border); padding: 5px; border-radius: 8px; min-height: 40px; margin-bottom: 5px; }
+        .tag { background: #e0e7ff; color: #4338ca; padding: 2px 8px; border-radius: 6px; font-size: 0.8rem; display: flex; align-items: center; gap: 5px; }
+        .tag span { color: var(--danger); cursor: pointer; font-weight: bold; }
+
+        .loader { position: fixed; inset: 0; background: white; display: flex; justify-content: center; align-items: center; z-index: 10000; flex-direction: column; }
+        .spinner { width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid var(--primary); border-radius: 50%; animation: spin 1s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+
+<div id="loader" class="loader"><div class="spinner"></div><p>Synchronisiere Daten...</p></div>
+
+<nav>
+    <h2>Admin 4.0</h2>
+    <button class="nav-btn active" onclick="showTab('tab-gv')">⚙️ GV & App-Info</button>
+    <button class="nav-btn" onclick="showTab('tab-termine')">📅 Jahresprogramm</button>
+    <button class="nav-btn" onclick="showTab('tab-anmeldungen')">📝 GV Anmeldungen</button>
+    <button class="nav-btn" onclick="showTab('tab-editor')">🛠️ Stammdaten-Editor</button>
+    <div style="margin-top: auto;">
+        <button class="btn btn-save" style="width: 100%" onclick="saveAll()">💾 Speichern</button>
+    </div>
+</nav>
+
+<main>
+    <header>
+        <h1 id="tab-title">GV & App-Konfiguration</h1>
+        <div id="last-sync" style="font-size: 0.8rem; color: #94a3b8;">Zuletzt aktualisiert: -</div>
+    </header>
+
+    <div id="tab-gv" class="tab-content active">
+        <div class="card">
+            <h3>GV Konfiguration</h3>
+            <div id="gv-list" class="gv-grid"></div>
+        </div>
+        <div class="card">
+            <h3>Mail-Benachrichtigungen</h3>
+            <div id="app-info-list" class="gv-grid"></div>
+        </div>
+    </div>
+
+    <div id="tab-termine" class="tab-content">
+        <button class="btn btn-add" onclick="addTermin()">+ Neuen Termin hinzufügen</button>
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width:160px">Datum</th>
+                        <th style="width:110px">Zeit</th>
+                        <th>Anlass</th>
+                        <th>Ort</th>
+                        <th style="width:150px">Kategorie</th>
+                        <th style="width:130px">Status</th>
+                        <th style="width:40px"></th>
+                    </tr>
+                </thead>
+                <tbody id="termine-body"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="tab-anmeldungen" class="tab-content">
+        <div class="card">
+            <h3>Präsenzliste & Rückmeldungen</h3>
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Status</th>
+                            <th>Letzte Änderung</th>
+                            <th>ID-Check</th>
+                        </tr>
+                    </thead>
+                    <tbody id="anmelde-body"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div id="tab-editor" class="tab-content">
+        <div class="gv-grid">
+            <div class="card">
+                <h3>Anlass-Typen</h3>
+                <div id="edit-anlaesse"></div>
+                <button class="btn btn-add" style="width:100%; margin-top:10px" onclick="state.dropdowns.anlaesse.push(''); renderAll();">+ Typ hinzufügen</button>
+            </div>
+            <div class="card">
+                <h3>Orte & Maps Links</h3>
+                <div id="edit-orte"></div>
+                <button class="btn btn-add" style="width:100%; margin-top:10px" onclick="state.dropdowns.orteMitMaps.push(['','']); renderAll();">+ Ort hinzufügen</button>
+            </div>
+        </div>
+    </div>
+</main>
+
+<script>
+    const WORKER_URL = "https://termine.dan-hunziker73.workers.dev/";
+    let state = { 
+        platzhalter: [], termine: [], app_info: [], 
+        members: [], anmeldungen: [],
+        dropdowns: { anlaesse:[], orteMitMaps:[], kategorien:['Jahresprogramm','Schiesstermine','Regionalschiessen'], status:['fix','provisorisch','abgesagt'] } 
+    };
+
+    // Tab-Steuerung
+    function showTab(tabId) {
+        document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById(tabId).classList.add('active');
+        event.currentTarget.classList.add('active');
+        document.getElementById('tab-title').innerText = event.currentTarget.innerText.split(' ').slice(1).join(' ');
+    }
+
+    async function loadData() {
+        try {
+            const resp = await fetch(`${WORKER_URL}?action=loadAdminData`);
+            state = await resp.json();
+            renderAll();
+            document.getElementById('loader').style.display = 'none';
+        } catch (err) { alert("Fehler beim Laden: " + err); }
+    }
+
+    function renderAll() {
+        renderGV();
+        renderTermine();
+        renderAnmeldungen();
+        renderEditor();
+        renderAppInfo();
+    }
+
+    // --- RENDER FUNKTIONEN ---
+
+    function renderGV() {
+        const container = document.getElementById('gv-list');
+        container.innerHTML = state.platzhalter.map((p, i) => `
+            <div class="gv-item">
+                <label>${p.platzhaltername}</label>
+                <input type="text" value="${p.inhalt}" onchange="updateGV(${i}, this.value)">
+                <small>${p.erklärung || ''}</small>
+            </div>
+        `).join('');
+    }
+
+    function updateGV(i, val) {
+        // Gimmick: ID Extraktion aus Google Links
+        if(state.platzhalter[i].platzhaltername.includes('_ID')) {
+            const match = val.match(/[-\w]{25,}/);
+            state.platzhalter[i].inhalt = match ? match[0] : val;
+        } else {
+            state.platzhalter[i].inhalt = val;
+        }
+        renderAll();
+    }
+
+    function renderTermine() {
+        const body = document.getElementById('termine-body');
+        body.innerHTML = state.termine.map((t, i) => {
+            const status = (t.status || "").toLowerCase();
+            const rowClass = status === 'abgesagt' ? 'row-abgesagt' : (!t.datum ? 'row-warn' : '');
+            
+            return `<tr class="${rowClass}">
+                <td><input type="date" value="${t.datum || ''}" onchange="state.termine[${i}].datum=this.value; renderAll()"></td>
+                <td><input type="time" value="${t.startzeit || ''}" onchange="state.termine[${i}].startzeit=this.value"></td>
+                <td><select onchange="state.termine[${i}]['anlass_/_titel']=this.value">
+                    <option value="">-- wählen --</option>
+                    ${state.dropdowns.anlaesse.map(a => `<option value="${a}" ${a===t['anlass_/_titel']?'selected':''}>${a}</option>`).join('')}
+                </select></td>
+                <td><select onchange="updateOrt(${i}, this.value)">
+                    <option value="">-- Ort --</option>
+                    ${state.dropdowns.orteMitMaps.map(o => `<option value="${o[0]}" ${o[0]===t.ort?'selected':''}>${o[0]}</option>`).join('')}
+                </select></td>
+                <td><select onchange="state.termine[${i}].kategorie=this.value">
+                    ${state.dropdowns.kategorien.map(k => `<option value="${k}" ${k===t.kategorie?'selected':''}>${k}</option>`).join('')}
+                </select></td>
+                <td><select onchange="state.termine[${i}].status=this.value">
+                    ${state.dropdowns.status.map(s => `<option value="${s}" ${s===t.status?'selected':''}>${s}</option>`).join('')}
+                </select></td>
+                <td><button class="btn btn-del" onclick="state.termine.splice(${i},1); renderAll()">✕</button></td>
+            </tr>`;
+        }).join('');
+    }
+
+    function updateOrt(i, ort) {
+        state.termine[i].ort = ort;
+        const pair = state.dropdowns.orteMitMaps.find(o => o[0] === ort);
+        state.termine[i].austragungsorte_map = pair ? pair[1] : "";
+        renderAll();
+    }
+
+    function renderAnmeldungen() {
+        const body = document.getElementById('anmelde-body');
+        // Kombiniere Mitglieder mit Anmeldungs-Tabelle
+        body.innerHTML = state.members.map(m => {
+            const entry = state.anmeldungen.find(a => a.ID == m.ID);
+            const status = entry ? entry.Teilnahme : "Ausstehend";
+            const color = status === 'Ja' ? '#10b981' : (status === 'Nein' ? '#ef4444' : '#94a3b8');
+            
+            return `<tr>
+                <td><strong>${m.Vorname} ${m.Nachname}</strong></td>
+                <td><span style="color:${color}; font-weight:700">${status}</span></td>
+                <td>${entry ? entry.Zeitstempel : '-'}</td>
+                <td style="font-family:monospace; font-size:0.7rem">${m.ID}</td>
+            </tr>`;
+        }).join('');
+    }
+
+    function renderEditor() {
+        document.getElementById('edit-anlaesse').innerHTML = state.dropdowns.anlaesse.map((a, i) => `
+            <div style="display:flex; gap:5px; margin-bottom:5px">
+                <input type="text" value="${a}" onchange="state.dropdowns.anlaesse[${i}]=this.value">
+                <button class="btn btn-del" onclick="state.dropdowns.anlaesse.splice(${i},1); renderAll()">✕</button>
+            </div>
+        `).join('');
+
+        document.getElementById('edit-orte').innerHTML = state.dropdowns.orteMitMaps.map((o, i) => `
+            <div style="display:flex; gap:5px; margin-bottom:5px">
+                <input type="text" placeholder="Ort" value="${o[0]}" onchange="state.dropdowns.orteMitMaps[${i}][0]=this.value">
+                <input type="text" placeholder="Map Link" value="${o[1]}" onchange="state.dropdowns.orteMitMaps[${i}][1]=this.value">
+                <button class="btn btn-del" onclick="state.dropdowns.orteMitMaps.splice(${i},1); renderAll()">✕</button>
+            </div>
+        `).join('');
+    }
+
+    function renderAppInfo() {
+        const container = document.getElementById('app-info-list');
+        container.innerHTML = state.app_info.map((info, i) => `
+            <div class="gv-item">
+                <label>${info.bezeichnung}</label>
+                <div class="tag-box">
+                    ${(info.mailempfänger || "").split(';').filter(x=>x).map(m => `
+                        <div class="tag">${m.trim()} <span onclick="removeMail(${i}, '${m.trim()}')">×</span></div>
+                    `).join('')}
+                </div>
+                <select onchange="addMail(${i}, this.value)">
+                    <option value="">+ Empfänger hinzufügen</option>
+                    ${state.members.map(m => `<option value="${m.E_Mail}">${m.Vorname} ${m.Nachname}</option>`).join('')}
+                </select>
+            </div>
+        `).join('');
+    }
+
+    function addMail(idx, email) {
+        if(!email) return;
+        let current = state.app_info[idx].mailempfänger || "";
+        if(!current.includes(email)) {
+            state.app_info[idx].mailempfänger = current ? current + "; " + email : email;
+        }
+        renderAll();
+    }
+
+    function removeMail(idx, email) {
+        let mails = state.app_info[idx].mailempfänger.split(';').map(m => m.trim());
+        state.app_info[idx].mailempfänger = mails.filter(m => m !== email).join('; ');
+        renderAll();
+    }
+
+    function addTermin() {
+        state.termine.unshift({ datum: "", startzeit: "", endzeit: "", "anlass_/_titel": "", ort: "", austragungsorte_map: "", kategorie: "Jahresprogramm", status: "provisorisch" });
+        renderAll();
+    }
+
+    async function saveAll() {
+        const btn = document.querySelector('.btn-save');
+        const originalText = btn.innerText;
+        btn.innerText = "⏳ Speichere...";
+        btn.disabled = true;
+        
+        try {
+            await fetch(`${WORKER_URL}?action=saveAdminData`, { 
+                method: 'POST', 
+                body: JSON.stringify(state) 
+            });
+            alert("✅ Cloud-Update erfolgreich!");
+            document.getElementById('last-sync').innerText = "Zuletzt aktualisiert: " + new Date().toLocaleTimeString();
+        } catch (e) { 
+            alert("Speicherfehler: " + e); 
+        } finally {
+            btn.innerText = originalText;
+            btn.disabled = false;
+        }
+    }
+
+    window.onload = loadData;
+</script>
+</body>
+</html>
