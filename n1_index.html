@@ -21,8 +21,14 @@
 /************************************************
  * OneSignal Init (UNVERÄNDERT, MUSS BLEIBEN)
  ************************************************/
+<script>
+/************************************************
+ * OneSignal Init & Automation
+ ************************************************/
 window.OneSignalDeferred = window.OneSignalDeferred || [];
 OneSignalDeferred.push(async function (OneSignal) {
+    
+    // 1. Initialisierung
     await OneSignal.init({
         appId: "975091f5-948b-48d4-9e61-b7f4d43a1021",
         serviceWorkerParam: { scope: "/sportschuetzen/" },
@@ -31,16 +37,7 @@ OneSignalDeferred.push(async function (OneSignal) {
         notifyButton: { enable: true }
     });
 
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-    const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
-
-    if (isIOS && !isStandalone) {
-        console.log("📢 OneSignal: iOS Push nur als Homescreen-App.");
-    }
-
-
-
-    // 1. PID aus URL holen
+    // 2. PID aus URL holen
     const urlParams = new URLSearchParams(window.location.search);
     const personNumber = urlParams.get("pid");
 
@@ -50,57 +47,69 @@ OneSignalDeferred.push(async function (OneSignal) {
     }
 
     try {
-        // 2. Daten via Cloudflare Worker von GAS laden
-        // Nutze hier die URL deines Cloudflare Workers
+        // 3. Daten via Cloudflare Worker laden
         const CLOUDFLARE_URL = "https://termine.dan-hunziker73.workers.dev/"; 
         const response = await fetch(`${CLOUDFLARE_URL}?action=loadAdminData`);
         const data = await response.json();
 
-        // 3. Das richtige Mitglied in 'push_onesignal' finden
         if (!data.push_onesignal) {
             console.error("❌ Fehler: 'push_onesignal' Daten nicht im JSON gefunden.");
             return;
         }
 
+        // 4. Mitglied finden
         const member = data.push_onesignal.find(m => String(m.personnumber) === String(personNumber));
 
         if (!member) {
-            console.warn("⚠️ Mitglied mit PID " + personNumber + " nicht im Sheet 'push_onesignal' gefunden.");
+            console.warn("⚠️ Mitglied mit PID " + personNumber + " nicht im Sheet gefunden.");
             return;
         }
 
-        // 4. OneSignal Login & Tags setzen
         console.log("✅ Mitglied gefunden:", member.firstname, member.lastname);
-        
-        // Login mit der PersonNumber als External ID
-        await OneSignal.login(String(member.personnumber));
 
-        // Tags vorbereiten
+        // 5. OneSignal Login (wichtig: warten bis fertig!)
+        await OneSignal.login(String(member.personnumber));
+        console.log("🔑 OneSignal Login erfolgreich für PID:", member.personnumber);
+
+        // Kleiner Sicherheits-Timeout für die Synchronisation
+        await new Promise(resolve => setTimeout(resolve, 800));
+
+        // 6. Tags erstellen
         const tags = {
             "vorname": member.firstname,
             "nachname": member.lastname,
             "verein": "sportschuetzen_muhen"
         };
 
-        // Kategorien aus dem String extrahieren (z.B. "Aktiv-A G50m, Ehrenmitglied")
         if (member.membershipcategory) {
             const categories = member.membershipcategory.split(",");
             categories.forEach(cat => {
-                const cleanTag = cat.trim().replace(/\s+/g, '_'); // "Aktiv-A G50m" -> "Aktiv-A_G50m"
+                const cleanTag = cat.trim().replace(/\s+/g, '_');
                 if (cleanTag) {
                     tags[cleanTag] = "true";
                 }
             });
         }
 
-        // Tags an OneSignal senden
+        // 7. Tags senden
         await OneSignal.User.addTags(tags);
-        console.log("🏷️ OneSignal Tags gesetzt:", tags);
+        console.log("🏷️ OneSignal Tags erfolgreich synchronisiert:", tags);
 
     } catch (err) {
-        console.error("❌ Fehler bei der Initialisierung:", err);
+        console.error("❌ Fehler bei der OneSignal-Verarbeitung:", err);
     }
 });
+
+/************************************************
+ * iOS & Standalone Checks
+ ************************************************/
+const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
+
+if (isIOS && !isStandalone) {
+    console.log("📢 OneSignal Hinweis: iOS Push erfordert 'Zum Home-Bildschirm hinzufügen'.");
+}
+</script>
 
 /************************************************
  * ZENTRALE APP-RESUME LOGIK (NEU)
