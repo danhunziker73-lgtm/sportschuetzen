@@ -38,62 +38,68 @@ OneSignalDeferred.push(async function (OneSignal) {
         console.log("📢 OneSignal: iOS Push nur als Homescreen-App.");
     }
 
-    /************************************************
-     * 🔵 NEU: Automatische Registrierung via PID
-     ************************************************/
 
+
+    // 1. PID aus URL holen
     const urlParams = new URLSearchParams(window.location.search);
     const personNumber = urlParams.get("pid");
 
     if (!personNumber) {
-        console.log("ℹ️ Keine PersonNumber übergeben.");
+        console.log("ℹ️ Keine PersonNumber (pid) in der URL gefunden.");
         return;
     }
 
     try {
-        // 🔹 Mitgliederdaten von GAS laden
-        const response = await fetch("DEINE_GAS_WEBAPP_URL?action=loadAdminData");
+        // 2. Daten via Cloudflare Worker von GAS laden
+        // Nutze hier die URL deines Cloudflare Workers
+        const CLOUDFLARE_URL = "https://termine.dan-hunziker73.workers.dev/"; 
+        const response = await fetch(`${CLOUDFLARE_URL}?action=loadAdminData`);
         const data = await response.json();
 
-        if (!data.members) {
-            console.log("⚠️ Keine Member-Daten erhalten.");
+        // 3. Das richtige Mitglied in 'push_onesignal' finden
+        if (!data.push_onesignal) {
+            console.error("❌ Fehler: 'push_onesignal' Daten nicht im JSON gefunden.");
             return;
         }
 
-        const member = data.members.find(m => m.personnumber == personNumber);
+        const member = data.push_onesignal.find(m => String(m.personnumber) === String(personNumber));
 
         if (!member) {
-            console.log("⚠️ Mitglied nicht gefunden:", personNumber);
+            console.warn("⚠️ Mitglied mit PID " + personNumber + " nicht im Sheet 'push_onesignal' gefunden.");
             return;
         }
 
-        // 🔹 Login bei OneSignal
-        await OneSignal.login(personNumber);
-        console.log("✅ OneSignal Login gesetzt für:", personNumber);
+        // 4. OneSignal Login & Tags setzen
+        console.log("✅ Mitglied gefunden:", member.firstname, member.lastname);
+        
+        // Login mit der PersonNumber als External ID
+        await OneSignal.login(String(member.personnumber));
 
-        // 🔹 Alte Tags optional entfernen (sauber halten)
-        await OneSignal.User.removeTags();
+        // Tags vorbereiten
+        const tags = {
+            "vorname": member.firstname,
+            "nachname": member.lastname,
+            "verein": "sportschuetzen_muhen"
+        };
 
-        // 🔹 Kategorien als Tags setzen
+        // Kategorien aus dem String extrahieren (z.B. "Aktiv-A G50m, Ehrenmitglied")
         if (member.membershipcategory) {
             const categories = member.membershipcategory.split(",");
-
-            for (const cat of categories) {
-                const clean = cat.trim();
-                if (clean) {
-                    await OneSignal.User.addTag(clean, "true");
-                    console.log("🏷️ Tag gesetzt:", clean);
+            categories.forEach(cat => {
+                const cleanTag = cat.trim().replace(/\s+/g, '_'); // "Aktiv-A G50m" -> "Aktiv-A_G50m"
+                if (cleanTag) {
+                    tags[cleanTag] = "true";
                 }
-            }
+            });
         }
 
-        // Optional: Standard-Tag Verein
-        await OneSignal.User.addTag("verein", "sportschuetzen_muhen");
+        // Tags an OneSignal senden
+        await OneSignal.User.addTags(tags);
+        console.log("🏷️ OneSignal Tags gesetzt:", tags);
 
     } catch (err) {
-        console.error("❌ Fehler bei OneSignal Registrierung:", err);
+        console.error("❌ Fehler bei der Initialisierung:", err);
     }
-
 });
 
 /************************************************
