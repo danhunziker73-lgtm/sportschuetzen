@@ -63,21 +63,18 @@ OneSignalDeferred.push(async function (OneSignal) {
 
         console.log("✅ Mitglied gefunden:", member.firstname, member.lastname);
 
-   // 1. Prüfen, ob wir bereits als diese PID eingeloggt sind
+        // 5. Login-Check (Invasiv gegen 409-Fehler)
         const externalId = await OneSignal.User.getExternalId();
         
         if (externalId !== String(member.personnumber)) {
             console.log("🔑 Logge neu ein als PID:", member.personnumber);
             await OneSignal.login(String(member.personnumber));
-            
-            // WICHTIG: Nach dem Login brauchen wir eine längere Pause, 
-            // damit OneSignal die interne 'onesignal_id' aktualisieren kann.
             await new Promise(resolve => setTimeout(resolve, 2000)); 
         } else {
             console.log("✅ Bereits korrekt eingeloggt.");
         }
 
-        // 2. Tags vorbereiten
+        // 6. Tags vorbereiten
         const tags = {
             "vorname": member.firstname,
             "nachname": member.lastname,
@@ -92,14 +89,19 @@ OneSignalDeferred.push(async function (OneSignal) {
             });
         }
 
-        // 3. Tags setzen mit Fehlerabfang
+        // 7. Tags setzen
         try {
             await OneSignal.User.addTags(tags);
             console.log("🏷️ OneSignal Tags erfolgreich synchronisiert:", tags);
         } catch (tagError) {
-            console.warn("⚠️ Tags konnten nicht sofort gesetzt werden, OneSignal versucht es im Hintergrund erneut.");
+            console.warn("⚠️ Tag-Sync verzögert.");
         }
-});
+
+    } catch (err) {
+        console.error("❌ Kritischer Fehler im Ablauf:", err);
+    } // <-- Dieser Catch hat gefehlt!
+}); // Ende OneSignalDeferred
+
 
 /************************************************
  * iOS & Standalone Checks
