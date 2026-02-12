@@ -63,14 +63,21 @@ OneSignalDeferred.push(async function (OneSignal) {
 
         console.log("✅ Mitglied gefunden:", member.firstname, member.lastname);
 
-        // 5. OneSignal Login (wichtig: warten bis fertig!)
-        await OneSignal.login(String(member.personnumber));
-        console.log("🔑 OneSignal Login erfolgreich für PID:", member.personnumber);
+   // 1. Prüfen, ob wir bereits als diese PID eingeloggt sind
+        const externalId = await OneSignal.User.getExternalId();
+        
+        if (externalId !== String(member.personnumber)) {
+            console.log("🔑 Logge neu ein als PID:", member.personnumber);
+            await OneSignal.login(String(member.personnumber));
+            
+            // WICHTIG: Nach dem Login brauchen wir eine längere Pause, 
+            // damit OneSignal die interne 'onesignal_id' aktualisieren kann.
+            await new Promise(resolve => setTimeout(resolve, 2000)); 
+        } else {
+            console.log("✅ Bereits korrekt eingeloggt.");
+        }
 
-        // Kleiner Sicherheits-Timeout für die Synchronisation
-        await new Promise(resolve => setTimeout(resolve, 800));
-
-        // 6. Tags erstellen
+        // 2. Tags vorbereiten
         const tags = {
             "vorname": member.firstname,
             "nachname": member.lastname,
@@ -81,19 +88,17 @@ OneSignalDeferred.push(async function (OneSignal) {
             const categories = member.membershipcategory.split(",");
             categories.forEach(cat => {
                 const cleanTag = cat.trim().replace(/\s+/g, '_');
-                if (cleanTag) {
-                    tags[cleanTag] = "true";
-                }
+                if (cleanTag) tags[cleanTag] = "true";
             });
         }
 
-        // 7. Tags senden
-        await OneSignal.User.addTags(tags);
-        console.log("🏷️ OneSignal Tags erfolgreich synchronisiert:", tags);
-
-    } catch (err) {
-        console.error("❌ Fehler bei der OneSignal-Verarbeitung:", err);
-    }
+        // 3. Tags setzen mit Fehlerabfang
+        try {
+            await OneSignal.User.addTags(tags);
+            console.log("🏷️ OneSignal Tags erfolgreich synchronisiert:", tags);
+        } catch (tagError) {
+            console.warn("⚠️ Tags konnten nicht sofort gesetzt werden, OneSignal versucht es im Hintergrund erneut.");
+        }
 });
 
 /************************************************
