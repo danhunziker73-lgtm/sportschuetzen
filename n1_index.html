@@ -117,53 +117,6 @@ OneSignalDeferred.push(async function(OneSignal) {
 
 });
 
-/************************************************
- * iOS & Standalone Checks
- ************************************************/
-const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
-
-if (isIOS && !isStandalone) {
-    console.log("📢 OneSignal Hinweis: iOS Push erfordert 'Zum Home-Bildschirm hinzufügen'.");
-}
-
-/************************************************
- * ZENTRALE APP-RESUME LOGIK
- ************************************************/
-(function () {
-
-    let lastResume = 0;
-    const MIN_INTERVAL = 1500;
-
-    function fireResume(source) {
-        const now = Date.now();
-        if (now - lastResume < MIN_INTERVAL) return;
-        lastResume = now;
-
-        console.log("📲 App Resume:", source);
-
-        // Resume an alle iFrames senden
-        document.querySelectorAll("iframe").forEach(iframe => {
-            iframe.contentWindow?.postMessage(
-                { type: "app:resume", source, ts: now },
-                "*"
-            );
-        });
-    }
-
-    document.addEventListener("visibilitychange", () => {
-        if (document.visibilityState === "visible") fireResume("visibility");
-    });
-
-    window.addEventListener("pageshow", e => {
-        if (e.persisted) fireResume("pageshow");
-    });
-
-    window.addEventListener("focus", () => fireResume("focus"));
-
-})();
-
-
 
 /************************************************
  * iOS & Standalone Checks
