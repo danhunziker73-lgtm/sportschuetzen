@@ -53,16 +53,14 @@ OneSignalDeferred.push(async function (OneSignal) {
         const member = data.push_onesignal.find(m => String(m.personnumber) === String(pid));
         if (!member) return logToUI("❌ PID nicht im System.");
 
-        // 4. Identitäts-Check (Wir nutzen die Variablen hier NUR EINMAL)
+   // 4. & 5. Identität & Tags vorbereiten
         const targetPid = String(pid);
-        const activeExternalId = OneSignal.User.externalId;
-
-        // 5. Tags vorbereiten (damit wir sie später griffbereit haben)
         const tagsToSync = {
             "vorname": member.firstname,
             "nachname": member.lastname,
             "verein": "sportschuetzen_muhen"
         };
+        // ... (Kategorien-Logik wie gehabt)
         if (member.membershipcategory) {
             member.membershipcategory.split(",").forEach(cat => {
                 const clean = cat.trim().replace(/\s+/g, '_');
@@ -70,29 +68,28 @@ OneSignalDeferred.push(async function (OneSignal) {
             });
         }
 
-        // 6. Ablaufsteuerung: Login oder Tags?
-        if (activeExternalId !== targetPid) {
-            logToUI(`🔑 Login-Phase: Verknüpfe ${targetPid}...`);
+        // 6. Der "Reload-Validierungs-Check"
+        logToUI(`🔍 Prüfe Identität: Aktuell [${OneSignal.User.externalId}] vs Ziel [${targetPid}]`);
+
+        if (OneSignal.User.externalId !== targetPid) {
+            logToUI("🔑 Identität passt nicht. Triggere Login...");
             await OneSignal.login(targetPid);
             
-            logToUI("⏳ Identität wird registriert. Warte 10s auf Server-Sync...");
-            
-            // Erst nach langer Pause Tags senden (vermeidet 409 Conflict)
-            setTimeout(async () => {
-                try {
-                    logToUI("📤 Sende Tags nach Wartezeit...");
-                    await OneSignal.User.addTags(tagsToSync);
-                    logToUI("✅ Tags synchronisiert.");
-                } catch (e) {
-                    logToUI("⚠️ Tag-Sync verzögert fehlgeschlagen.");
-                }
-            }, 10000); 
+            logToUI("🔄 Erbitte Datenbank-Abgleich. Seite wird in 3s neu geladen...");
+            setTimeout(() => {
+                window.location.reload(); // Hard Reset des SDK-Status
+            }, 3000);
             
         } else {
-            // Wenn wir schon eingeloggt sind, direkt Tags senden
-            logToUI(`✅ Login steht (${activeExternalId}). Aktualisiere Tags...`);
-            await OneSignal.User.addTags(tagsToSync);
-            logToUI("🏷️ Tags erfolgreich aktualisiert.");
+            // NUR WENN DIE ID STIMMT, SENDEN WIR TAGS
+            logToUI("✅ Identität vom SDK bestätigt. Sende Tags...");
+            try {
+                await OneSignal.User.addTags(tagsToSync);
+                logToUI("🚀 Tags erfolgreich vom Server akzeptiert!");
+            } catch (tagErr) {
+                logToUI("⚠️ Server meldet trotzdem Konflikt. Dashboard-Check nötig.");
+                console.error(tagErr);
+            }
         }
 
     } catch (err) {
