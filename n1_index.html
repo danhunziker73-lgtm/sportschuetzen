@@ -63,21 +63,18 @@ OneSignalDeferred.push(async function (OneSignal) {
 
         console.log("✅ Mitglied gefunden:", member.firstname, member.lastname);
 
-// 5. Login-Check mit Force-Reset bei Bedarf
+// 5. Login-Check mit Event-Überwachung
 const targetPid = String(member.personnumber);
 
-// Prüfen, ob wir in einer korrupten Session stecken (404/409 Historie)
-if (OneSignal.User.externalId !== targetPid) {
-    console.log("🧹 Bereinige alte Session...");
-    // Logout löscht lokale IDs, damit keine 404-Leichen gesendet werden
-    await OneSignal.logout(); 
-    await new Promise(r => setTimeout(r, 1000));
-    
-    console.log(`🔑 Neuer Login: ${targetPid}`);
-    await OneSignal.login(targetPid);
-    await new Promise(r => setTimeout(r, 3000)); 
-} else {
-    console.log("✅ Identität stabil: " + targetPid);
+// Funktion zum Senden der Tags
+async function syncTags(tagsToSend) {
+    try {
+        console.log("📤 Sende Tags an OneSignal...", tagsToSend);
+        await OneSignal.User.addTags(tagsToSend);
+        console.log("🏷️ OneSignal Tags erfolgreich synchronisiert.");
+    } catch (err) {
+        console.error("❌ Fehler beim Tag-Sync:", err);
+    }
 }
 
 // 6. Tags vorbereiten
@@ -86,27 +83,29 @@ const tags = {
     "nachname": member.lastname,
     "verein": "sportschuetzen_muhen"
 };
-
 if (member.membershipcategory) {
-    const categories = member.membershipcategory.split(",");
-    categories.forEach(cat => {
+    member.membershipcategory.split(",").forEach(cat => {
         const cleanTag = cat.trim().replace(/\s+/g, '_');
         if (cleanTag) tags[cleanTag] = "true";
     });
 }
 
-// 7. Tags senden mit verzögertem Start
-// Wir warten hier extra lang, damit der 404/409-Spuk im Netzwerk vorbei ist
-setTimeout(async () => {
-    try {
-        console.log("📤 Finaler Tag-Versand...");
-        await OneSignal.User.addTags(tags);
-        console.log("🚀 Tags sind nun final auf dem Server!");
-    } catch (err) {
-        console.error("❌ Netzwerk-Konflikt:", err);
-    }
-}, 2000);
-        
+// 7. Identität prüfen und Flow steuern
+if (OneSignal.User.externalId !== targetPid) {
+    console.log(`🔑 Starte Login für PID: ${targetPid}`);
+    
+    // Wichtig: Zuerst einloggen
+    await OneSignal.login(targetPid);
+    
+    // Wir warten, bis das SDK bestätigt, dass der User gewechselt hat
+    // Das verhindert den 409 Conflict, da wir erst senden, wenn die ID feststeht
+    setTimeout(() => {
+        syncTags(tags);
+    }, 5000); // 5 Sekunden Sicherheitspause für das Backend
+} else {
+    console.log("✅ Identität bereits korrekt. Aktualisiere Tags...");
+    syncTags(tags);
+}        
     } catch (err) {
         console.error("❌ Kritischer Fehler im Ablauf:", err);
     }
