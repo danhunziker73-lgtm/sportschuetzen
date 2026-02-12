@@ -84,36 +84,32 @@ if (currentExternalId !== targetPid) {
     console.log("✅ Bereits korrekt eingeloggt als PID " + targetPid);
 }
 
-// 6. Tags vorbereiten
-const tags = {
-    "vorname": member.firstname,
-    "nachname": member.lastname,
-    "verein": "sportschuetzen_muhen"
-};
+// 5. Login-Check (Robuste Version)
+const currentExternalId = OneSignal.User.externalId;
+const targetPid = String(member.personnumber);
 
-if (member.membershipcategory) {
-    const categories = member.membershipcategory.split(",");
-    categories.forEach(cat => {
-        const cleanTag = cat.trim().replace(/\s+/g, '_');
-        if (cleanTag) tags[cleanTag] = "true";
-    });
+if (currentExternalId !== targetPid) {
+    console.log(`🔑 Login erforderlich: ${targetPid}`);
+    await OneSignal.login(targetPid);
+    // Dem Server Zeit geben, die neue Verknüpfung zu registrieren
+    await new Promise(r => setTimeout(r, 1500)); 
 }
 
-// 7. Tags setzen mit Fehlerbehandlung
-try {
-    // Sicherstellen, dass wir nicht versuchen, leere Tags zu senden
-    if (Object.keys(tags).length > 0) {
+// 6. Tags vorbereiten (dein bestehender Code...)
+const tags = { /* ... deine Tags ... */ };
+
+// 7. Tags mit Verzögerung und Fehlerprüfung setzen
+setTimeout(async () => {
+    try {
+        console.log("📤 Sende Tags an OneSignal...");
         await OneSignal.User.addTags(tags);
-        console.log("🏷️ OneSignal Tags erfolgreich synchronisiert:", tags);
+        console.log("✅ Tags erfolgreich gesetzt.");
+    } catch (e) {
+        console.warn("⚠️ Erster Versuch fehlgeschlagen, versuche es erneut...", e);
+        // Falls ein 404/409 auftritt, hilft oft ein zweiter Versuch nach einer Pause
+        setTimeout(() => OneSignal.User.addTags(tags), 3000);
     }
-} catch (tagError) {
-    console.warn("⚠️ Fehler beim Setzen der Tags (Conflict), versuche es gleich erneut...");
-    // Ein kleiner "Retry" nach 2 Sekunden hilft oft bei 409 Fehlern
-    setTimeout(async () => {
-        await OneSignal.User.addTags(tags);
-        console.log("🏷️ Tags im zweiten Versuch gesetzt.");
-    }, 2000);
-}
+}, 1000);
     } catch (err) {
         console.error("❌ Kritischer Fehler im Ablauf:", err);
     } // <-- Dieser Catch hat gefehlt!
