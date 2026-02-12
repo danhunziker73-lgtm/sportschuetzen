@@ -61,38 +61,31 @@ OneSignalDeferred.push(async function (OneSignal) {
         logToUI(`🆔 OS-ID: ${onesignalId || 'wird erstellt...'}`);
         logToUI(`👤 Aktuelle Ext-ID: ${currentExternalId || 'keine'}`);
 
-     // 5. Login mit "Gewalt" (Force-Alias)
-        try {
-            logToUI(`🔑 Login-Versuch für PID: ${pid}`);
-            await OneSignal.login(String(pid));
-        } catch (e) {
-            logToUI("⚠️ Login-Konflikt festgestellt. Versuche Identität zu erzwingen...");
-            // Falls der Login fehlschlägt, ist die Session korrupt
-            await OneSignal.logout();
-            await new Promise(r => setTimeout(r, 1000));
-            await OneSignal.login(String(pid));
+    // 5. & 6. & 7. Neue Logik: Trennung von Login und Tags
+        const targetPid = String(pid);
+        const currentExternalId = OneSignal.User.externalId;
+
+        if (currentExternalId !== targetPid) {
+            logToUI(`🔑 Login-Phase: Verknüpfe Gerät mit PID ${targetPid}...`);
+            await OneSignal.login(targetPid);
+            
+            // NACH dem Login brechen wir hier ab und warten auf den automatischen Reload
+            // oder geben dem System massiv Zeit, ohne sofort Tags zu senden.
+            logToUI("⏳ Identität wird registriert. Bitte Seite 1x neu laden oder 10s warten.");
+            
+            // Wir versuchen die Tags erst nach einer sehr langen Verzögerung
+            setTimeout(async () => {
+                logToUI("📤 Verspäteter Tag-Versand...");
+                await OneSignal.User.addTags(tags);
+                logToUI("✅ Tags synchronisiert.");
+            }, 10000); // 10 Sekunden!
+            
+        } else {
+            // Wenn wir schon korrekt eingeloggt sind, ist der Kanal frei für Tags!
+            logToUI(`✅ Identität bestätigt (${currentExternalId}). Sende Tags...`);
+            await OneSignal.User.addTags(tags);
+            logToUI("🏷️ Tags erfolgreich gesetzt.");
         }
-
-        // 6. Warten auf Server (Sehr wichtig nach dem Löschen im Dashboard!)
-        logToUI("⏳ Warte auf Datenbank-Update (6s)...");
-        await new Promise(r => setTimeout(r, 6000));
-
-        // 7. Tags senden
-        const tags = {
-            "vorname": member.firstname,
-            "nachname": member.lastname,
-            "verein": "sportschuetzen_muhen"
-        };
-        if (member.membershipcategory) {
-            member.membershipcategory.split(",").forEach(cat => {
-                const clean = cat.trim().replace(/\s+/g, '_');
-                if (clean) tags[clean] = "true";
-            });
-        }
-
-        logToUI("📤 Sende Tags...");
-        await OneSignal.User.addTags(tags);
-        logToUI("✅ ERFOLG! Schau jetzt ins Dashboard.");
     } catch (err) {
         logToUI(`❌ Fehler: ${err.message}`);
         console.error(err);
