@@ -65,46 +65,55 @@ OneSignalDeferred.push(async function (OneSignal) {
 // 5. Login-Check (Korrigiert für v16)
         // Wir prüfen, ob die aktuelle externalId bereits mit der personNumber übereinstimmt
 // 5. Login-Check (Invasiv mit Logout-Sicherung)
-        const currentExternalId = OneSignal.User.externalId;
-        
-        if (currentExternalId !== String(member.personnumber)) {
-            console.log("🔄 Identitätswechsel nötig. Aktuell:", currentExternalId, "-> Ziel:", member.personnumber);
-            
-            // Falls bereits jemand anders eingeloggt ist (oder anonyme Reste da sind), erst Logout
-            if (currentExternalId) {
-                console.log("🚪 Führe Logout für alte Sitzung durch...");
-                await OneSignal.logout();
-                await new Promise(resolve => setTimeout(resolve, 500));
-            }
+// ... (vorheriger Code bleibt gleich bis Schritt 5)
 
-            console.log("🔑 Logge neu ein als PID:", member.personnumber);
-            await OneSignal.login(String(member.personnumber));
-            
-            // Wichtig: Dem System Zeit geben, die Identität zu festigen
-            await new Promise(resolve => setTimeout(resolve, 2000)); 
-        } else {
-            console.log("✅ Bereits korrekt eingeloggt als PID " + member.personnumber);
-        }
-        // 6. Tags vorbereiten
-        const tags = {
-            "vorname": member.firstname,
-            "nachname": member.lastname,
-            "verein": "sportschuetzen_muhen"
-        };
+// 5. Login-Check (Optimiert für v16)
+const currentExternalId = OneSignal.User.externalId;
+const targetPid = String(member.personnumber);
 
-        if (member.membershipcategory) {
-            const categories = member.membershipcategory.split(",");
-            categories.forEach(cat => {
-                const cleanTag = cat.trim().replace(/\s+/g, '_');
-                if (cleanTag) tags[cleanTag] = "true";
-            });
-        }
+if (currentExternalId !== targetPid) {
+    console.log(`🔄 Identitätswechsel nötig: ${currentExternalId} -> ${targetPid}`);
+    
+    // login() in v16 verknüpft das Gerät mit der PID. 
+    // Ein vorheriges logout() ist oft kontraproduktiv, außer man will das Gerät entkoppeln.
+    await OneSignal.login(targetPid);
+    
+    // WICHTIG: Kurze Pause, damit die interne Operation-Queue von OneSignal nach dem Login leer wird
+    await new Promise(resolve => setTimeout(resolve, 1000)); 
+} else {
+    console.log("✅ Bereits korrekt eingeloggt als PID " + targetPid);
+}
 
-        // 7. Tags setzen
+// 6. Tags vorbereiten
+const tags = {
+    "vorname": member.firstname,
+    "nachname": member.lastname,
+    "verein": "sportschuetzen_muhen"
+};
+
+if (member.membershipcategory) {
+    const categories = member.membershipcategory.split(",");
+    categories.forEach(cat => {
+        const cleanTag = cat.trim().replace(/\s+/g, '_');
+        if (cleanTag) tags[cleanTag] = "true";
+    });
+}
+
+// 7. Tags setzen mit Fehlerbehandlung
+try {
+    // Sicherstellen, dass wir nicht versuchen, leere Tags zu senden
+    if (Object.keys(tags).length > 0) {
         await OneSignal.User.addTags(tags);
         console.log("🏷️ OneSignal Tags erfolgreich synchronisiert:", tags);
-   
-
+    }
+} catch (tagError) {
+    console.warn("⚠️ Fehler beim Setzen der Tags (Conflict), versuche es gleich erneut...");
+    // Ein kleiner "Retry" nach 2 Sekunden hilft oft bei 409 Fehlern
+    setTimeout(async () => {
+        await OneSignal.User.addTags(tags);
+        console.log("🏷️ Tags im zweiten Versuch gesetzt.");
+    }, 2000);
+}
     } catch (err) {
         console.error("❌ Kritischer Fehler im Ablauf:", err);
     } // <-- Dieser Catch hat gefehlt!
