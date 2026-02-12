@@ -48,33 +48,41 @@ if (!window.OneSignalInitialized) {
             const targetPid = String(pid);
 
             // --- Funktion zum sicheren Tag-Senden ---
-            const sendTags = async () => {
-                logToUI("📤 Sende Tags...");
-                try {
-                    const response = await fetch("https://termine.dan-hunziker73.workers.dev/?action=loadAdminData");
-                    const data = await response.json();
-                    const member = data.push_onesignal.find(m => String(m.personnumber) === targetPid);
-                    if (!member) return;
+       const sendTags = async () => {
+    logToUI("📤 Sende Tags...");
+    try {
+        // Polling bis OneSignal User stabil ist
+        let tries = 0;
+        while (!OneSignal.User.externalId && tries < 10) {
+            await new Promise(r => setTimeout(r, 300));
+            tries++;
+        }
 
-                    const tags = {
-                        vorname: member.firstname,
-                        nachname: member.lastname,
-                        verein: "sportschuetzen_muhen"
-                    };
+        const response = await fetch("https://termine.dan-hunziker73.workers.dev/?action=loadAdminData");
+        const data = await response.json();
+        const member = data.push_onesignal.find(m => String(m.personnumber) === targetPid);
+        if (!member) return;
 
-                    if (member.membershipcategory) {
-                        member.membershipcategory.split(",").forEach(cat => {
-                            const key = cat.trim().replace(/\s+/g, '_');
-                            if (key) tags[key] = "aktiv";
-                        });
-                    }
+        const tags = {
+            vorname: member.firstname,
+            nachname: member.lastname,
+            verein: "sportschuetzen_muhen"
+        };
 
-                    await OneSignal.User.addTags(tags);
-                    logToUI("🚀 Tags erfolgreich gesetzt!");
-                } catch (err) {
-                    logToUI("❌ Fehler beim Tags senden: " + err.message);
-                }
-            };
+        if (member.membershipcategory) {
+            member.membershipcategory.split(",").forEach(cat => {
+                const key = cat.trim().replace(/\s+/g, '_');
+                if (key) tags[key] = "aktiv";
+            });
+        }
+
+        console.log("DEBUG: Tags die gesendet werden:", tags); // 🔹 Debug-Ausgabe
+        await OneSignal.User.addTags(tags);
+        logToUI("🚀 Tags erfolgreich gesetzt!");
+    } catch (err) {
+        logToUI("❌ Fehler beim Tags senden: " + err.message);
+    }
+};
 
             // --- Warte auf aktuelle OneSignal-ID ---
             const waitForUserId = async () => {
