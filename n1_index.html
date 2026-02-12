@@ -64,18 +64,27 @@ OneSignalDeferred.push(async function (OneSignal) {
         console.log("✅ Mitglied gefunden:", member.firstname, member.lastname);
 // 5. Login-Check (Korrigiert für v16)
         // Wir prüfen, ob die aktuelle externalId bereits mit der personNumber übereinstimmt
+// 5. Login-Check (Invasiv mit Logout-Sicherung)
         const currentExternalId = OneSignal.User.externalId;
         
         if (currentExternalId !== String(member.personnumber)) {
-            console.log("🔑 Logge neu ein. Aktuell:", currentExternalId, "-> Neu:", member.personnumber);
+            console.log("🔄 Identitätswechsel nötig. Aktuell:", currentExternalId, "-> Ziel:", member.personnumber);
+            
+            // Falls bereits jemand anders eingeloggt ist (oder anonyme Reste da sind), erst Logout
+            if (currentExternalId) {
+                console.log("🚪 Führe Logout für alte Sitzung durch...");
+                await OneSignal.logout();
+                await new Promise(resolve => setTimeout(resolve, 500));
+            }
+
+            console.log("🔑 Logge neu ein als PID:", member.personnumber);
             await OneSignal.login(String(member.personnumber));
             
-            // Warten, bis der Identitätswechsel verarbeitet wurde
-            await new Promise(resolve => setTimeout(resolve, 1500)); 
+            // Wichtig: Dem System Zeit geben, die Identität zu festigen
+            await new Promise(resolve => setTimeout(resolve, 2000)); 
         } else {
-            console.log("✅ Bereits als PID " + member.personnumber + " eingeloggt.");
+            console.log("✅ Bereits korrekt eingeloggt als PID " + member.personnumber);
         }
-
         // 6. Tags vorbereiten
         const tags = {
             "vorname": member.firstname,
