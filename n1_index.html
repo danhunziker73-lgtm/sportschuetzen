@@ -24,10 +24,8 @@
 window.OneSignalDeferred = window.OneSignalDeferred || [];
 OneSignalDeferred.push(async function (OneSignal) {
     
-    // Hilfsfunktion für Log-Ausgaben auf der Webseite (optional, aber hilfreich)
     const logToUI = (msg) => {
         console.log(msg);
-        // Falls du ein Element mit id="status" hast, schreibt er es dort rein
         const statusEl = document.getElementById("status-box");
         if (statusEl) statusEl.innerHTML += `<div>${msg}</div>`;
     };
@@ -42,53 +40,63 @@ OneSignalDeferred.push(async function (OneSignal) {
             notifyButton: { enable: true }
         });
 
-        logToUI("🛠️ OneSignal initialisiert.");
+        logToUI("🛠️ OneSignal bereit.");
 
-        // 2. PID prüfen
+        // 2. PID aus URL
         const urlParams = new URLSearchParams(window.location.search);
         const pid = urlParams.get("pid");
-        if (!pid) return logToUI("ℹ️ Keine PID in URL.");
+        if (!pid) return logToUI("ℹ️ Keine PID vorhanden.");
 
-        // 3. Daten laden (Cloudflare)
+        // 3. Daten von Cloudflare holen
         const response = await fetch("https://termine.dan-hunziker73.workers.dev/?action=loadAdminData");
         const data = await response.json();
         const member = data.push_onesignal.find(m => String(m.personnumber) === String(pid));
-        if (!member) return logToUI("❌ Mitglied nicht gefunden.");
+        if (!member) return logToUI("❌ PID nicht im System.");
 
-        // 4. Diagnose-Infos auslesen
-        const onesignalId = OneSignal.User.onesignalId;
-        const currentExternalId = OneSignal.User.externalId;
-        logToUI(`🆔 OS-ID: ${onesignalId || 'wird erstellt...'}`);
-        logToUI(`👤 Aktuelle Ext-ID: ${currentExternalId || 'keine'}`);
-
-    // 5. & 6. & 7. Neue Logik: Trennung von Login und Tags
+        // 4. Identitäts-Check (Wir nutzen die Variablen hier NUR EINMAL)
         const targetPid = String(pid);
-        const currentExternalId = OneSignal.User.externalId;
+        const activeExternalId = OneSignal.User.externalId;
 
-        if (currentExternalId !== targetPid) {
-            logToUI(`🔑 Login-Phase: Verknüpfe Gerät mit PID ${targetPid}...`);
+        // 5. Tags vorbereiten (damit wir sie später griffbereit haben)
+        const tagsToSync = {
+            "vorname": member.firstname,
+            "nachname": member.lastname,
+            "verein": "sportschuetzen_muhen"
+        };
+        if (member.membershipcategory) {
+            member.membershipcategory.split(",").forEach(cat => {
+                const clean = cat.trim().replace(/\s+/g, '_');
+                if (clean) tagsToSync[clean] = "true";
+            });
+        }
+
+        // 6. Ablaufsteuerung: Login oder Tags?
+        if (activeExternalId !== targetPid) {
+            logToUI(`🔑 Login-Phase: Verknüpfe ${targetPid}...`);
             await OneSignal.login(targetPid);
             
-            // NACH dem Login brechen wir hier ab und warten auf den automatischen Reload
-            // oder geben dem System massiv Zeit, ohne sofort Tags zu senden.
-            logToUI("⏳ Identität wird registriert. Bitte Seite 1x neu laden oder 10s warten.");
+            logToUI("⏳ Identität wird registriert. Warte 10s auf Server-Sync...");
             
-            // Wir versuchen die Tags erst nach einer sehr langen Verzögerung
+            // Erst nach langer Pause Tags senden (vermeidet 409 Conflict)
             setTimeout(async () => {
-                logToUI("📤 Verspäteter Tag-Versand...");
-                await OneSignal.User.addTags(tags);
-                logToUI("✅ Tags synchronisiert.");
-            }, 10000); // 10 Sekunden!
+                try {
+                    logToUI("📤 Sende Tags nach Wartezeit...");
+                    await OneSignal.User.addTags(tagsToSync);
+                    logToUI("✅ Tags synchronisiert.");
+                } catch (e) {
+                    logToUI("⚠️ Tag-Sync verzögert fehlgeschlagen.");
+                }
+            }, 10000); 
             
         } else {
-            // Wenn wir schon korrekt eingeloggt sind, ist der Kanal frei für Tags!
-            logToUI(`✅ Identität bestätigt (${currentExternalId}). Sende Tags...`);
-            await OneSignal.User.addTags(tags);
-            logToUI("🏷️ Tags erfolgreich gesetzt.");
+            // Wenn wir schon eingeloggt sind, direkt Tags senden
+            logToUI(`✅ Login steht (${activeExternalId}). Aktualisiere Tags...`);
+            await OneSignal.User.addTags(tagsToSync);
+            logToUI("🏷️ Tags erfolgreich aktualisiert.");
         }
+
     } catch (err) {
-        logToUI(`❌ Fehler: ${err.message}`);
-        console.error(err);
+        logToUI(`❌ Kritischer Fehler: ${err.message}`);
     }
 });
 
