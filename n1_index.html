@@ -19,129 +19,102 @@
 
 <script>
 /************************************************
- * OneSignal Init & Robust Tagging (fehlerbereinigt)
+ * OneSignal Init & Automation mit Polling
  ************************************************/
-if (!window.OneSignalInitialized) {
-    window.OneSignalInitialized = true;
+window.OneSignalDeferred = window.OneSignalDeferred || [];
+OneSignalDeferred.push(async function(OneSignal) {
 
-    window.OneSignalDeferred = window.OneSignalDeferred || [];
-    OneSignalDeferred.push(async function(OneSignal) {
+    const logToUI = (msg) => {
+        console.log(msg);
+        const statusEl = document.getElementById("status-box");
+        if (statusEl) statusEl.innerHTML += `<div>${msg}</div>`;
+    };
 
-        const logToUI = (msg) => {
-            console.log(msg);
-            const statusEl = document.getElementById("status-box");
-            if (statusEl) statusEl.innerHTML += `<div>${msg}</div>`;
-        };
-
-        try {
-            // --- Init OneSignal ---
-            await OneSignal.init({
-                appId: "975091f5-948b-48d4-9e61-b7f4d43a1021",
-                serviceWorkerParam: { scope: "/sportschuetzen/" },
-                serviceWorkerPath: "OneSignalSDKWorker.js",
-                autoRegister: false
-            });
-
-            const urlParams = new URLSearchParams(window.location.search);
-            const pid = urlParams.get("pid");
-            if (!pid) return;
-            const targetPid = String(pid);
-
-            // --- Funktion zum sicheren Tag-Senden ---
-       const sendTags = async () => {
-    logToUI("📤 Sende Tags...");
     try {
-        // Polling bis OneSignal User stabil ist
-        let tries = 0;
-        while (!OneSignal.User.externalId && tries < 10) {
-            await new Promise(r => setTimeout(r, 300));
-            tries++;
+        await OneSignal.init({
+            appId: "975091f5-948b-48d4-9e61-b7f4d43a1021",
+            serviceWorkerParam: { scope: "/sportschuetzen/" },
+            serviceWorkerPath: "OneSignalSDKWorker.js",
+            autoRegister: false
+        });
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const pid = urlParams.get("pid");
+        if (!pid) return;
+
+        const targetPid = String(pid);
+        const currentExtId = OneSignal.User.externalId;
+
+        if (currentExtId !== targetPid) {
+            logToUI("🔑 Login läuft... bitte warten.");
+            await OneSignal.login(targetPid);
+            // kurze Pause für Queue
+            setTimeout(() => location.reload(), 2000);
+            return;
         }
 
+        logToUI("✅ Identität bereits stabil.");
+        logToUI("✅ OneSignal-ID bereit: " + OneSignal.User.id);
+
+        // Helper: Polling bis User ready ist
+        const waitForUserReady = async (retries = 10, delay = 300) => {
+            for (let i = 0; i < retries; i++) {
+                const tags = await OneSignal.User.getTags();
+                if (tags !== null) return true;
+                await new Promise(r => setTimeout(r, delay));
+            }
+            return false;
+        };
+
+        if (!await waitForUserReady()) {
+            logToUI("❌ User nicht ready – Tags konnten nicht gesetzt werden.");
+            return;
+        }
+
+        // Lade Memberdaten
         const response = await fetch("https://termine.dan-hunziker73.workers.dev/?action=loadAdminData");
         const data = await response.json();
         const member = data.push_onesignal.find(m => String(m.personnumber) === targetPid);
-        if (!member) return;
 
-        const tags = {
-            vorname: member.firstname,
-            nachname: member.lastname,
-            verein: "sportschuetzen_muhen"
-        };
-
-        if (member.membershipcategory) {
-            member.membershipcategory.split(",").forEach(cat => {
-                const key = cat.trim().replace(/\s+/g, '_');
-                if (key) tags[key] = "aktiv";
-            });
-        }
-
-        console.log("DEBUG: Tags die gesendet werden:", tags); // 🔹 Debug-Ausgabe
-        await OneSignal.User.addTags(tags);
-        logToUI("🚀 Tags erfolgreich gesetzt!");
-    } catch (err) {
-        logToUI("❌ Fehler beim Tags senden: " + err.message);
-    }
-};
-
-            // --- Warte auf aktuelle OneSignal-ID ---
-            const waitForUserId = async () => {
-                let userId = OneSignal.User.onesignalId;
-                let tries = 0;
-                while (!userId && tries < 20) {
-                    await new Promise(r => setTimeout(r, 200));
-                    userId = OneSignal.User.onesignalId;
-                    tries++;
-                }
-                return userId;
+        if (member) {
+            const tags = {
+                vorname: member.firstname,
+                nachname: member.lastname,
+                verein: "sportschuetzen_muhen"
             };
 
-            const userId = await waitForUserId();
-            if (!userId) {
-                logToUI("❌ Keine OneSignal-ID verfügbar.");
-                return;
-            }
-            logToUI(`✅ OneSignal-ID bereit: ${userId}`);
-
-            // --- EventListener für User-Change ---
-            OneSignal.User.addEventListener("change", event => {
-                if (event.current.externalId === targetPid) {
-                    sendTags();
-                }
-            });
-
-            // --- Login oder direkt Tagging ---
-            if (OneSignal.User.externalId !== targetPid) {
-                logToUI("🔑 Login läuft...");
-                await OneSignal.login(targetPid);
-            } else {
-                logToUI("✅ Identität bereits stabil.");
-                sendTags();
+            if (member.membershipcategory) {
+                member.membershipcategory.split(",").forEach(cat => {
+                    const key = cat.trim().replace(/\s+/g, '_');
+                    if (key) tags[key] = "aktiv";
+                });
             }
 
-        } catch (err) {
-            logToUI("❌ Fehler: " + err.message);
+            console.log("DEBUG: Tags die gesendet werden:", tags);
+            logToUI("📤 Sende Tags final...");
+            await OneSignal.User.addTags(tags);
+            logToUI("🚀 Tags erfolgreich gesetzt!");
         }
 
-    });
+    } catch (err) {
+        logToUI("❌ Fehler: " + err.message);
+    }
+});
+
+/************************************************
+ * iOS & Standalone Checks
+ ************************************************/
+if (!window.hasIOSCheckRun) {
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
+    if (isIOS && !isStandalone) console.log("📢 Hinweis: iOS Push erfordert 'Zum Home-Bildschirm hinzufügen'.");
+    window.hasIOSCheckRun = true;
 }
 
 /************************************************
- * iOS & Standalone Checks (lokal, keine Doppel-Deklaration)
+ * App Resume Logic
  ************************************************/
-(() => {
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-    const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
-
-    if (isIOS && !isStandalone) {
-        console.log("📢 OneSignal Hinweis: iOS Push erfordert 'Zum Home-Bildschirm hinzufügen'.");
-    }
-})();
-
-/************************************************
- * ZENTRALE APP-RESUME LOGIK
- ************************************************/
-(() => {
+(function () {
     let lastResume = 0;
     const MIN_INTERVAL = 1500;
 
@@ -149,28 +122,20 @@ if (!window.OneSignalInitialized) {
         const now = Date.now();
         if (now - lastResume < MIN_INTERVAL) return;
         lastResume = now;
-
         console.log("📲 App Resume:", source);
 
         document.querySelectorAll("iframe").forEach(iframe => {
-            iframe.contentWindow?.postMessage(
-                { type: "app:resume", source, ts: now },
-                "*"
-            );
+            iframe.contentWindow?.postMessage({ type: "app:resume", source, ts: now }, "*");
         });
     }
 
-    document.addEventListener("visibilitychange", () => {
-        if (document.visibilityState === "visible") fireResume("visibility");
-    });
+    document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") fireResume("visibility"); });
+    window.addEventListener("pageshow", e => { if (e.persisted) fireResume("pageshow"); });
+    window.addEventListener("focus", () => { fireResume("focus"); });
 
-    window.addEventListener("pageshow", e => {
-        if (e.persisted) fireResume("pageshow");
-    });
-
-    window.addEventListener("focus", () => fireResume("focus"));
 })();
 </script>
+
 
 
 
