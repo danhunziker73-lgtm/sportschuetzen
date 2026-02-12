@@ -24,32 +24,32 @@
 window.OneSignalDeferred = window.OneSignalDeferred || [];
 OneSignalDeferred.push(async function (OneSignal) {
     
-    // 1. Initialisierung
-    await OneSignal.init({
-        appId: "975091f5-948b-48d4-9e61-b7f4d43a1021",
-        serviceWorkerParam: { scope: "/sportschuetzen/" },
-        serviceWorkerPath: "OneSignalSDKWorker.js",
-        autoRegister: false,
-        notifyButton: { enable: true }
-    });
-
-    // 2. PID aus URL holen
-    const urlParams = new URLSearchParams(window.location.search);
-    const personNumber = urlParams.get("pid");
-
-    if (!personNumber) {
-        console.log("ℹ️ Keine PersonNumber (pid) in der URL gefunden.");
-        return;
-    }
-
     try {
+        // 1. Initialisierung
+        await OneSignal.init({
+            appId: "975091f5-948b-48d4-9e61-b7f4d43a1021",
+            serviceWorkerParam: { scope: "/sportschuetzen/" },
+            serviceWorkerPath: "OneSignalSDKWorker.js",
+            autoRegister: false,
+            notifyButton: { enable: true }
+        });
+
+        // 2. PID aus URL holen
+        const urlParams = new URLSearchParams(window.location.search);
+        const personNumber = urlParams.get("pid");
+
+        if (!personNumber) {
+            console.log("ℹ️ Keine PersonNumber (pid) in der URL gefunden.");
+            return;
+        }
+
         // 3. Daten via Cloudflare Worker laden
         const CLOUDFLARE_URL = "https://termine.dan-hunziker73.workers.dev/"; 
         const response = await fetch(`${CLOUDFLARE_URL}?action=loadAdminData`);
         const data = await response.json();
 
-        if (!data.push_onesignal) {
-            console.error("❌ Fehler: 'push_onesignal' Daten nicht im JSON gefunden.");
+        if (!data || !data.push_onesignal) {
+            console.error("❌ Fehler: 'push_onesignal' Daten nicht gefunden.");
             return;
         }
 
@@ -57,69 +57,61 @@ OneSignalDeferred.push(async function (OneSignal) {
         const member = data.push_onesignal.find(m => String(m.personnumber) === String(personNumber));
 
         if (!member) {
-            console.warn("⚠️ Mitglied mit PID " + personNumber + " nicht im Sheet gefunden.");
+            console.warn("⚠️ Mitglied mit PID " + personNumber + " nicht gefunden.");
             return;
         }
 
         console.log("✅ Mitglied gefunden:", member.firstname, member.lastname);
-// 5. Login-Check (Korrigiert für v16)
-        // Wir prüfen, ob die aktuelle externalId bereits mit der personNumber übereinstimmt
-// 5. Login-Check (Invasiv mit Logout-Sicherung)
-// ... (vorheriger Code bleibt gleich bis Schritt 5)
 
-// 5. Login-Check (Invasiv mit Fehlervermeidung)
-// Wir prüfen die ID, deklarieren die Variablen aber nur einmal.
-const currentExternalId = OneSignal.User.externalId;
-const targetPid = String(member.personnumber);
+        // 5. Login-Check (Variablen werden hier nur EINMAL deklariert)
+        const currentExternalId = OneSignal.User.externalId;
+        const targetPid = String(member.personnumber);
 
-if (currentExternalId !== targetPid) {
-    console.log(`🔄 Identitätswechsel nötig: ${currentExternalId} -> ${targetPid}`);
-    
-    // Wir verzichten auf das explizite .logout(), da .login() die ID überschreibt
-    await OneSignal.login(targetPid);
-    
-    // Wichtig: Dem System Zeit geben, die Identität zu festigen
-    await new Promise(resolve => setTimeout(resolve, 1500)); 
-} else {
-    console.log("✅ Bereits korrekt eingeloggt als PID " + targetPid);
-}
-
-// 6. Tags vorbereiten
-const tags = {
-    "vorname": member.firstname,
-    "nachname": member.lastname,
-    "verein": "sportschuetzen_muhen"
-};
-
-if (member.membershipcategory) {
-    const categories = member.membershipcategory.split(",");
-    categories.forEach(cat => {
-        const cleanTag = cat.trim().replace(/\s+/g, '_');
-        if (cleanTag) tags[cleanTag] = "true";
-    });
-}
-
-// 7. Tags setzen mit Fehlerbehandlung (gegen 404/409 Fehler)
-try {
-    console.log("📤 Sende Tags an OneSignal...", tags);
-    await OneSignal.User.addTags(tags);
-    console.log("🏷️ OneSignal Tags erfolgreich synchronisiert.");
-} catch (tagError) {
-    console.warn("⚠️ Konflikt beim Tag-Senden, starte Retry in 3 Sekunden...");
-    // Einmaliger automatischer Versuch nach Verzögerung
-    setTimeout(async () => {
-        try {
-            await OneSignal.User.addTags(tags);
-            console.log("✅ Tags im zweiten Versuch erfolgreich synchronisiert.");
-        } catch (retryError) {
-            console.error("❌ Tags konnten auch im zweiten Versuch nicht gesetzt werden.", retryError);
+        if (currentExternalId !== targetPid) {
+            console.log(`🔄 Identitätswechsel nötig: ${currentExternalId} -> ${targetPid}`);
+            await OneSignal.login(targetPid);
+            // Warten, bis OneSignal die Identität stabilisiert hat
+            await new Promise(resolve => setTimeout(resolve, 2000)); 
+        } else {
+            console.log("✅ Bereits korrekt eingeloggt als PID " + targetPid);
         }
-    }, 3000);
-}
+
+        // 6. Tags vorbereiten
+        const tags = {
+            "vorname": member.firstname,
+            "nachname": member.lastname,
+            "verein": "sportschuetzen_muhen"
+        };
+
+        if (member.membershipcategory) {
+            const categories = member.membershipcategory.split(",");
+            categories.forEach(cat => {
+                const cleanTag = cat.trim().replace(/\s+/g, '_');
+                if (cleanTag) tags[cleanTag] = "true";
+            });
+        }
+
+        // 7. Tags setzen mit Retry-Logik gegen 404/409 Fehler
+        try {
+            console.log("📤 Sende Tags an OneSignal...", tags);
+            await OneSignal.User.addTags(tags);
+            console.log("🏷️ OneSignal Tags erfolgreich synchronisiert.");
+        } catch (tagError) {
+            console.warn("⚠️ Erster Versuch fehlgeschlagen (Conflict/404), starte Retry...");
+            setTimeout(async () => {
+                try {
+                    await OneSignal.User.addTags(tags);
+                    console.log("✅ Tags im zweiten Versuch erfolgreich.");
+                } catch (retryErr) {
+                    console.error("❌ Tags-Retry fehlgeschlagen:", retryErr);
+                }
+            }, 3000);
+        }
+
     } catch (err) {
         console.error("❌ Kritischer Fehler im Ablauf:", err);
-    } // <-- Dieser Catch hat gefehlt!
-}); // Ende OneSignalDeferred
+    }
+});
 
 
 /************************************************
@@ -132,9 +124,8 @@ if (isIOS && !isStandalone) {
     console.log("📢 OneSignal Hinweis: iOS Push erfordert 'Zum Home-Bildschirm hinzufügen'.");
 }
 
-
 /************************************************
- * ZENTRALE APP-RESUME LOGIK (NEU)
+ * ZENTRALE APP-RESUME LOGIK
  ************************************************/
 (function () {
 
