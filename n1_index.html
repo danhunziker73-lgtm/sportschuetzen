@@ -63,51 +63,57 @@ OneSignalDeferred.push(async function (OneSignal) {
 
         console.log("✅ Mitglied gefunden:", member.firstname, member.lastname);
 
-        // 5. Login-Check (Variablen werden hier nur EINMAL deklariert)
-        const currentExternalId = OneSignal.User.externalId;
-        const targetPid = String(member.personnumber);
+      // 5. Login-Check mit explizitem Warten auf Erfolg
+const currentExternalId = OneSignal.User.externalId;
+const targetPid = String(member.personnumber);
 
-        if (currentExternalId !== targetPid) {
-            console.log(`🔄 Identitätswechsel nötig: ${currentExternalId} -> ${targetPid}`);
-            await OneSignal.login(targetPid);
-            // Warten, bis OneSignal die Identität stabilisiert hat
-            await new Promise(resolve => setTimeout(resolve, 2000)); 
-        } else {
-            console.log("✅ Bereits korrekt eingeloggt als PID " + targetPid);
-        }
+if (currentExternalId !== targetPid) {
+    console.log(`🔑 Login-Prozess startet: ${targetPid}`);
+    
+    // Wir nutzen await, aber OneSignal braucht oft einen Moment länger für die interne DB
+    await OneSignal.login(targetPid);
+    
+    // Wichtig: Eine Pause einlegen, damit die Hintergrund-Operationen Zeit haben
+    console.log("⏳ Warte auf Identitäts-Synchronisierung...");
+    await new Promise(resolve => setTimeout(resolve, 3000)); 
+} else {
+    console.log("✅ Bereits korrekt eingeloggt als PID " + targetPid);
+}
 
-        // 6. Tags vorbereiten
-        const tags = {
-            "vorname": member.firstname,
-            "nachname": member.lastname,
-            "verein": "sportschuetzen_muhen"
-        };
+// 6. Tags vorbereiten
+const tags = {
+    "vorname": member.firstname,
+    "nachname": member.lastname,
+    "verein": "sportschuetzen_muhen"
+};
 
-        if (member.membershipcategory) {
-            const categories = member.membershipcategory.split(",");
-            categories.forEach(cat => {
-                const cleanTag = cat.trim().replace(/\s+/g, '_');
-                if (cleanTag) tags[cleanTag] = "true";
-            });
-        }
+if (member.membershipcategory) {
+    const categories = member.membershipcategory.split(",");
+    categories.forEach(cat => {
+        const cleanTag = cat.trim().replace(/\s+/g, '_');
+        if (cleanTag) tags[cleanTag] = "true";
+    });
+}
 
-        // 7. Tags setzen mit Retry-Logik gegen 404/409 Fehler
+// 7. Tags erst senden, wenn Login sicher durch ist
+try {
+    console.log("📤 Sende Tags an OneSignal...", tags);
+    // Wir warten explizit auf das Ergebnis
+    await OneSignal.User.addTags(tags);
+    console.log("🏷️ OneSignal Tags erfolgreich synchronisiert.");
+} catch (tagError) {
+    console.warn("⚠️ Konflikt beim Tag-Senden (409). OneSignal verarbeitet noch den Login. Starte verzögerten Retry...");
+    
+    // Erhöhter Delay für den Retry
+    setTimeout(async () => {
         try {
-            console.log("📤 Sende Tags an OneSignal...", tags);
             await OneSignal.User.addTags(tags);
-            console.log("🏷️ OneSignal Tags erfolgreich synchronisiert.");
-        } catch (tagError) {
-            console.warn("⚠️ Erster Versuch fehlgeschlagen (Conflict/404), starte Retry...");
-            setTimeout(async () => {
-                try {
-                    await OneSignal.User.addTags(tags);
-                    console.log("✅ Tags im zweiten Versuch erfolgreich.");
-                } catch (retryErr) {
-                    console.error("❌ Tags-Retry fehlgeschlagen:", retryErr);
-                }
-            }, 3000);
+            console.log("✅ Tags im zweiten Versuch erfolgreich synchronisiert.");
+        } catch (retryError) {
+            console.error("❌ Tags-Retry fehlgeschlagen. Möglicherweise Dashboard-Konflikt.", retryError);
         }
-
+    }, 5000); // 5 Sekunden warten
+}
     } catch (err) {
         console.error("❌ Kritischer Fehler im Ablauf:", err);
     }
