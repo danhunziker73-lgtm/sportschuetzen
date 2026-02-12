@@ -67,49 +67,55 @@ OneSignalDeferred.push(async function (OneSignal) {
 // 5. Login-Check (Invasiv mit Logout-Sicherung)
 // ... (vorheriger Code bleibt gleich bis Schritt 5)
 
-// 5. Login-Check (Optimiert für v16)
+// 5. Login-Check (Invasiv mit Fehlervermeidung)
+// Wir prüfen die ID, deklarieren die Variablen aber nur einmal.
 const currentExternalId = OneSignal.User.externalId;
 const targetPid = String(member.personnumber);
 
 if (currentExternalId !== targetPid) {
     console.log(`🔄 Identitätswechsel nötig: ${currentExternalId} -> ${targetPid}`);
     
-    // login() in v16 verknüpft das Gerät mit der PID. 
-    // Ein vorheriges logout() ist oft kontraproduktiv, außer man will das Gerät entkoppeln.
+    // Wir verzichten auf das explizite .logout(), da .login() die ID überschreibt
     await OneSignal.login(targetPid);
     
-    // WICHTIG: Kurze Pause, damit die interne Operation-Queue von OneSignal nach dem Login leer wird
-    await new Promise(resolve => setTimeout(resolve, 1000)); 
+    // Wichtig: Dem System Zeit geben, die Identität zu festigen
+    await new Promise(resolve => setTimeout(resolve, 1500)); 
 } else {
     console.log("✅ Bereits korrekt eingeloggt als PID " + targetPid);
 }
 
-// 5. Login-Check (Robuste Version)
-const currentExternalId = OneSignal.User.externalId;
-const targetPid = String(member.personnumber);
+// 6. Tags vorbereiten
+const tags = {
+    "vorname": member.firstname,
+    "nachname": member.lastname,
+    "verein": "sportschuetzen_muhen"
+};
 
-if (currentExternalId !== targetPid) {
-    console.log(`🔑 Login erforderlich: ${targetPid}`);
-    await OneSignal.login(targetPid);
-    // Dem Server Zeit geben, die neue Verknüpfung zu registrieren
-    await new Promise(r => setTimeout(r, 1500)); 
+if (member.membershipcategory) {
+    const categories = member.membershipcategory.split(",");
+    categories.forEach(cat => {
+        const cleanTag = cat.trim().replace(/\s+/g, '_');
+        if (cleanTag) tags[cleanTag] = "true";
+    });
 }
 
-// 6. Tags vorbereiten (dein bestehender Code...)
-const tags = { /* ... deine Tags ... */ };
-
-// 7. Tags mit Verzögerung und Fehlerprüfung setzen
-setTimeout(async () => {
-    try {
-        console.log("📤 Sende Tags an OneSignal...");
-        await OneSignal.User.addTags(tags);
-        console.log("✅ Tags erfolgreich gesetzt.");
-    } catch (e) {
-        console.warn("⚠️ Erster Versuch fehlgeschlagen, versuche es erneut...", e);
-        // Falls ein 404/409 auftritt, hilft oft ein zweiter Versuch nach einer Pause
-        setTimeout(() => OneSignal.User.addTags(tags), 3000);
-    }
-}, 1000);
+// 7. Tags setzen mit Fehlerbehandlung (gegen 404/409 Fehler)
+try {
+    console.log("📤 Sende Tags an OneSignal...", tags);
+    await OneSignal.User.addTags(tags);
+    console.log("🏷️ OneSignal Tags erfolgreich synchronisiert.");
+} catch (tagError) {
+    console.warn("⚠️ Konflikt beim Tag-Senden, starte Retry in 3 Sekunden...");
+    // Einmaliger automatischer Versuch nach Verzögerung
+    setTimeout(async () => {
+        try {
+            await OneSignal.User.addTags(tags);
+            console.log("✅ Tags im zweiten Versuch erfolgreich synchronisiert.");
+        } catch (retryError) {
+            console.error("❌ Tags konnten auch im zweiten Versuch nicht gesetzt werden.", retryError);
+        }
+    }, 3000);
+}
     } catch (err) {
         console.error("❌ Kritischer Fehler im Ablauf:", err);
     } // <-- Dieser Catch hat gefehlt!
