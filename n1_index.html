@@ -34,60 +34,52 @@ OneSignalDeferred.push(async function(OneSignal) {
             appId: "975091f5-948b-48d4-9e61-b7f4d43a1021",
             serviceWorkerParam: { scope: "/sportschuetzen/" },
             serviceWorkerPath: "OneSignalSDKWorker.js",
-            autoRegister: false,
-            notifyButton: { enable: true }
+            autoRegister: false
         });
 
         const urlParams = new URLSearchParams(window.location.search);
-        const pidFromUrl = urlParams.get("pid");
-        if (!pidFromUrl) return logToUI("ℹ️ Keine PID.");
+        const pid = urlParams.get("pid");
+        if (!pid) return;
 
+        // 1. Identität fixieren
+        const targetPid = String(pid);
+        const currentExtId = OneSignal.User.externalId;
+
+        if (currentExtId !== targetPid) {
+            logToUI("🔑 Login läuft... bitte warten.");
+            await OneSignal.login(targetPid);
+            // Wir erzwingen eine Pause und einen Reload, um die Queue zu leeren
+            setTimeout(() => location.reload(), 2000);
+            return; 
+        }
+
+        // 2. Tags erst senden, wenn die Identität im zweiten Durchlauf stabil ist
+        logToUI("✅ Identität stabil. Lade Daten...");
         const response = await fetch("https://termine.dan-hunziker73.workers.dev/?action=loadAdminData");
         const data = await response.json();
-        const member = data.push_onesignal.find(m => String(m.personnumber) === String(pidFromUrl));
-        if (!member) return logToUI("❌ Mitglied unbekannt.");
+        const member = data.push_onesignal.find(m => String(m.personnumber) === targetPid);
 
-        // VARIABLEN-DEFINITION (Nur einmal hier im Scope!)
-        const targetPid = String(pidFromUrl);
-        const currentExtId = OneSignal.User.externalId;
-        const currentOSID = OneSignal.User.onesignalId;
-
-        logToUI(`🔍 Status: OS-ID [${currentOSID}] / Ext-ID [${currentExtId}]`);
-
-        // 1. SCHRITT: LOGIN / IDENTITÄT FIXEN
-        if (currentExtId !== targetPid) {
-            logToUI("🔑 Identität falsch. Führe sauberen Login aus...");
-            await OneSignal.logout(); // Alten Ballast abwerfen
-            await new Promise(r => setTimeout(r, 1000));
-            await OneSignal.login(targetPid);
+        if (member) {
+            const tags = {
+                "vorname": member.firstname,
+                "nachname": member.lastname,
+                "verein": "sportschuetzen_muhen"
+            };
             
-            logToUI("🔄 Seite wird in 2s neu geladen für sauberen Tag-Sync...");
-            setTimeout(() => window.location.reload(), 2000);
-            return; // Beende hier, damit nach dem Reload alles frisch ist
+            if (member.membershipcategory) {
+                member.membershipcategory.split(",").forEach(cat => {
+                    const key = cat.trim().replace(/\s+/g, '_');
+                    if (key) tags[key] = "aktiv"; 
+                });
+            }
+
+            logToUI("📤 Sende Tags final...");
+            await OneSignal.User.addTags(tags);
+            logToUI("🚀 FERTIG! Prüfe jetzt das Dashboard.");
         }
-
-        // 2. SCHRITT: TAGS SENDEN (Nur wenn Identität bereits passt)
-        logToUI("✅ Identität korrekt. Bereite Tags vor...");
-        
-        const finalTags = {
-            "vorname": member.firstname,
-            "nachname": member.lastname,
-            "verein": "sportschuetzen_muhen"
-        };
-
-        if (member.membershipcategory) {
-            member.membershipcategory.split(",").forEach(cat => {
-                const cleanKey = cat.trim().replace(/\s+/g, '_');
-                if (cleanKey) finalTags[cleanKey] = cat.trim(); 
-            });
-        }
-
-        logToUI(`📤 Sende Tags an OS-ID: ${currentOSID}...`);
-        await OneSignal.User.addTags(finalTags);
-        logToUI("🚀 ERFOLG: Tags sollten jetzt im Dashboard stehen!");
 
     } catch (err) {
-        logToUI(`❌ Fehler: ${err.message}`);
+        logToUI("❌ Fehler: " + err.message);
     }
 });
 
