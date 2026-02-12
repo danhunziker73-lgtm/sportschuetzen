@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>Sportschützen Muhen App</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+    <link rel="manifest" href="/sportschuetzen/manifest.json">
+    <link rel="apple-touch-icon" sizes="180x180" href="/sportschuetzen/icons/apple-touch-icon.png">
+    
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="Sportschützen Muhen">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+
+    <link rel="icon" type="image/png" sizes="192x192" href="/sportschuetzen/icons/icon-192.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="/sportschuetzen/icons/icon-512.png">
+
+    <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+
+<script>
+/************************************************
+ * OneSignal Init (UNVERÄNDERT, MUSS BLEIBEN)
+ ************************************************/
+window.OneSignalDeferred = window.OneSignalDeferred || [];
+OneSignalDeferred.push(async function (OneSignal) {
+    await OneSignal.init({
+        appId: "975091f5-948b-48d4-9e61-b7f4d43a1021",
+        serviceWorkerParam: { scope: "/sportschuetzen/" },
+        serviceWorkerPath: "OneSignalSDKWorker.js",
+        autoRegister: false,
+        notifyButton: { enable: true }
+    });
+
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
+
+    if (isIOS && !isStandalone) {
+        console.log("📢 OneSignal: iOS Push nur als Homescreen-App.");
+    }
+
+    /************************************************
+     * 🔵 NEU: Automatische Registrierung via PID
+     ************************************************/
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const personNumber = urlParams.get("pid");
+
+    if (!personNumber) {
+        console.log("ℹ️ Keine PersonNumber übergeben.");
+        return;
+    }
+
+    try {
+        // 🔹 Mitgliederdaten von GAS laden
+        const response = await fetch("DEINE_GAS_WEBAPP_URL?action=loadAdminData");
+        const data = await response.json();
+
+        if (!data.members) {
+            console.log("⚠️ Keine Member-Daten erhalten.");
+            return;
+        }
+
+        const member = data.members.find(m => m.personnumber == personNumber);
+
+        if (!member) {
+            console.log("⚠️ Mitglied nicht gefunden:", personNumber);
+            return;
+        }
+
+        // 🔹 Login bei OneSignal
+        await OneSignal.login(personNumber);
+        console.log("✅ OneSignal Login gesetzt für:", personNumber);
+
+        // 🔹 Alte Tags optional entfernen (sauber halten)
+        await OneSignal.User.removeTags();
+
+        // 🔹 Kategorien als Tags setzen
+        if (member.membershipcategory) {
+            const categories = member.membershipcategory.split(",");
+
+            for (const cat of categories) {
+                const clean = cat.trim();
+                if (clean) {
+                    await OneSignal.User.addTag(clean, "true");
+                    console.log("🏷️ Tag gesetzt:", clean);
+                }
+            }
+        }
+
+        // Optional: Standard-Tag Verein
+        await OneSignal.User.addTag("verein", "sportschuetzen_muhen");
+
+    } catch (err) {
+        console.error("❌ Fehler bei OneSignal Registrierung:", err);
+    }
+
+});
+
+/************************************************
+ * ZENTRALE APP-RESUME LOGIK (NEU)
+ ************************************************/
+(function () {
+
+    let lastResume = 0;
+    const MIN_INTERVAL = 1500;
+
+    function fireResume(source) {
+        const now = Date.now();
+        if (now - lastResume < MIN_INTERVAL) return;
+        lastResume = now;
+
+        console.log("📲 App Resume:", source);
+
+        // Resume an alle iFrames senden
+        document.querySelectorAll("iframe").forEach(iframe => {
+            iframe.contentWindow?.postMessage(
+                { type: "app:resume", source, ts: now },
+                "*"
+            );
+        });
+    }
+
+    // App kommt in den Vordergrund
+    document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "visible") {
+            fireResume("visibility");
+        }
+    });
+
+    // Safari Back/Forward Cache
+    window.addEventListener("pageshow", e => {
+        if (e.persisted) {
+            fireResume("pageshow");
+        }
+    });
+
+    // Fallback (App-Switch, Desktop)
+    window.addEventListener("focus", () => {
+        fireResume("focus");
+    });
+
+})();
+</script>
+
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+    
+<body>
+
+<div id="pull-spinner"><div class="spinner-icon"></div></div>
+<header><h1 id="main-title">Termine</h1></header>
+
+<main>
+    <section id="page-home" class="page active-page">
+        <div class="card" style="text-align:center;">
+            <img src="https://raw.githubusercontent.com/danhunziker73-lgtm/sportschuetzen/main/icons/icon-512.png" style="height:100px; margin-bottom:10px;">
+            <h2>Sportschützen Muhen</h2>
+            <p>Willkommen</p>
+        </div>
+        <div class="card">
+            <h3>Termine</h3>
+            
+            <div class="filter-container">
+                <button class="filter-btn active" onclick="filterTermine('all', this)">Alle</button>
+                <button class="filter-btn" onclick="filterTermine('verein', this)">🎯 Verein</button>
+                <button class="filter-btn" onclick="filterTermine('extern', this)">🏠 Haus</button>
+            </div>
+
+            <div id="termine" class="termine-list">Lade Termine...</div>
+        </div>
+    </section>
+
+    <section id="page-jm" class="page"><iframe src="app/app_jm.html"></iframe></section>
+    <section id="page-gruppe" class="page"><iframe src="app/app_gruppe.html"></iframe></section>
+    <section id="page-mannschaft" class="page"><iframe src="app/app_mannschaft.html"></iframe></section>
+
+    <!-- Upload in iframe auslagern -->
+<section id="page-upload" class="page">
+    <iframe src="upload.html"></iframe>
+</section>
+</main>
+
+<nav class="bottom-nav">
+    <button class="nav-item" onclick="nav('page-jm', 'Jahresmeisterschaft', this)"><span>🏆</span>JM</button>
+    <button class="nav-item" onclick="nav('page-gruppe', 'Gruppe & Grenzland', this)"><span>👥</span>G&G</button>
+    <button class="nav-item nav-home active" onclick="nav('page-home', 'Termine', this)"><span>🏠</span></button>
+    <button class="nav-item" onclick="nav('page-mannschaft', 'Mannschaft', this)"><span>🎯</span>Mannschaft</button>
+    <button class="nav-item" onclick="nav('page-upload', 'Upload', this)"><span>📤</span>Upload</button>
+</nav>
+
+<script src="app.js" defer></script>
+</body>
+</html>
+
