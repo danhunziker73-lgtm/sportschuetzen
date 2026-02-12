@@ -63,21 +63,22 @@ OneSignalDeferred.push(async function (OneSignal) {
 
         console.log("✅ Mitglied gefunden:", member.firstname, member.lastname);
 
-      // 5. Login-Check mit explizitem Warten auf Erfolg
-const currentExternalId = OneSignal.User.externalId;
+// 5. Login-Check mit Identitäts-Erzwingung
 const targetPid = String(member.personnumber);
+const currentExternalId = OneSignal.User.externalId;
 
 if (currentExternalId !== targetPid) {
-    console.log(`🔑 Login-Prozess startet: ${targetPid}`);
+    console.log(`🔑 Login erforderlich: ${targetPid}`);
     
-    // Wir nutzen await, aber OneSignal braucht oft einen Moment länger für die interne DB
+    // Wir loggen ein. In v16 ist login() die primäre Methode.
     await OneSignal.login(targetPid);
     
-    // Wichtig: Eine Pause einlegen, damit die Hintergrund-Operationen Zeit haben
-    console.log("⏳ Warte auf Identitäts-Synchronisierung...");
-    await new Promise(resolve => setTimeout(resolve, 3000)); 
+    // Wir geben dem Server massiv Zeit (4 Sek), um die alten Sessions 
+    // im Dashboard (die du im Screenshot siehst) zu sortieren.
+    console.log("⏳ Stabilisiere Identität auf OneSignal Servern...");
+    await new Promise(resolve => setTimeout(resolve, 4000)); 
 } else {
-    console.log("✅ Bereits korrekt eingeloggt als PID " + targetPid);
+    console.log("✅ Identität bereits korrekt gesetzt: " + targetPid);
 }
 
 // 6. Tags vorbereiten
@@ -95,25 +96,26 @@ if (member.membershipcategory) {
     });
 }
 
-// 7. Tags erst senden, wenn Login sicher durch ist
-try {
-    console.log("📤 Sende Tags an OneSignal...", tags);
-    // Wir warten explizit auf das Ergebnis
-    await OneSignal.User.addTags(tags);
-    console.log("🏷️ OneSignal Tags erfolgreich synchronisiert.");
-} catch (tagError) {
-    console.warn("⚠️ Konflikt beim Tag-Senden (409). OneSignal verarbeitet noch den Login. Starte verzögerten Retry...");
-    
-    // Erhöhter Delay für den Retry
-    setTimeout(async () => {
-        try {
-            await OneSignal.User.addTags(tags);
-            console.log("✅ Tags im zweiten Versuch erfolgreich synchronisiert.");
-        } catch (retryError) {
-            console.error("❌ Tags-Retry fehlgeschlagen. Möglicherweise Dashboard-Konflikt.", retryError);
+// 7. Tags senden mit "Safe-Retry"
+async function sendTagsSafe(data, attempt = 1) {
+    try {
+        console.log(`📤 Sende Tags (Versuch ${attempt})...`);
+        await OneSignal.User.addTags(data);
+        console.log("🏷️ OneSignal Tags erfolgreich vom Server bestätigt.");
+    } catch (err) {
+        if (attempt < 3) {
+            console.warn(`⚠️ Konflikt (409). Warte auf Server-Freigabe... (Versuch ${attempt})`);
+            setTimeout(() => sendTagsSafe(data, attempt + 1), 5000);
+        } else {
+            console.error("❌ Tags konnten nach mehreren Versuchen nicht gesetzt werden. Dashboard prüfen.", err);
         }
-    }, 5000); // 5 Sekunden warten
+    }
 }
+
+// Start der Tag-Sychronisierung
+await sendTagsSafe(tags);
+
+        
     } catch (err) {
         console.error("❌ Kritischer Fehler im Ablauf:", err);
     }
