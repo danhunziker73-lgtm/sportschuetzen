@@ -62,16 +62,18 @@ OneSignalDeferred.push(async function (OneSignal) {
         }
 
         console.log("✅ Mitglied gefunden:", member.firstname, member.lastname);
-
-        // 5. Login-Check (Invasiv gegen 409-Fehler)
-        const externalId = await OneSignal.User.getExternalId();
+// 5. Login-Check (Korrigiert für v16)
+        // Wir prüfen, ob die aktuelle externalId bereits mit der personNumber übereinstimmt
+        const currentExternalId = OneSignal.User.externalId;
         
-        if (externalId !== String(member.personnumber)) {
-            console.log("🔑 Logge neu ein als PID:", member.personnumber);
+        if (currentExternalId !== String(member.personnumber)) {
+            console.log("🔑 Logge neu ein. Aktuell:", currentExternalId, "-> Neu:", member.personnumber);
             await OneSignal.login(String(member.personnumber));
-            await new Promise(resolve => setTimeout(resolve, 2000)); 
+            
+            // Warten, bis der Identitätswechsel verarbeitet wurde
+            await new Promise(resolve => setTimeout(resolve, 1500)); 
         } else {
-            console.log("✅ Bereits korrekt eingeloggt.");
+            console.log("✅ Bereits als PID " + member.personnumber + " eingeloggt.");
         }
 
         // 6. Tags vorbereiten
@@ -90,12 +92,9 @@ OneSignalDeferred.push(async function (OneSignal) {
         }
 
         // 7. Tags setzen
-        try {
-            await OneSignal.User.addTags(tags);
-            console.log("🏷️ OneSignal Tags erfolgreich synchronisiert:", tags);
-        } catch (tagError) {
-            console.warn("⚠️ Tag-Sync verzögert.");
-        }
+        await OneSignal.User.addTags(tags);
+        console.log("🏷️ OneSignal Tags erfolgreich synchronisiert:", tags);
+   
 
     } catch (err) {
         console.error("❌ Kritischer Fehler im Ablauf:", err);
