@@ -24,6 +24,14 @@
 window.OneSignalDeferred = window.OneSignalDeferred || [];
 OneSignalDeferred.push(async function (OneSignal) {
     
+    // Hilfsfunktion für Log-Ausgaben auf der Webseite (optional, aber hilfreich)
+    const logToUI = (msg) => {
+        console.log(msg);
+        // Falls du ein Element mit id="status" hast, schreibt er es dort rein
+        const statusEl = document.getElementById("status-box");
+        if (statusEl) statusEl.innerHTML += `<div>${msg}</div>`;
+    };
+
     try {
         // 1. Initialisierung
         await OneSignal.init({
@@ -34,83 +42,58 @@ OneSignalDeferred.push(async function (OneSignal) {
             notifyButton: { enable: true }
         });
 
-        // 2. PID aus URL holen
+        logToUI("🛠️ OneSignal initialisiert.");
+
+        // 2. PID prüfen
         const urlParams = new URLSearchParams(window.location.search);
-        const personNumber = urlParams.get("pid");
+        const pid = urlParams.get("pid");
+        if (!pid) return logToUI("ℹ️ Keine PID in URL.");
 
-        if (!personNumber) {
-            console.log("ℹ️ Keine PersonNumber (pid) in der URL gefunden.");
-            return;
-        }
-
-        // 3. Daten via Cloudflare Worker laden
-        const CLOUDFLARE_URL = "https://termine.dan-hunziker73.workers.dev/"; 
-        const response = await fetch(`${CLOUDFLARE_URL}?action=loadAdminData`);
+        // 3. Daten laden (Cloudflare)
+        const response = await fetch("https://termine.dan-hunziker73.workers.dev/?action=loadAdminData");
         const data = await response.json();
+        const member = data.push_onesignal.find(m => String(m.personnumber) === String(pid));
+        if (!member) return logToUI("❌ Mitglied nicht gefunden.");
 
-        if (!data || !data.push_onesignal) {
-            console.error("❌ Fehler: 'push_onesignal' Daten nicht gefunden.");
-            return;
+        // 4. Diagnose-Infos auslesen
+        const onesignalId = OneSignal.User.onesignalId;
+        const currentExternalId = OneSignal.User.externalId;
+        logToUI(`🆔 OS-ID: ${onesignalId || 'wird erstellt...'}`);
+        logToUI(`👤 Aktuelle Ext-ID: ${currentExternalId || 'keine'}`);
+
+        // 5. Logik: Erst Login, dann Tags
+        if (currentExternalId !== String(pid)) {
+            logToUI(`🔑 Login wird durchgeführt für ${pid}...`);
+            await OneSignal.login(String(pid));
+            
+            // DEM SERVER ZEIT GEBEN (Wichtig gegen 409!)
+            logToUI("⏳ Warte 5s auf Server-Synchronisation...");
+            await new Promise(r => setTimeout(r, 5000));
         }
 
-        // 4. Mitglied finden
-        const member = data.push_onesignal.find(m => String(m.personnumber) === String(personNumber));
-
-        if (!member) {
-            console.warn("⚠️ Mitglied mit PID " + personNumber + " nicht gefunden.");
-            return;
+        // 6. Tags vorbereiten
+        const tags = {
+            "vorname": member.firstname,
+            "nachname": member.lastname,
+            "verein": "sportschuetzen_muhen"
+        };
+        if (member.membershipcategory) {
+            member.membershipcategory.split(",").forEach(cat => {
+                const clean = cat.trim().replace(/\s+/g, '_');
+                if (clean) tags[clean] = "true";
+            });
         }
 
-        console.log("✅ Mitglied gefunden:", member.firstname, member.lastname);
+        // 7. Tags senden
+        logToUI("📤 Sende Tags...");
+        await OneSignal.User.addTags(tags);
+        logToUI("✅ Erfolg: Tags sind synchron!");
 
-// 5. Login-Check mit Event-Überwachung
-const targetPid = String(member.personnumber);
-
-// Funktion zum Senden der Tags
-async function syncTags(tagsToSend) {
-    try {
-        console.log("📤 Sende Tags an OneSignal...", tagsToSend);
-        await OneSignal.User.addTags(tagsToSend);
-        console.log("🏷️ OneSignal Tags erfolgreich synchronisiert.");
     } catch (err) {
-        console.error("❌ Fehler beim Tag-Sync:", err);
-    }
-}
-
-// 6. Tags vorbereiten
-const tags = {
-    "vorname": member.firstname,
-    "nachname": member.lastname,
-    "verein": "sportschuetzen_muhen"
-};
-if (member.membershipcategory) {
-    member.membershipcategory.split(",").forEach(cat => {
-        const cleanTag = cat.trim().replace(/\s+/g, '_');
-        if (cleanTag) tags[cleanTag] = "true";
-    });
-}
-
-// 7. Identität prüfen und Flow steuern
-if (OneSignal.User.externalId !== targetPid) {
-    console.log(`🔑 Starte Login für PID: ${targetPid}`);
-    
-    // Wichtig: Zuerst einloggen
-    await OneSignal.login(targetPid);
-    
-    // Wir warten, bis das SDK bestätigt, dass der User gewechselt hat
-    // Das verhindert den 409 Conflict, da wir erst senden, wenn die ID feststeht
-    setTimeout(() => {
-        syncTags(tags);
-    }, 5000); // 5 Sekunden Sicherheitspause für das Backend
-} else {
-    console.log("✅ Identität bereits korrekt. Aktualisiere Tags...");
-    syncTags(tags);
-}        
-    } catch (err) {
-        console.error("❌ Kritischer Fehler im Ablauf:", err);
+        logToUI(`❌ Fehler: ${err.message}`);
+        console.error(err);
     }
 });
-
 
 /************************************************
  * iOS & Standalone Checks
