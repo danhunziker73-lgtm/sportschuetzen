@@ -63,22 +63,21 @@ OneSignalDeferred.push(async function (OneSignal) {
 
         console.log("✅ Mitglied gefunden:", member.firstname, member.lastname);
 
-// 5. Login-Check mit Identitäts-Erzwingung
+// 5. Login-Check mit Force-Reset bei Bedarf
 const targetPid = String(member.personnumber);
-const currentExternalId = OneSignal.User.externalId;
 
-if (currentExternalId !== targetPid) {
-    console.log(`🔑 Login erforderlich: ${targetPid}`);
+// Prüfen, ob wir in einer korrupten Session stecken (404/409 Historie)
+if (OneSignal.User.externalId !== targetPid) {
+    console.log("🧹 Bereinige alte Session...");
+    // Logout löscht lokale IDs, damit keine 404-Leichen gesendet werden
+    await OneSignal.logout(); 
+    await new Promise(r => setTimeout(r, 1000));
     
-    // Wir loggen ein. In v16 ist login() die primäre Methode.
+    console.log(`🔑 Neuer Login: ${targetPid}`);
     await OneSignal.login(targetPid);
-    
-    // Wir geben dem Server massiv Zeit (4 Sek), um die alten Sessions 
-    // im Dashboard (die du im Screenshot siehst) zu sortieren.
-    console.log("⏳ Stabilisiere Identität auf OneSignal Servern...");
-    await new Promise(resolve => setTimeout(resolve, 4000)); 
+    await new Promise(r => setTimeout(r, 3000)); 
 } else {
-    console.log("✅ Identität bereits korrekt gesetzt: " + targetPid);
+    console.log("✅ Identität stabil: " + targetPid);
 }
 
 // 6. Tags vorbereiten
@@ -96,25 +95,17 @@ if (member.membershipcategory) {
     });
 }
 
-// 7. Tags senden mit "Safe-Retry"
-async function sendTagsSafe(data, attempt = 1) {
+// 7. Tags senden mit verzögertem Start
+// Wir warten hier extra lang, damit der 404/409-Spuk im Netzwerk vorbei ist
+setTimeout(async () => {
     try {
-        console.log(`📤 Sende Tags (Versuch ${attempt})...`);
-        await OneSignal.User.addTags(data);
-        console.log("🏷️ OneSignal Tags erfolgreich vom Server bestätigt.");
+        console.log("📤 Finaler Tag-Versand...");
+        await OneSignal.User.addTags(tags);
+        console.log("🚀 Tags sind nun final auf dem Server!");
     } catch (err) {
-        if (attempt < 3) {
-            console.warn(`⚠️ Konflikt (409). Warte auf Server-Freigabe... (Versuch ${attempt})`);
-            setTimeout(() => sendTagsSafe(data, attempt + 1), 5000);
-        } else {
-            console.error("❌ Tags konnten nach mehreren Versuchen nicht gesetzt werden. Dashboard prüfen.", err);
-        }
+        console.error("❌ Netzwerk-Konflikt:", err);
     }
-}
-
-// Start der Tag-Sychronisierung
-await sendTagsSafe(tags);
-
+}, 2000);
         
     } catch (err) {
         console.error("❌ Kritischer Fehler im Ablauf:", err);
