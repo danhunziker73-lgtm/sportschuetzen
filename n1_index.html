@@ -68,28 +68,40 @@ OneSignalDeferred.push(async function (OneSignal) {
             });
         }
 
-        // 6. Der "Reload-Validierungs-Check"
-        logToUI(`🔍 Prüfe Identität: Aktuell [${OneSignal.User.externalId}] vs Ziel [${targetPid}]`);
+    // 6. Tags vorbereiten (Konkrete Werte statt nur "true")
+        const tagsToSync = {
+            "vorname": member.firstname,
+            "nachname": member.lastname,
+            "verein": "sportschuetzen_muhen"
+        };
 
-        if (OneSignal.User.externalId !== targetPid) {
-            logToUI("🔑 Identität passt nicht. Triggere Login...");
-            await OneSignal.login(targetPid);
-            
-            logToUI("🔄 Erbitte Datenbank-Abgleich. Seite wird in 3s neu geladen...");
-            setTimeout(() => {
-                window.location.reload(); // Hard Reset des SDK-Status
-            }, 3000);
-            
-        } else {
-            // NUR WENN DIE ID STIMMT, SENDEN WIR TAGS
-            logToUI("✅ Identität vom SDK bestätigt. Sende Tags...");
+        if (member.membershipcategory) {
+            const categories = member.membershipcategory.split(",");
+            categories.forEach(cat => {
+                const cleanKey = cat.trim().replace(/\s+/g, '_');
+                if (cleanKey) {
+                    // Wir setzen den Kategorienamen als Wert, das ist im Dashboard sichtbarer
+                    tagsToSync[cleanKey] = cat.trim(); 
+                }
+            });
+        }
+
+        // 7. Der "Force-Sync"
+        // Wir prüfen, ob die ID im Log (de5f9fc0...) überhaupt noch die ist, die OneSignal aktuell nutzt
+        const currentOSID = OneSignal.User.onesignalId;
+        logToUI(`📡 Sende an OS-ID: ${currentOSID}`);
+
+        if (OneSignal.User.externalId === targetPid) {
             try {
+                // Wir nutzen addTags. Wichtig: Keine leeren Werte senden.
                 await OneSignal.User.addTags(tagsToSync);
-                logToUI("🚀 Tags erfolgreich vom Server akzeptiert!");
+                logToUI("🚀 Tags wurden abgeschickt. Prüfe Dashboard!");
+                console.log("Gesendete Tags:", tagsToSync);
             } catch (tagErr) {
-                logToUI("⚠️ Server meldet trotzdem Konflikt. Dashboard-Check nötig.");
-                console.error(tagErr);
+                logToUI("❌ Server-Konflikt beim Senden. ID ist blockiert.");
             }
+        } else {
+            logToUI("⚠️ Abbruch: PID nicht korrekt verknüpft. Tags wurden nicht gesendet.");
         }
 
     } catch (err) {
