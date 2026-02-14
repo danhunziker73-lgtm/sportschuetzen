@@ -67,6 +67,7 @@ function handleDeepLink() {
 
 // --- DATEN LADEN & RENDERN (An das neue JSON angepasst) ---
 
+// --- DATEN LADEN (Korrektur der Ort-Logik) ---
 async function loadTermine() {
     const wrap = document.getElementById("termine");
     const safeFetch = async (url) => {
@@ -91,7 +92,7 @@ async function loadTermine() {
                 titel: t.anlasstitel || "Unbenannt",
                 datum_raw: t.datum,
                 start: t.startzeit,
-                ort: t.ort || "Muhen",
+                ort: t.ort || "Muhen", // Hier wird der Ort aus dem JSON genommen (z.B. "Thun" oder "Buchs")
                 status: t.status,
                 typ: 'verein',
                 dateObj: t.datum ? new Date(t.datum) : new Date(8640000000000000)
@@ -104,17 +105,14 @@ async function loadTermine() {
                 titel: t.titel,
                 datum_raw: t.datum_iso,
                 start: t.start,
-                ort: t.ort || "Schützenhaus",
+                ort: "Schützenhaus", // Externe Termine sind immer im Haus
                 status: 'fix',
                 typ: 'extern',
                 dateObj: t.datum_iso ? new Date(t.datum_iso) : new Date(8640000000000000)
             })));
         }
 
-        // Sortierung
         harmonized.sort((a, b) => a.dateObj - b.dateObj);
-
-        // Runden-Präfixe & globale Variable setzen
         allTermine = applyRundenPrefix(harmonized);
         renderTermine(allTermine);
 
@@ -123,37 +121,38 @@ async function loadTermine() {
     }
 }
 
+// --- RENDERING (Korrektur der Anzeige) ---
 function renderTermine(data) {
     const wrap = document.getElementById("termine");
     const currentYear = new Date().getFullYear();
     wrap.innerHTML = data.length === 0 ? "Keine Termine gefunden." : "";
 
     data.forEach(t => {
-        // Filter-Regeln
         if (t.status === "abgesagt") return;
         if (t.typ === "extern" && t.titel.toLowerCase().includes("reinigung")) return;
-        if (!t.datum_raw || t.datum_raw === "") return; // Leere Daten (wie Endschiessen ohne Datum) ignorieren
+        if (!t.datum_raw || t.datum_raw === "") return;
 
         const d = t.dateObj;
         const weekday = d.toLocaleDateString('de-DE', { weekday: 'short' }).substring(0, 2);
         const dateDisplay = d.toLocaleDateString('de-DE', { day: 'numeric', month: 'long' });
         const yearInDate = d.getFullYear();
-        
         const subLine = (yearInDate !== currentYear) ? `${weekday} '${yearInDate.toString().substring(2)}` : weekday;
 
+        const isExtern = t.typ === "extern";
+
         wrap.innerHTML += `
-        <div class="termin-row ${t.typ === 'extern' ? 'extern' : ''}">
+        <div class="termin-row ${isExtern ? 'extern' : ''}">
             <div class="termin-date">
                 <span class="date-main">${dateDisplay}</span>
                 <span class="date-sub">${subLine}</span>
             </div>
             <div class="termin-content">
-                <span class="termin-title">${t.typ === 'extern' ? '🏠 ' : ''}${t.titel}</span>
+                <span class="termin-title">${isExtern ? '🏠 ' : ''}${t.titel}</span>
                 <div class="termin-meta">
-                    <span>${t.typ === 'extern' ? 'Schützenhaus' : '📍 ' + t.ort}</span>
+                    <span>${isExtern ? 'Schützenhaus' : '📍 ' + t.ort}</span>
                     ${t.start ? `<span>🕒 ${t.start}</span>` : ""}
                 </div>
-                ${t.typ === 'extern' ? '<span class="badge-extern">Haus belegt</span>' : (t.status === 'provisorisch' ? '<span class="badge-prov">Provisorisch</span>' : '')}
+                ${isExtern ? '<span class="badge-extern">Haus belegt</span>' : (t.status === 'provisorisch' ? '<span class="badge-prov">Provisorisch</span>' : '')}
             </div>
         </div>`;
     });
