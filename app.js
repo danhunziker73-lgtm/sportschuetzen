@@ -5,7 +5,8 @@ let allTermine = [];
 let touchStart = 0;
 const spinner = document.getElementById('pull-spinner');
 
-// --- EVENT LISTENER ---
+// --- EVENT LISTENER (Wie gehabt) ---
+
 let lastResume = 0;
 document.addEventListener("visibilitychange", () => {
     if (document.visibilityState !== "visible") return;
@@ -28,7 +29,8 @@ document.addEventListener('touchend', e => {
     else spinner.style.top = '-50px';
 }, {passive: true});
 
-// --- NAVIGATION ---
+// --- NAVIGATION & DEEP LINKING (Wie gehabt) ---
+
 function nav(id, title, btn) {
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active-page'));
     const targetPage = document.getElementById(id);
@@ -41,6 +43,7 @@ function nav(id, title, btn) {
     const newPath = window.location.pathname;
     if (pageKey === 'home') window.history.replaceState({}, '', newPath);
     else window.history.replaceState({}, '', `${newPath}?page=${pageKey}`);
+    
     window.scrollTo(0,0);
 }
 
@@ -62,19 +65,16 @@ function handleDeepLink() {
     }
 }
 
-// --- DATEN LADEN & RENDERN ---
+// --- DATEN LADEN & RENDERN (An das neue JSON angepasst) ---
 
 async function loadTermine() {
     const wrap = document.getElementById("termine");
     const safeFetch = async (url) => {
         try {
             const r = await fetch(url);
-            if(!r.ok) return [];
-            const d = await r.json();
-            // Check ob das JSON in einem "termine" Wrapper kommt
-            if (d && d.termine && Array.isArray(d.termine)) return d.termine;
-            return Array.isArray(d) ? d : [];
-        } catch(e) { return []; }
+            if(!r.ok) return null;
+            return await r.json();
+        } catch(e) { return null; }
     };
 
     try {
@@ -83,33 +83,42 @@ async function loadTermine() {
             safeFetch(GOOGLE_SCRIPT_URL)
         ]);
 
-        // Mapping: Wir vereinheitlichen die Felder hier
-        allTermine = [
-            ...resWorker.map(t => ({
-                ...t, 
-                titel: t.anlasstitel || t.titel || "Unbenannter Termin", 
-                zeit: t.startzeit || "",
-                typ: 'verein'
-            })),
-            ...resGoogle.map(t => ({
-                ...t, 
-                titel: t.titel || t.anlasstitel || t.summary || "Hausbelegung", 
-                zeit: t.startzeit || t.start || "",
-                typ: 'extern'
-            }))
-        ];
+        let harmonized = [];
 
-        // Sortierung für ISO-Datum (YYYY-MM-DD)
-        allTermine.sort((a, b) => {
-            if (!a.datum || a.datum === "") return 1;
-            if (!b.datum || b.datum === "") return -1;
-            return new Date(a.datum) - new Date(b.datum);
-        });
+        // 1. Vereinsdaten (Worker)
+        if (resWorker && resWorker.termine) {
+            harmonized.push(...resWorker.termine.map(t => ({
+                titel: t.anlasstitel || "Unbenannt",
+                datum_raw: t.datum,
+                start: t.startzeit,
+                ort: t.ort || "Muhen",
+                status: t.status,
+                typ: 'verein',
+                dateObj: t.datum ? new Date(t.datum) : new Date(8640000000000000)
+            })));
+        }
 
-        allTermine = applyRundenPrefix(allTermine);
+        // 2. Externe Daten (Google)
+        if (Array.isArray(resGoogle)) {
+            harmonized.push(...resGoogle.map(t => ({
+                titel: t.titel,
+                datum_raw: t.datum_iso,
+                start: t.start,
+                ort: t.ort || "Schützenhaus",
+                status: 'fix',
+                typ: 'extern',
+                dateObj: t.datum_iso ? new Date(t.datum_iso) : new Date(8640000000000000)
+            })));
+        }
+
+        // Sortierung
+        harmonized.sort((a, b) => a.dateObj - b.dateObj);
+
+        // Runden-Präfixe & globale Variable setzen
+        allTermine = applyRundenPrefix(harmonized);
         renderTermine(allTermine);
+
     } catch (e) { 
-        console.error(e);
         wrap.innerHTML = "Fehler beim Laden."; 
     }
 }
@@ -119,42 +128,32 @@ function renderTermine(data) {
     const currentYear = new Date().getFullYear();
     wrap.innerHTML = data.length === 0 ? "Keine Termine gefunden." : "";
 
-    const days = ["So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"];
-    const months = ["Jan.", "Feb.", "März", "April", "Mai", "Juni", "Juli", "Aug.", "Sept.", "Okt.", "Nov.", "Dez."];
-
     data.forEach(t => {
-        if(!t.titel || t.status === "abgesagt") return;
+        // Filter-Regeln
+        if (t.status === "abgesagt") return;
+        if (t.typ === "extern" && t.titel.toLowerCase().includes("reinigung")) return;
+        if (!t.datum_raw || t.datum_raw === "") return; // Leere Daten (wie Endschiessen ohne Datum) ignorieren
+
+        const d = t.dateObj;
+        const weekday = d.toLocaleDateString('de-DE', { weekday: 'short' }).substring(0, 2);
+        const dateDisplay = d.toLocaleDateString('de-DE', { day: 'numeric', month: 'long' });
+        const yearInDate = d.getFullYear();
         
-        const isExtern = t.typ === "extern";
-        if(isExtern && t.titel.toLowerCase().includes("reinigung")) return;
-
-        let dateDisplay = "---";
-        let subLine = "Datum folgt";
-
-        if (t.datum && t.datum !== "") {
-            // Explizites Parsen von YYYY-MM-DD um Browser-Verwechslung zu vermeiden
-            const p = t.datum.split("-");
-            const d = new Date(p[0], p[1] - 1, p[2]); 
-            
-            if (!isNaN(d)) {
-                dateDisplay = `${d.getDate()}. ${months[d.getMonth()]}`;
-                subLine = (d.getFullYear() !== currentYear) ? `${days[d.getDay()]} '${String(d.getFullYear()).substring(2)}` : days[d.getDay()];
-            }
-        }
+        const subLine = (yearInDate !== currentYear) ? `${weekday} '${yearInDate.toString().substring(2)}` : weekday;
 
         wrap.innerHTML += `
-        <div class="termin-row ${isExtern ? 'extern' : ''}">
+        <div class="termin-row ${t.typ === 'extern' ? 'extern' : ''}">
             <div class="termin-date">
                 <span class="date-main">${dateDisplay}</span>
                 <span class="date-sub">${subLine}</span>
             </div>
             <div class="termin-content">
-                <span class="termin-title">${isExtern ? '🏠 ' : ''}${t.titel}</span>
+                <span class="termin-title">${t.typ === 'extern' ? '🏠 ' : ''}${t.titel}</span>
                 <div class="termin-meta">
-                    <span>${isExtern ? 'Schützenhaus' : '📍 ' + (t.ort || 'Muhen')}</span>
-                    ${t.zeit ? `<span>🕒 ${t.zeit}</span>` : ""}
+                    <span>${t.typ === 'extern' ? 'Schützenhaus' : '📍 ' + t.ort}</span>
+                    ${t.start ? `<span>🕒 ${t.start}</span>` : ""}
                 </div>
-                ${isExtern ? '<span class="badge-extern">Haus belegt</span>' : (t.status === 'provisorisch' ? '<span class="badge-prov">Provisorisch</span>' : '')}
+                ${t.typ === 'extern' ? '<span class="badge-extern">Haus belegt</span>' : (t.status === 'provisorisch' ? '<span class="badge-prov">Provisorisch</span>' : '')}
             </div>
         </div>`;
     });
@@ -175,9 +174,11 @@ function applyRundenPrefix(termine) {
         "Mannschaftsmeisterschaft": 7
     };
     const counters = {};
+
     return termine.map(t => {
         const title = t.titel.trim();
         if (title.toLowerCase().startsWith("final")) return t;
+
         for (const baseTitle in rules) {
             if (title === baseTitle) {
                 counters[baseTitle] = (counters[baseTitle] || 0) + 1;
@@ -190,7 +191,6 @@ function applyRundenPrefix(termine) {
     });
 }
 
-// --- INITIALISIERUNG ---
 window.addEventListener('load', () => {
     loadTermine();
     handleDeepLink();
