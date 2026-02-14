@@ -1,0 +1,172 @@
+
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>Sportschützen Muhen App</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+    <link rel="manifest" href="/sportschuetzen/manifest.json">
+    <link rel="apple-touch-icon" sizes="180x180" href="/sportschuetzen/icons/apple-touch-icon.png">
+    
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="Sportschützen Muhen">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+
+    <link rel="icon" type="image/png" sizes="192x192" href="/sportschuetzen/icons/icon-192.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="/sportschuetzen/icons/icon-512.png">
+
+    <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+<script>
+window.OneSignalDeferred = window.OneSignalDeferred || [];
+
+OneSignalDeferred.push(async function(OneSignal) {
+    const log = (...args) => console.log("[OneSignal]", ...args);
+
+    try {
+        /******** INIT ********/
+        await OneSignal.init({
+            appId: "975091f5-948b-48d4-9e61-b7f4d43a1021",
+            serviceWorkerPath: "OneSignalSDKWorker.js",
+            serviceWorkerParam: { scope: "/sportschuetzen/" },
+            autoRegister: false
+        });
+
+        log("Init fertig");
+
+        /******** EXTERNAL ID LOGIN ********/
+        const urlParams = new URLSearchParams(window.location.search);
+        const pid = urlParams.get("pid");
+        if (!pid) return;
+
+        const targetPid = String(pid);
+        const currentExtId = OneSignal.User.externalId;
+        log("Current External ID:", currentExtId);
+
+        if (currentExtId !== targetPid) {
+            log("Login mit External ID:", targetPid);
+            await OneSignal.login(targetPid);
+            log("User Identity stabil");
+        }
+
+        /******** PERMISSION ********/
+        if (OneSignal.Notifications.permission !== "granted") {
+            log("Push noch nicht erlaubt – warte auf User Aktion");
+        }
+
+        /******** SUBSCRIPTION & TAGS ********/
+        let tagsSent = false;
+
+        // Lade Memberdaten
+        const response = await fetch("https://termine.dan-hunziker73.workers.dev/?action=loadAdminData");
+        const data = await response.json();
+        const member = data.push_onesignal.find(m => String(m.personnumber) === targetPid);
+
+        if (!member) {
+            log("Member nicht gefunden");
+            return;
+        }
+
+        const tags = {
+            vorname: member.firstname || "",
+            nachname: member.lastname || "",
+            verein: "sportschuetzen_muhen"
+        };
+
+        if (member.membershipcategory) {
+            member.membershipcategory.split(",").forEach(cat => {
+                const key = cat.trim().replace(/\s+/g, "_").replace(/[^a-zA-Z0-9_]/g, "");
+                if (key) tags[key] = "aktiv";
+            });
+        }
+
+        const safeSetTags = async () => {
+            if (tagsSent) {
+                log("Tags bereits gesetzt – überspringe");
+                return;
+            }
+
+            tagsSent = true;
+
+            log("Warte 20 Sekunden auf finalen Server-Sync...");
+            await new Promise(r => setTimeout(r, 20000)); // 20 Sekunden Delay
+
+            log("Sende Tags:", tags);
+            await OneSignal.User.addTags(tags);
+            log("✅ TAGS ERFOLGREICH GESETZT");
+        };
+
+        // Event Listener: Subscription Change
+        OneSignal.User.PushSubscription.addEventListener("change", async (event) => {
+            if (event.current?.id) {
+                log("Subscription Event erkannt:", event.current.id);
+                await safeSetTags();
+            }
+        });
+
+        // Fallback: falls Subscription schon existiert
+        if (OneSignal.User.PushSubscription.id) {
+            log("Subscription bereits vorhanden:", OneSignal.User.PushSubscription.id);
+            await safeSetTags();
+        }
+
+    } catch (err) {
+        console.error("❌ OneSignal Fehler:", err);
+    }
+});
+</script>
+
+
+
+
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+    
+<body>
+
+<div id="pull-spinner"><div class="spinner-icon"></div></div>
+<header><h1 id="main-title">Termine</h1></header>
+
+<main>
+    <section id="page-home" class="page active-page">
+        <div class="card" style="text-align:center;">
+            <img src="https://raw.githubusercontent.com/danhunziker73-lgtm/sportschuetzen/main/icons/icon-512.png" style="height:100px; margin-bottom:10px;">
+            <h2>Sportschützen Muhen</h2>
+            <p>Willkommen</p>
+        </div>
+        <div class="card">
+            <h3>Termine</h3>
+            
+            <div class="filter-container">
+                <button class="filter-btn active" onclick="filterTermine('all', this)">Alle</button>
+                <button class="filter-btn" onclick="filterTermine('verein', this)">🎯 Verein</button>
+                <button class="filter-btn" onclick="filterTermine('extern', this)">🏠 Haus</button>
+            </div>
+
+            <div id="termine" class="termine-list">Lade Termine...</div>
+        </div>
+    </section>
+
+    <section id="page-jm" class="page"><iframe src="app/app_jm.html"></iframe></section>
+    <section id="page-gruppe" class="page"><iframe src="app/app_gruppe.html"></iframe></section>
+    <section id="page-mannschaft" class="page"><iframe src="app/app_mannschaft.html"></iframe></section>
+
+    <!-- Upload in iframe auslagern -->
+<section id="page-upload" class="page">
+    <iframe src="upload.html"></iframe>
+</section>
+</main>
+
+<nav class="bottom-nav">
+    <button class="nav-item" onclick="nav('page-jm', 'Jahresmeisterschaft', this)"><span>🏆</span>JM</button>
+    <button class="nav-item" onclick="nav('page-gruppe', 'Gruppe & Grenzland', this)"><span>👥</span>G&G</button>
+    <button class="nav-item nav-home active" onclick="nav('page-home', 'Termine', this)"><span>🏠</span></button>
+    <button class="nav-item" onclick="nav('page-mannschaft', 'Mannschaft', this)"><span>🎯</span>Mannschaft</button>
+    <button class="nav-item" onclick="nav('page-upload', 'Upload', this)"><span>📤</span>Upload</button>
+</nav>
+
+<script src="app.js" defer></script>
+</body>
+</html>
