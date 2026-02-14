@@ -88,17 +88,18 @@ async function loadTermine() {
 
         let harmonized = [];
 
-        // 1. Vereinsdaten (aus Worker .termine)
+        // 1. VEREINSDATEN (Worker) - Mapping auf DEINE neuen Keys
         if (resWorker && resWorker.termine) {
             resWorker.termine.forEach(t => {
-                if (t.datum) {
+                // WICHTIG: Prüfen ob Datum vorhanden (dein JSON hat leere Datumsfelder bei "Endschiessen" etc.)
+                if (t.datum && t.datum.trim() !== "") {
                     const dObj = new Date(t.datum);
                     if (!isNaN(dObj.getTime())) {
                         harmonized.push({
-                            titel: t.anlasstitel,
-                            start: t.startzeit,
+                            titel: t.anlasstitel, // Dein Key: anlasstitel
+                            start: t.startzeit,   // Dein Key: startzeit
                             ort: t.ort || "Muhen",
-                            status: t.status,
+                            status: t.status || "fix",
                             typ: 'verein',
                             dateObj: dObj
                         });
@@ -107,7 +108,7 @@ async function loadTermine() {
             });
         }
 
-        // 2. Externe Daten (GAS)
+        // 2. EXTERNE DATEN (Google Script)
         if (Array.isArray(resGoogle)) {
             resGoogle.forEach(t => {
                 const dateStr = t.datum_iso || t.datum;
@@ -115,8 +116,8 @@ async function loadTermine() {
                     const dObj = new Date(dateStr);
                     if (!isNaN(dObj.getTime())) {
                         harmonized.push({
-                            titel: t.titel,
-                            start: t.start,
+                            titel: t.titel,      // GAS Key: titel
+                            start: t.start,      // GAS Key: start
                             ort: "Schützenhaus",
                             status: 'fix',
                             typ: 'extern',
@@ -127,11 +128,16 @@ async function loadTermine() {
             });
         }
 
+        // Sortierung nach echtem Datum
         harmonized.sort((a, b) => a.dateObj - b.dateObj);
+        
         allTermine = applyRundenPrefix(harmonized);
         renderTermine(allTermine);
 
-    } catch (e) { wrap.innerHTML = "Fehler beim Laden."; }
+    } catch (e) { 
+        console.error("Rendering Fehler:", e);
+        wrap.innerHTML = "Fehler beim Laden."; 
+    }
 }
 
 function renderTermine(data) {
@@ -145,9 +151,10 @@ function renderTermine(data) {
         if (isExtern && t.titel.toLowerCase().includes("reinigung")) return;
 
         const d = t.dateObj;
-        const monthNames = ["Jan.", "Feb.", "März", "April", "Mai", "Juni", "Juli", "Aug.", "Sept.", "Okt.", "Nov.", "Dez."];
-        const dateDisplay = `${d.getDate()}. ${monthNames[d.getMonth()]}`;
+        // Schweizer Formatierung für die Anzeige
+        const monthNames = ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "August", "September", "Oktober", "November", "Dezember"];
         const weekday = d.toLocaleDateString('de-CH', { weekday: 'short' }).substring(0, 2);
+        const dateDisplay = `${d.getDate()}. ${monthNames[d.getMonth()]}`;
         
         const yearInDate = d.getFullYear();
         const subLine = (yearInDate !== currentYear) ? `${weekday} '${yearInDate.toString().substring(2)}` : weekday;
@@ -169,7 +176,6 @@ function renderTermine(data) {
         </div>`;
     });
 }
-
 function filterTermine(type, btn) {
     document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
