@@ -17,16 +17,12 @@
     <link rel="icon" type="image/png" sizes="512x512" href="/sportschuetzen/icons/icon-512.png">
 
     <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
-
 <script>
 window.OneSignalDeferred = window.OneSignalDeferred || [];
-
 OneSignalDeferred.push(async function(OneSignal) {
-
     const log = (...args) => console.log("[OneSignal]", ...args);
 
     try {
-
         /*************************************************************
          * 1. INIT
          *************************************************************/
@@ -80,14 +76,10 @@ OneSignalDeferred.push(async function(OneSignal) {
          * 5. SUBSCRIPTION FLOW
          *************************************************************/
         if (permission === "granted") {
-
             await OneSignal.User.PushSubscription.optIn();
-
             const sub = await waitForSubscriptionReady(30000);
             log("Subscription stabil:", sub.id);
-
-            // kleiner zusätzlicher Sync-Buffer
-            await delay(2000);
+            await delay(2000); // Zusätzlicher Puffer
         } else {
             log("Push nicht erlaubt – Tags werden trotzdem gesetzt");
         }
@@ -119,142 +111,100 @@ OneSignalDeferred.push(async function(OneSignal) {
             });
         }
 
+        /*************************************************************
+         * 7. TAGS SETZEN MIT RETRY & SYNC
+         *************************************************************/
+        log("Warte auf finalen Server-Sync...");
+        await waitForUserFullySynced(30000);
+
         log("Sende Tags:", tags);
+        await safeAddTags(tags);
 
-  /*************************************************************
- * 7. TAGS SETZEN MIT RETRY & SERVER SYNC WAIT
- *************************************************************/
+        log("✅ TAGS ERFOLGREICH GESETZT");
 
-await waitForUserFullySynced(30000);
-
-await safeAddTags(tags);
-
-log("✅ TAGS ERFOLGREICH GESETZT");
+    } catch (err) {
+        console.error("❌ OneSignal Fehler:", err);
+    }
 
     /*************************************************************
-     * HELPER FUNCTIONS
-   
+     * HELPER FUNCTIONS (Innerhalb der push-Funktion verfügbar)
      *************************************************************/
 
-function waitForUserFullySynced(timeout) {
-    return new Promise((resolve, reject) => {
+    function waitForUserFullySynced(timeout) {
+        return new Promise((resolve, reject) => {
+            const start = Date.now();
+            let lastId = null;
+            let stableCount = 0;
 
-        const start = Date.now();
-        let lastId = null;
-        let stableCount = 0;
+            const check = () => {
+                const id = OneSignal.User.onesignalId;
+                if (!id) {
+                    if (Date.now() - start > timeout) return reject(new Error("No OneSignal ID"));
+                    return setTimeout(check, 500);
+                }
+                if (id === lastId) {
+                    stableCount++;
+                } else {
+                    stableCount = 0;
+                    lastId = id;
+                }
+                if (stableCount >= 3) return resolve(true);
+                if (Date.now() - start > timeout) return reject(new Error("User sync timeout"));
+                setTimeout(check, 1000);
+            };
+            check();
+        });
+    }
 
-        const check = () => {
-
-            const id = OneSignal.User.onesignalId;
-
-            if (!id) {
-                if (Date.now() - start > timeout)
-                    return reject(new Error("No OneSignal ID"));
-                return setTimeout(check, 500);
+    async function safeAddTags(tags, retries = 5) {
+        for (let i = 0; i < retries; i++) {
+            try {
+                await OneSignal.User.addTags(tags);
+                return;
+            } catch (err) {
+                console.warn("Tag Retry", i + 1);
+                if (i === retries - 1) throw err;
+                await delay(3000);
             }
-
-            if (id === lastId) {
-                stableCount++;
-            } else {
-                stableCount = 0;
-                lastId = id;
-            }
-
-            // ID muss 3x hintereinander stabil sein
-            if (stableCount >= 3) {
-                return resolve(true);
-            }
-
-            if (Date.now() - start > timeout)
-                return reject(new Error("User sync timeout"));
-
-            setTimeout(check, 1000);
-        };
-
-        check();
-    });
-}
-
-
-async function safeAddTags(tags, retries = 5) {
-
-    for (let i = 0; i < retries; i++) {
-
-        try {
-            await OneSignal.User.addTags(tags);
-            return;
-        } catch (err) {
-
-            console.warn("Tag Retry", i + 1);
-
-            if (i === retries - 1) throw err;
-
-            await new Promise(r => setTimeout(r, 3000));
         }
     }
-}
 
-
-        
     function delay(ms) {
         return new Promise(resolve => setTimeout(resolve, ms));
     }
 
     function waitForUserReady(timeout) {
         return new Promise((resolve, reject) => {
-
             const start = Date.now();
-
             const check = () => {
-                const onesignalId = OneSignal.User.onesignalId;
-                const externalId = OneSignal.User.externalId;
-
-                if (onesignalId && externalId) {
+                if (OneSignal.User.onesignalId && OneSignal.User.externalId) {
                     resolve(true);
                     return;
                 }
-
-                if (Date.now() - start > timeout) {
-                    reject(new Error("User nicht bereit (Timeout)"));
-                    return;
-                }
-
+                if (Date.now() - start > timeout) return reject(new Error("User bereit Timeout"));
                 setTimeout(check, 500);
             };
-
             check();
         });
     }
 
     function waitForSubscriptionReady(timeout) {
         return new Promise((resolve, reject) => {
-
             const start = Date.now();
-
             const check = () => {
-
                 const sub = OneSignal.User.PushSubscription;
-
                 if (sub && sub.id && sub.token) {
                     resolve(sub);
                     return;
                 }
-
-                if (Date.now() - start > timeout) {
-                    reject(new Error("Subscription Timeout"));
-                    return;
-                }
-
+                if (Date.now() - start > timeout) return reject(new Error("Sub Timeout"));
                 setTimeout(check, 500);
             };
-
             check();
         });
     }
-
-
+});
 </script>
-
 
 
 
