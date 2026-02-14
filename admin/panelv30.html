@@ -169,38 +169,53 @@
     }
 
     // --- SPEICHERN & LOGGING ---
-    async function saveAll() {
-        if (!confirm("Änderungen speichern?")) return;
-        
-        const detailLog = createDetailedLog(); // NEU: Log generieren
-        const btn = document.querySelector('.nav-save');
-        btn.style.opacity = "0.5";
-        
-        // Sync Maps
-        state.termine.forEach(t => {
-            const ortInfo = state.dropdowns.orteMitMaps.find(o => o[0] === t.ort);
-            if (ortInfo) t.austragungsorte_map = ortInfo[1];
+ async function saveAll() {
+    if (!confirm("Änderungen speichern?")) return;
+
+    // 1. Termine sortieren, BEVOR das Log erstellt wird
+    // Das stellt sicher, dass originalState und state die gleiche Struktur haben
+    state.termine.sort((a, b) => {
+        if (!a.datum) return 1;
+        if (!b.datum) return -1;
+        return new Date(a.datum) - new Date(b.datum);
+    });
+
+    // 2. Jetzt erst das Log generieren (nachdem die Reihenfolge stimmt)
+    const detailLog = createDetailedLog(); 
+    
+    const btn = document.querySelector('.nav-save');
+    btn.style.opacity = "0.5";
+    
+    // 3. Sync Maps (hast du bereits korrekt drin)
+    state.termine.forEach(t => {
+        const ortInfo = state.dropdowns.orteMitMaps.find(o => o[0] === t.ort);
+        if (ortInfo) t.austragungsorte_map = ortInfo[1];
+    });
+
+    const { anmeldungen, members, protokoll, adminList, push_onesignal, ...dataToSave } = state;
+    dataToSave.user = activeAdmin;
+    dataToSave.logDetails = detailLog;
+
+    try {
+        const response = await fetch(`${WORKER_URL}?action=saveAdminData`, { 
+            method: 'POST', 
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(dataToSave) 
         });
-
-        const { anmeldungen, members, protokoll, adminList, push_onesignal, ...dataToSave } = state;
-        dataToSave.user = activeAdmin;
-        dataToSave.logDetails = detailLog; // NEU: Details mitschicken
-
-        try {
-            const response = await fetch(`${WORKER_URL}?action=saveAdminData`, { 
-                method: 'POST', 
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify(dataToSave) 
-            });
-            const result = await response.json();
-            if(result.success) {
-                alert("✅ Daten erfolgreich gespeichert!");
-                originalState = JSON.parse(JSON.stringify(state));
-                await refreshData();
-            } else { alert("Fehler: " + result.error); }
-        } catch (e) { alert("Netzwerkfehler: " + e); }
-        btn.style.opacity = "1";
+        const result = await response.json();
+        if(result.success) {
+            alert("✅ Daten erfolgreich gespeichert!");
+            // originalState auf den neuen, sortierten Stand setzen
+            originalState = JSON.parse(JSON.stringify(state));
+            await refreshData();
+        } else { 
+            alert("Fehler: " + result.error); 
+        }
+    } catch (e) { 
+        alert("Netzwerkfehler: " + e); 
     }
+    btn.style.opacity = "1";
+}
 
     function createDetailedLog() {
         let changes = [];
@@ -265,10 +280,24 @@
         document.getElementById('loader').style.display = 'none';
     }
 
-    function renderAll() {
-        renderGV(); renderTermine(); renderAnmeldungen(); renderEditor(); renderAppInfo(); renderProtokoll();
-    }
-
+    function sortTermine() {
+    state.termine.sort((a, b) => {
+        // Leere Daten nach unten
+        if (!a.datum) return 1;
+        if (!b.datum) return -1;
+        return new Date(a.datum) - new Date(b.datum);
+    });
+}
+    
+   function renderAll() {
+    sortTermine(); // <--- Zuerst sortieren, dann anzeigen
+    renderGV(); 
+    renderTermine(); 
+    renderAnmeldungen(); 
+    renderEditor(); 
+    renderAppInfo(); 
+    renderProtokoll();
+}
     function renderProtokoll() {
         if(!state.protokoll) return;
         document.getElementById('protokoll-list').innerHTML = state.protokoll.map(p => `
