@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sportschützen Muhen - Vermietung</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #0f3a5d;
+            --accent: #10b981; /* Frisches Grün für "Mieten" */
+            --white: #ffffff;
+            --bg-light: #f1f5f9;
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            margin: 0;
+            background: var(--bg-light);
+            color: #1e293b;
+        }
+
+        /* --- MODERNES HERO BANNER --- */
+        .hero {
+            position: relative;
+            height: 450px;
+            background: linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.4)), 
+                        url('https://dein-bild-vom-haus.jpg') center/cover;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            color: var(--white);
+            border-bottom-left-radius: 40px;
+            border-bottom-right-radius: 40px;
+            overflow: hidden;
+            box-shadow: 0 15px 30px rgba(0,0,0,0.1);
+        }
+
+        .hero-content h1 {
+            font-size: 2.5rem;
+            font-weight: 800;
+            margin-bottom: 10px;
+            letter-spacing: -1px;
+        }
+
+        .hero-content p {
+            font-size: 1.1rem;
+            margin-bottom: 25px;
+            opacity: 0.9;
+        }
+
+        .btn-cta {
+            background: var(--accent);
+            color: white;
+            padding: 16px 32px;
+            border-radius: 50px;
+            text-decoration: none;
+            font-weight: 700;
+            font-size: 1.1rem;
+            box-shadow: 0 10px 20px rgba(16, 185, 129, 0.3);
+            transition: transform 0.2s, box-shadow 0.2s;
+            display: inline-block;
+        }
+
+        .btn-cta:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 25px rgba(16, 185, 129, 0.4);
+        }
+
+        /* --- INFO TICKER (MODERNE LAUFWAND) --- */
+        .ticker-wrapper {
+            background: var(--primary);
+            color: white;
+            padding: 10px 0;
+            overflow: hidden;
+            margin-top: -20px;
+            position: relative;
+            z-index: 10;
+            width: 90%;
+            margin-left: auto;
+            margin-right: auto;
+            border-radius: 12px;
+        }
+
+        .ticker-content {
+            display: flex;
+            white-space: nowrap;
+            animation: ticker 25s linear infinite;
+        }
+
+        .ticker-content span {
+            padding: 0 40px;
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+
+        @keyframes ticker {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-50%); }
+        }
+
+        /* --- FEATURES / HIGHLIGHTS --- */
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 20px;
+            padding: 40px 20px;
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        .feature-card {
+            background: white;
+            padding: 20px;
+            border-radius: 20px;
+            text-align: center;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            transition: 0.3s;
+        }
+
+        .feature-card:hover { transform: translateY(-5px); }
+
+        .feature-icon {
+            font-size: 2rem;
+            margin-bottom: 10px;
+            display: block;
+        }
+
+        .feature-card h3 {
+            font-size: 1rem;
+            margin: 0;
+            color: var(--primary);
+        }
+
+        /* --- RESPONSIVE --- */
+        @media (max-width: 600px) {
+            .hero-content h1 { font-size: 1.8rem; }
+            .hero { height: 350px; }
+        }
+    </style>
+</head>
+<body>
+
+    <section class="hero">
+        <div class="hero-content">
+            <h1>Deine Location in Muhen</h1>
+            <p>Schützenhaus mieten für Feste, Firmenanlässe & Events</p>
+            <a href="#anfrage" class="btn-cta">Jetzt Verfügbarkeit prüfen</a>
+        </div>
+    </section>
+
+    <div class="ticker-wrapper">
+        <div class="ticker-content">
+            <span>✨ Modern eingerichtete Küche</span>
+            <span>🔥 Grosser Grillplatz im Freien</span>
+            <span>🚗 Genügend Parkplätze vorhanden</span>
+            <span>📅 Jetzt Termine für 2026 sichern!</span>
+            <span>✨ Modern eingerichtete Küche</span>
+            <span>🔥 Grosser Grillplatz im Freien</span>
+            <span>🚗 Genügend Parkplätze vorhanden</span>
+            <span>📅 Jetzt Termine für 2026 sichern!</span>
+        </div>
+    </div>
+
+    <section class="features">
+        <div class="feature-card">
+            <span class="feature-icon">👥</span>
+            <h3>Bis 60 Personen</h3>
+        </div>
+        <div class="feature-card">
+            <span class="feature-icon">🍳</span>
+            <h3>Voll ausgestattete Küche</h3>
+        </div>
+        <div class="feature-card">
+            <span class="feature-icon">🌳</span>
+            <h3>Ruhige Lage im Grünen</h3>
+        </div>
+        <div class="feature-card">
+            <span class="feature-icon">💰</span>
+            <h3>Attraktive Preise</h3>
+        </div>
+    </section>
+
+</body>
+</html>
