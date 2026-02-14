@@ -121,21 +121,81 @@ OneSignalDeferred.push(async function(OneSignal) {
 
         log("Sende Tags:", tags);
 
-        /*************************************************************
-         * 7. TAGS SETZEN (NACHDEM ALLES STABIL IST)
-         *************************************************************/
-        await OneSignal.User.addTags(tags);
+  /*************************************************************
+ * 7. TAGS SETZEN MIT RETRY & SERVER SYNC WAIT
+ *************************************************************/
 
-        log("✅ TAGS ERFOLGREICH GESETZT");
+await waitForUserFullySynced(30000);
 
-    } catch (err) {
-        console.error("❌ OneSignal Fehler:", err);
-    }
+await safeAddTags(tags);
+
+log("✅ TAGS ERFOLGREICH GESETZT");
 
     /*************************************************************
      * HELPER FUNCTIONS
+   
      *************************************************************/
 
+function waitForUserFullySynced(timeout) {
+    return new Promise((resolve, reject) => {
+
+        const start = Date.now();
+        let lastId = null;
+        let stableCount = 0;
+
+        const check = () => {
+
+            const id = OneSignal.User.onesignalId;
+
+            if (!id) {
+                if (Date.now() - start > timeout)
+                    return reject(new Error("No OneSignal ID"));
+                return setTimeout(check, 500);
+            }
+
+            if (id === lastId) {
+                stableCount++;
+            } else {
+                stableCount = 0;
+                lastId = id;
+            }
+
+            // ID muss 3x hintereinander stabil sein
+            if (stableCount >= 3) {
+                return resolve(true);
+            }
+
+            if (Date.now() - start > timeout)
+                return reject(new Error("User sync timeout"));
+
+            setTimeout(check, 1000);
+        };
+
+        check();
+    });
+}
+
+
+async function safeAddTags(tags, retries = 5) {
+
+    for (let i = 0; i < retries; i++) {
+
+        try {
+            await OneSignal.User.addTags(tags);
+            return;
+        } catch (err) {
+
+            console.warn("Tag Retry", i + 1);
+
+            if (i === retries - 1) throw err;
+
+            await new Promise(r => setTimeout(r, 3000));
+        }
+    }
+}
+
+
+        
     function delay(ms) {
         return new Promise(resolve => setTimeout(resolve, ms));
     }
