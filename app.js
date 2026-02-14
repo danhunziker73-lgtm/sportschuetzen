@@ -113,11 +113,26 @@ async function loadTermine() {
             safeFetch(WORKER_TERMINE_URL),
             safeFetch(GOOGLE_SCRIPT_URL)
         ]);
-
+// --- KORREKTUR HIER ---
         allTermine = [
-            ...resWorker.map(t => ({...t, typ: 'verein'})),
-            ...resGoogle.map(t => ({...t, typ: 'extern'}))
+            ...resWorker.map(t => ({
+                ...t, 
+                // Falls 'titel' leer ist, nimm 'AnlassTitel'
+                titel: t.titel || t.AnlassTitel || "Unbenannter Termin", 
+                typ: 'verein'
+            })),
+            ...resGoogle.map(t => ({
+                ...t, 
+                titel: t.titel || t.AnlassTitel || t.Anlass || "Externer Termin", 
+                typ: 'extern'
+            }))
         ];
+
+        
+     //   allTermine = [
+     //       ...resWorker.map(t => ({...t, typ: 'verein'})),
+     //       ...resGoogle.map(t => ({...t, typ: 'extern'}))
+     //   ];
 
         // Sortierung... (dein bestehender Code)
         allTermine.sort((a, b) => {
