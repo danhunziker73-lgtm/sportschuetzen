@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sportschützen Muhen | Event Location</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;500;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --glass: rgba(255, 255, 255, 0.1);
+            --glass-border: rgba(255, 255, 255, 0.2);
+            --accent: #10b981;
+            --dark: #0f172a;
+        }
+
+        body, html {
+            margin: 0; padding: 0;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background: var(--dark);
+            color: white;
+            scroll-behavior: smooth;
+        }
+
+        /* --- IMMERSIVE HERO --- */
+        .hero {
+            height: 100vh;
+            background: linear-gradient(0deg, var(--dark) 0%, rgba(15,23,42,0) 50%),
+                        url('https://images.unsplash.com/photo-1519167758481-83f550bb49b3?auto=format&fit=crop&q=80&w=2000') center/cover no-repeat;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding: 0 20px;
+        }
+
+        .hero h1 {
+            font-size: clamp(2.5rem, 8vw, 5rem);
+            font-weight: 800;
+            margin: 0;
+            line-height: 1;
+            background: linear-gradient(to bottom, #fff, #94a3b8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .hero p {
+            font-size: 1.2rem;
+            color: #94a3b8;
+            max-width: 600px;
+            margin: 20px 0 40px;
+        }
+
+        /* --- CTA BUTTON --- */
+        .btn-fancy {
+            background: var(--accent);
+            color: white;
+            padding: 20px 40px;
+            border-radius: 100px;
+            text-decoration: none;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            box-shadow: 0 0 30px rgba(16, 185, 129, 0.4);
+            transition: 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .btn-fancy:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 50px rgba(16, 185, 129, 0.6);
+        }
+
+        /* --- BENTO GRID SECTION --- */
+        .bento-container {
+            max-width: 1200px;
+            margin: -100px auto 100px;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            grid-auto-rows: 200px;
+            gap: 20px;
+            padding: 20px;
+        }
+
+        .bento-item {
+            background: var(--glass);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            border: 1px solid var(--glass-border);
+            border-radius: 30px;
+            padding: 30px;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            transition: 0.3s;
+        }
+
+        .bento-item:hover { background: rgba(255,255,255,0.15); }
+
+        .big { grid-column: span 2; grid-row: span 2; }
+        .wide { grid-column: span 2; }
+
+        .bento-item h3 { font-size: 1.5rem; margin: 0; }
+        .bento-item p { font-size: 0.9rem; color: #94a3b8; margin: 10px 0 0; }
+
+        /* --- TICKER --- */
+        .ticker {
+            background: rgba(16, 185, 129, 0.1);
+            border-top: 1px solid rgba(16, 185, 129, 0.2);
+            padding: 20px 0;
+            overflow: hidden;
+            display: flex;
+        }
+
+        .ticker-inner {
+            display: flex;
+            white-space: nowrap;
+            animation: scroll 30s linear infinite;
+        }
+
+        .ticker-inner span {
+            font-size: 2rem;
+            font-weight: 800;
+            margin: 0 40px;
+            color: rgba(255,255,255,0.2);
+        }
+
+        @keyframes scroll {
+            from { transform: translateX(0); }
+            to { transform: translateX(-50%); }
+        }
+
+        @media (max-width: 800px) {
+            .bento-container { grid-template-columns: repeat(2, 1fr); }
+            .hero h1 { font-size: 3rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <section class="hero">
+        <h1>UNFORGETTABLE MOMENTS.</h1>
+        <p>Erlebe Events in einer Location, die Geschichte und Moderne verbindet. Das Schützenhaus Muhen – bereit für deine Vision.</p>
+        <a href="#book" class="btn-fancy">Discover the Space</a>
+    </section>
+
+    <div class="ticker">
+        <div class="ticker-inner">
+            <span>MODERN KITCHEN</span> <span>BBQ STATION</span> <span>60 GUESTS</span> <span>FREE PARKING</span> <span>MODERN KITCHEN</span> <span>BBQ STATION</span> <span>60 GUESTS</span> <span>FREE PARKING</span>
+        </div>
+    </div>
+
+    <section class="bento-container">
+        <div class="bento-item big" style="background: url('https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?auto=format&fit=crop&q=80&w=800') center/cover;">
+            <div style="background: rgba(0,0,0,0.5); padding: 20px; border-radius: 20px;">
+                <h3>Main Event Hall</h3>
+                <p>Platz für bis zu 60 Personen mit modernster Technik.</p>
+            </div>
+        </div>
+        <div class="bento-item">
+            <h3>🍳 Cuisine</h3>
+            <p>Voll ausgestattet.</p>
+        </div>
+        <div class="bento-item">
+            <h3>🔥 Grill</h3>
+            <p>Aussen-BBQ Area.</p>
+        </div>
+        <div class="bento-item wide">
+            <h3>📍 Lage</h3>
+            <p>Ruhig gelegen mit Panorama-Blick.</p>
+        </div>
+    </section>
+
+</body>
+</html>
