@@ -6,22 +6,15 @@ let touchStart = 0;
 const spinner = document.getElementById('pull-spinner');
 
 // --- EVENT LISTENER ---
-
-// Auto-Update wenn die App wieder geöffnet wird
 let lastResume = 0;
-
 document.addEventListener("visibilitychange", () => {
     if (document.visibilityState !== "visible") return;
-
     const now = Date.now();
     if (now - lastResume < 1500) return;
-
     lastResume = now;
     document.dispatchEvent(new CustomEvent("app:resume"));
 });
 
-
-// Pull-to-Refresh Logik
 document.addEventListener('touchstart', e => { touchStart = e.touches[0].pageY; }, {passive: true});
 document.addEventListener('touchmove', e => {
     const distance = e.touches[0].pageY - touchStart;
@@ -36,49 +29,24 @@ document.addEventListener('touchend', e => {
 }, {passive: true});
 
 // --- NAVIGATION ---
-
 function nav(id, title, btn) {
-    // 1. Alle Seiten ausblenden
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active-page'));
-    
-    // 2. Zielseite einblenden
     const targetPage = document.getElementById(id);
-    if (targetPage) {
-        targetPage.classList.add('active-page');
-    }
-    
-    // 3. Header-Titel anpassen
+    if (targetPage) targetPage.classList.add('active-page');
     document.getElementById('main-title').textContent = title;
-    
-    // 4. Aktiven Button in der Navigation markieren
     document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
-    if (btn) {
-        btn.classList.add('active');
-    }
+    if (btn) btn.classList.add('active');
 
-    // --- NEU: URL AKTUALISIEREN FÜR PULL-TO-REFRESH ---
-    // Wir ziehen das Kürzel aus der ID (z.B. "page-jm" -> "jm")
     const pageKey = id.replace('page-', '');
-    
-    // Aktuellen Pfad holen (n_index.html)
     const newPath = window.location.pathname;
-
-    if (pageKey === 'home') {
-        // Auf der Startseite entfernen wir den ?page= Parameter
-        window.history.replaceState({}, '', newPath);
-    } else {
-        // Auf Unterseiten setzen wir den passenden Parameter
-        window.history.replaceState({}, '', `${newPath}?page=${pageKey}`);
-    }
-    
-    // Nach oben springen
+    if (pageKey === 'home') window.history.replaceState({}, '', newPath);
+    else window.history.replaceState({}, '', `${newPath}?page=${pageKey}`);
     window.scrollTo(0,0);
 }
-// Deep Linking Logik (Springe zu Seite via URL ?page=...)
+
 function handleDeepLink() {
     const params = new URLSearchParams(window.location.search);
     const target = params.get('page');
-
     if (target) {
         const pages = {
             'jm': { id: 'page-jm', title: 'Jahresmeisterschaft', selector: '[onclick*="page-jm"]' },
@@ -86,7 +54,6 @@ function handleDeepLink() {
             'mannschaft': { id: 'page-mannschaft', title: 'Mannschaft', selector: '[onclick*="page-mannschaft"]' },
             'upload': { id: 'page-upload', title: 'Upload', selector: '[onclick*="page-upload"]' }
         };
-
         const config = pages[target];
         if (config) {
             const btn = document.querySelector(config.selector);
@@ -96,6 +63,7 @@ function handleDeepLink() {
 }
 
 // --- DATEN LADEN & RENDERN ---
+
 async function loadTermine() {
     const wrap = document.getElementById("termine");
     const safeFetch = async (url) => {
@@ -103,8 +71,8 @@ async function loadTermine() {
             const r = await fetch(url);
             if(!r.ok) return [];
             const d = await r.json();
-            // Unterstützung für das Objekt-Format {"termine": [...]}
-            if (d.termine && Array.isArray(d.termine)) return d.termine;
+            // Check ob das JSON in einem "termine" Wrapper kommt
+            if (d && d.termine && Array.isArray(d.termine)) return d.termine;
             return Array.isArray(d) ? d : [];
         } catch(e) { return []; }
     };
@@ -115,42 +83,36 @@ async function loadTermine() {
             safeFetch(GOOGLE_SCRIPT_URL)
         ]);
 
+        // Mapping: Wir vereinheitlichen die Felder hier
         allTermine = [
             ...resWorker.map(t => ({
                 ...t, 
-                // Vereinheitliche Titel und Zeit (startzeit vs start)
                 titel: t.anlasstitel || t.titel || "Unbenannter Termin", 
-                zeit: t.startzeit || t.start || "",
+                zeit: t.startzeit || "",
                 typ: 'verein'
             })),
             ...resGoogle.map(t => ({
                 ...t, 
-                // Google liefert oft 'titel' oder 'summary'
                 titel: t.titel || t.anlasstitel || t.summary || "Hausbelegung", 
                 zeit: t.startzeit || t.start || "",
                 typ: 'extern'
             }))
         ];
 
-        // Sortierung: Termine ohne Datum nach unten
-  // In loadTermine():
-allTermine.sort((a, b) => {
-    // Termine ohne Datum ganz nach unten
-    if (!a.datum || a.datum === "") return 1;
-    if (!b.datum || b.datum === "") return -1;
-    
-    // Da YYYY-MM-DD ein Standard ist, funktioniert dies:
-    return new Date(a.datum) - new Date(b.datum);
-});
+        // Sortierung für ISO-Datum (YYYY-MM-DD)
+        allTermine.sort((a, b) => {
+            if (!a.datum || a.datum === "") return 1;
+            if (!b.datum || b.datum === "") return -1;
+            return new Date(a.datum) - new Date(b.datum);
+        });
 
         allTermine = applyRundenPrefix(allTermine);
         renderTermine(allTermine);
     } catch (e) { 
-        console.error("Fehler beim Laden:", e);
-        wrap.innerHTML = "Fehler beim Verarbeiten der Daten."; 
+        console.error(e);
+        wrap.innerHTML = "Fehler beim Laden."; 
     }
 }
-
 
 function renderTermine(data) {
     const wrap = document.getElementById("termine");
@@ -161,7 +123,6 @@ function renderTermine(data) {
     const months = ["Jan.", "Feb.", "März", "April", "Mai", "Juni", "Juli", "Aug.", "Sept.", "Okt.", "Nov.", "Dez."];
 
     data.forEach(t => {
-        // NUR abbrechen wenn wirklich kein Titel da ist oder abgesagt wurde
         if(!t.titel || t.status === "abgesagt") return;
         
         const isExtern = t.typ === "extern";
@@ -170,17 +131,14 @@ function renderTermine(data) {
         let dateDisplay = "---";
         let subLine = "Datum folgt";
 
-        // Wenn Datum vorhanden ist, berechnen
-        if (t.datum) {
-            const d = new Date(t.datum);
+        if (t.datum && t.datum !== "") {
+            // Explizites Parsen von YYYY-MM-DD um Browser-Verwechslung zu vermeiden
+            const p = t.datum.split("-");
+            const d = new Date(p[0], p[1] - 1, p[2]); 
+            
             if (!isNaN(d)) {
-                const dayName = days[d.getDay()];
-                const dayNum = d.getDate();
-                const monthName = months[d.getMonth()];
-                const yearNum = d.getFullYear();
-
-                dateDisplay = `${dayNum}. ${monthName}`;
-                subLine = (yearNum !== currentYear) ? `${dayName} '${String(yearNum).substring(2)}` : dayName;
+                dateDisplay = `${d.getDate()}. ${months[d.getMonth()]}`;
+                subLine = (d.getFullYear() !== currentYear) ? `${days[d.getDay()]} '${String(d.getFullYear()).substring(2)}` : days[d.getDay()];
             }
         }
 
@@ -202,7 +160,6 @@ function renderTermine(data) {
     });
 }
 
-
 function filterTermine(type, btn) {
     document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
@@ -217,25 +174,15 @@ function applyRundenPrefix(termine) {
         "Grenzland-Cup": 3,
         "Mannschaftsmeisterschaft": 7
     };
-
     const counters = {};
-
     return termine.map(t => {
         const title = t.titel.trim();
-
-        // Finals oder Sonderformen NICHT anfassen
         if (title.toLowerCase().startsWith("final")) return t;
-
         for (const baseTitle in rules) {
             if (title === baseTitle) {
                 counters[baseTitle] = (counters[baseTitle] || 0) + 1;
-
-                // Sicherheit: nicht über max. Runden hinaus
                 if (counters[baseTitle] <= rules[baseTitle]) {
-                    return {
-                        ...t,
-                        titel: `${counters[baseTitle]}. Runde ${title}`
-                    };
+                    return { ...t, titel: `${counters[baseTitle]}. Runde ${title}` };
                 }
             }
         }
@@ -243,10 +190,8 @@ function applyRundenPrefix(termine) {
     });
 }
 
-
 // --- INITIALISIERUNG ---
-
 window.addEventListener('load', () => {
     loadTermine();
-    handleDeepLink(); // Prüft URL beim Start
+    handleDeepLink();
 });
