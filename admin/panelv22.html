@@ -312,20 +312,22 @@
         let item = src==='gv'?state.platzhalter[idx]:state.app_info[idx];
         let prop = src==='gv'?'inhalt':'mailadresse';
         let mails = item[prop]?item[prop].split(';').map(m=>m.trim()):[];
-        if(!mails.includes(mail)) { mails.push(mail); item[prop]=mails.join('; '); renderAll(); }
+        if(!mails.includes(mail)) { mails.push(mail); item[prop]=mails.join(';'); renderAll(); }
     }
     
 function removeMail(src, idx, mail) {
-    let item = src === 'gv' ? state.platzhalter[idx] : state.app_info[idx];
-    let prop = src === 'gv' ? 'inhalt' : 'mailadresse';
+    // 1. Das richtige Objekt auswählen
+    let item = (src === 'gv') ? state.platzhalter[idx] : state.app_info[idx];
+    let prop = (src === 'gv') ? 'inhalt' : 'mailadresse';
     
-    // Wir teilen am Semikolon, entfernen Leerzeichen pro Eintrag, 
-    // filtern die gewählte Mail raus und fügen es sauber wieder zusammen.
-    item[prop] = item[prop]
-        .split(';')
-        .map(m => m.trim())
-        .filter(m => m !== mail && m !== "")
-        .join('; ');
+    // 2. String in Array umwandeln, trimmen, filtern und wieder zusammenfügen
+    if (item[prop]) {
+        item[prop] = item[prop]
+            .split(';')                  // Trennen am Semikolon
+            .map(m => m.trim())          // Leerzeichen entfernen
+            .filter(m => m !== mail && m !== "") // Die gewählte Mail entfernen
+            .join(';');                 // Sauber mit "; " wieder verbinden
+    }
     
     renderAll();
 }
