@@ -8,7 +8,7 @@
     
     <style>
         :root { 
-            --primary: #0f3a5d; /* Dunkelblau wie in deiner App */
+            --primary: #0f3a5d; 
             --secondary: #1e293b; --success: #10b981; 
             --danger: #ef4444; --warning: #f59e0b; --bg: #f3f4f6; --card-bg: #ffffff;
             --border: #d1d5db; --text: #1f2937; --text-light: #6b7280;
@@ -18,10 +18,9 @@
         
         body { 
             font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); 
-            margin: 0; padding-bottom: 90px; /* Platz für Bottom-Nav */
+            margin: 0; padding-bottom: 90px; 
         }
 
-        /* HEADER */
         header {
             background: var(--primary); color: white; padding: 20px;
             text-align: center; position: sticky; top: 0; z-index: 1000;
@@ -29,18 +28,15 @@
         }
         header h1 { margin: 0; font-size: 1.2rem; }
 
-        /* MAIN AREA */
         main { padding: 15px; max-width: 1400px; margin: 0 auto; }
         
         .tab-content { display: none; animation: fadeIn 0.3s ease; }
         .tab-content.active { display: block; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
-        /* CARDS */
         .card { background: var(--card-bg); padding: 20px; border-radius: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid var(--border); margin-bottom: 20px; }
         h3 { margin-top: 0; font-size: 1rem; color: var(--primary); display: flex; align-items: center; gap: 8px; border-bottom: 1px solid #eee; padding-bottom: 10px; }
 
-        /* BOTTOM NAVIGATION */
         .bottom-nav { 
             position: fixed; bottom: 0; width: 100%; height: 75px;
             background: #ffffff; display: flex; justify-content: space-around; align-items: center;
@@ -53,19 +49,17 @@
         }
         .nav-item span { font-size: 1.5rem; margin-bottom: 2px; }
         .nav-item.active { color: var(--primary); }
+        
+        /* SPEICHER BUTTON AUSGEBLENDET */
         .nav-save { 
-            background: var(--primary) !important; color: white !important; 
-            width: 60px; height: 60px; border-radius: 50%; position: relative; top: -15px;
-            box-shadow: 0 4px 12px rgba(15, 58, 93, 0.4); border: 4px solid var(--bg) !important;
+            display: none !important; 
         }
 
-        /* TABELLEN STYLES & BREITEN */
         .table-wrapper { border-radius: 12px; overflow-x: auto; border: 1px solid var(--border); background: white; }
         table { width: 100%; border-collapse: collapse; min-width: 900px; }
         th { background: #f8fafc; padding: 12px; text-align: left; font-size: 0.7rem; text-transform: uppercase; color: #64748b; }
         td { padding: 8px 12px; border-bottom: 1px solid #f1f5f9; }
 
-        /* Hier kannst du die Breiten anpassen */
         .col-date { width: 160px; }
         .col-time { width: 95px; }
         .col-anlass { width: auto; }
@@ -74,7 +68,6 @@
 
         input, select { padding: 8px; border: 1px solid var(--border); border-radius: 8px; width: 100%; font-size: 0.9rem; }
 
-        /* MAIL TAGS */
         .tag-box { display: flex; flex-wrap: wrap; gap: 5px; background: #f9fafb; border: 1px solid var(--border); padding: 8px; border-radius: 8px; min-height: 45px; margin-bottom: 8px; }
         .tag { background: #e0e7ff; color: #0f3a5d; padding: 4px 10px; border-radius: 6px; font-size: 0.8rem; font-weight: 600; display: flex; align-items: center; gap: 8px; }
         .tag span { color: var(--danger); cursor: pointer; font-size: 1.2rem; }
@@ -87,6 +80,7 @@
         .btn-del { color: var(--danger); background: none; border: none; cursor: pointer; font-size: 1.2rem; }
 
         .loader { position: fixed; inset: 0; background: white; display: flex; justify-content: center; align-items: center; z-index: 9999; flex-direction: column; }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
@@ -199,25 +193,12 @@
         renderAppInfo();
     }
 
-
-
-
-    // ... dein bisheriger State ...
-
-    // --- KORRIGIERTE MAIL LOGIK ---
+    // --- ZENTRALE MAIL LOGIK ---
     function addMail(source, index, email) {
         if(!email) return;
         
-        let targetItem;
-        let property;
-
-        if (source === 'gv') {
-            targetItem = state.platzhalter[index];
-            property = 'inhalt'; // Bei Platzhaltern ist es das Feld 'inhalt'
-        } else {
-            targetItem = state.app_info[index];
-            property = 'mailempfänger'; // Bei App-Info ist es 'mailempfänger'
-        }
+        let targetItem = (source === 'gv') ? state.platzhalter[index] : state.app_info[index];
+        let property = (source === 'gv') ? 'inhalt' : 'mailempfänger';
         
         let currentMails = targetItem[property] ? targetItem[property].split(';').map(m => m.trim()) : [];
         
@@ -240,7 +221,6 @@
     function renderGV() {
         const container = document.getElementById('gv-list');
         container.innerHTML = state.platzhalter.map((p, i) => {
-            // Prüft ob das Feld eine Mailadresse sein soll (anhand des Namens oder der Bezeichnung)
             const isMailField = p.platzhaltername?.includes('Mail_') || p.bezeichnung_app?.includes('Mail');
             
             return `
@@ -273,7 +253,7 @@
                         <div class="tag">${m.trim()} <span onclick="removeMail('app', ${i}, '${m.trim()}')">×</span></div>
                     `).join('')}
                 </div>
-                <select onchange="addMail('app', ${i}, this.value)">
+                <select onchange="addMail('app', ${i}, this.value); this.value=''">
                     <option value="">+ Empfänger hinzufügen</option>
                     ${state.members.map(m => `<option value="${m.e_mail}">${m.vorname} ${m.nachname}</option>`).join('')}
                 </select>
