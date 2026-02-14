@@ -133,11 +133,15 @@ async function loadTermine() {
         ];
 
         // Sortierung: Termine ohne Datum nach unten
-        allTermine.sort((a, b) => {
-            if (!a.datum) return 1;
-            if (!b.datum) return -1;
-            return new Date(a.datum) - new Date(b.datum);
-        });
+  // In loadTermine():
+allTermine.sort((a, b) => {
+    // Termine ohne Datum ganz nach unten
+    if (!a.datum || a.datum === "") return 1;
+    if (!b.datum || b.datum === "") return -1;
+    
+    // Da YYYY-MM-DD ein Standard ist, funktioniert dies:
+    return new Date(a.datum) - new Date(b.datum);
+});
 
         allTermine = applyRundenPrefix(allTermine);
         renderTermine(allTermine);
