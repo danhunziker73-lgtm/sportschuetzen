@@ -65,61 +65,51 @@ OneSignalDeferred.push(async function(OneSignal) {
         /*************************************************************
          * PERMISSION CHECK (v16 BOOLEAN!)
          *************************************************************/
-        const permission = OneSignal.Notifications.permission;
-        log("Permission Status:", permission);
+   const permission = OneSignal.Notifications.permission;
+log("Permission Status:", permission);
 
-        /*************************************************************
-         * FALL 1 – PUSH BEREITS ERLAUBT
-         *************************************************************/
-        if (permission === true) {
+/*************************************************************
+ * FALL 1 – Push bereits erlaubt
+ *************************************************************/
+if (permission === true) {
 
-            log("Push bereits erlaubt – warte auf Subscription");
+    log("Push bereits erlaubt – warte auf Subscription");
 
-            await OneSignal.User.PushSubscription.optIn();
+    await OneSignal.User.PushSubscription.optIn();
 
-            const sub = await waitForSubscriptionReady(30000);
-            log("Subscription bereit:", sub.id);
+    const sub = await waitForSubscriptionReady(30000);
+    log("Subscription bereit:", sub.id);
 
-            await delay(2000); // Merge Buffer
+    await delay(3000); // Merge Buffer
 
-            await setMemberTags(targetPid);
-        }
+    await setMemberTags(targetPid);
+}
 
-        /*************************************************************
-         * FALL 2 – PUSH NOCH NICHT ERLAUBT
-         *************************************************************/
-        else {
+/*************************************************************
+ * FALL 2 – Push noch nicht erlaubt
+ *************************************************************/
+else {
 
-            log("Push noch nicht erlaubt – warte auf User Aktion");
+    log("Push noch nicht erlaubt – warte NUR auf Subscription Event");
 
-            let tagsAlreadySet = false;
+    await new Promise((resolve) => {
 
-            OneSignal.User.PushSubscription.addEventListener("change", async (event) => {
+        OneSignal.User.PushSubscription.addEventListener("change", async (event) => {
 
-                if (event.current && event.current.id && !tagsAlreadySet) {
+            if (event.current && event.current.id) {
 
-                    tagsAlreadySet = true;
+                log("Subscription Event erkannt:", event.current.id);
 
-                    log("Subscription Event erkannt:", event.current.id);
+                await delay(3000); // Merge Buffer
 
-                    await delay(2000); // Merge Buffer
-
-                    await setMemberTags(targetPid);
-                }
-            });
-
-            // Falls User nie erlaubt → trotzdem Tags setzen
-            await waitForUserFullySynced(30000);
-
-            if (!tagsAlreadySet) {
-                tagsAlreadySet = true;
                 await setMemberTags(targetPid);
-            }
-        }
 
-    } catch (err) {
-        console.error("❌ OneSignal Fehler:", err);
-    }
+                resolve();
+            }
+        });
+
+    });
+}
 
     /*************************************************************
      * TAG SETZEN FUNKTION
