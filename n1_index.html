@@ -51,39 +51,49 @@ OneSignalDeferred.push(async function(OneSignal) {
             log("Login done");
         }
 
-        /******** PERMISSION ********/
+   /******** PERMISSION ********/
 
-        if (OneSignal.Notifications.permission !== "granted") {
-            log("Permission anfordern...");
-            await OneSignal.Notifications.requestPermission();
+const permission = OneSignal.Notifications.permission;
+log("Permission Status:", permission);
+
+// Wenn denied → nicht abbrechen!
+// Wir setzen trotzdem Tags
+
+if (permission === "default") {
+    log("Permission anfordern...");
+    await OneSignal.Notifications.requestPermission();
+}
+
+const finalPermission = OneSignal.Notifications.permission;
+log("Final Permission:", finalPermission);
+
+/******** SUBSCRIPTION ********/
+
+if (finalPermission === "granted") {
+
+    await OneSignal.User.PushSubscription.optIn();
+
+    const waitForSub = async () => {
+        for (let i = 0; i < 20; i++) {
+            const id = OneSignal.User.PushSubscription.id;
+            if (id) return id;
+            await new Promise(r => setTimeout(r, 500));
         }
+        return null;
+    };
 
-        if (OneSignal.Notifications.permission !== "granted") {
-            log("Permission verweigert");
-            return;
-        }
+    const subId = await waitForSub();
 
-        /******** SUBSCRIPTION ********/
-
-        await OneSignal.User.PushSubscription.optIn();
-
-        const waitForSub = async () => {
-            for (let i = 0; i < 20; i++) {
-                const id = OneSignal.User.PushSubscription.id;
-                if (id) return id;
-                await new Promise(r => setTimeout(r, 500));
-            }
-            return null;
-        };
-
-        const subId = await waitForSub();
-
-        if (!subId) {
-            log("Keine Subscription ID");
-            return;
-        }
-
+    if (subId) {
         log("Subscription ID:", subId);
+    } else {
+        log("Keine Subscription ID");
+    }
+
+} else {
+    log("Push nicht erlaubt – Tags werden trotzdem gesetzt");
+}
+
 
         /******** MEMBER DATEN ********/
 
