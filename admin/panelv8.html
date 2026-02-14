@@ -180,35 +180,55 @@
         renderAll();
     }
 
-    function renderGV() {
+function renderGV() {
         const container = document.getElementById('gv-list');
         container.innerHTML = state.platzhalter.map((p, i) => {
             const name = p.platzhaltername || "";
             const label = p.bezeichnung_app || 'Feld';
+            
             const isMail = name.includes('Mail_') || label.includes('Mail');
             const isDate = name.includes('Datum') || label.includes('Datum') || label.includes('bis');
             const isTime = name.includes('Uhrzeit') || label.includes('Zeit');
             const isBudget = label.toLowerCase().includes('budget');
 
             let inputHtml = "";
+
             if (isMail) {
-                inputHtml = `<div class="tag-box">${(p.inhalt || "").split(';').filter(m => m.trim()).map(m => `<div class="tag">${m.trim()} <span onclick="removeMail('gv', ${i}, '${m.trim()}')">×</span></div>`).join('')}</div>
-                    <select onchange="addMail('gv', ${i}, this.value); this.value=''"><option value="">+ Empfänger hinzufügen</option>${state.members.map(m => `<option value="${m.e_mail}">${m.vorname} ${m.nachname}</option>`).join('')}</select>`;
+                inputHtml = `
+                    <div class="tag-box">
+                        ${(p.inhalt || "").split(';').filter(m => m.trim()).map(m => `
+                            <div class="tag">${m.trim()} <span onclick="removeMail('gv', ${i}, '${m.trim()}')">×</span></div>
+                        `).join('')}
+                    </div>
+                    <select onchange="addMail('gv', ${i}, this.value); this.value=''">
+                        <option value="">+ Empfänger hinzufügen</option>
+                        ${state.members.map(m => `<option value="${m.e_mail}">${m.vorname} ${m.nachname}</option>`).join('')}
+                    </select>`;
             } else if (isDate) {
                 let dateVal = p.inhalt ? new Date(p.inhalt).toISOString().split('T')[0] : "";
                 inputHtml = `<input type="date" value="${dateVal}" onchange="state.platzhalter[${i}].inhalt=this.value">`;
             } else if (isTime) {
-                let timeVal = formatTimeForInput(p.inhalt, "19:30");
-                inputHtml = `<input type="time" value="${timeVal}" onchange="state.platzhalter[${i}].inhalt=this.value">`;
+                // iOS Fix: Falls leer, wird 19:30 beim Klicken/Fokus vorgeschlagen
+                let timeVal = formatTimeForInput(p.inhalt, "");
+                inputHtml = `<input type="time" value="${timeVal}" 
+                    placeholder="19:30"
+                    onfocus="if(!this.value) this.value='19:30';" 
+                    onchange="state.platzhalter[${i}].inhalt=this.value">`;
             } else if (isBudget) {
                 inputHtml = `<textarea rows="4" onchange="state.platzhalter[${i}].inhalt=this.value">${p.inhalt || ''}</textarea>`;
             } else {
                 inputHtml = `<input type="text" value="${p.inhalt || ''}" onchange="state.platzhalter[${i}].inhalt=this.value">`;
             }
-            return `<div class="gv-item"><label>${label}</label>${inputHtml}</div>`;
+
+            return `
+            <div class="gv-item">
+                <label>${label}</label>
+                ${inputHtml}
+            </div>`;
         }).join('');
     }
-
+    
+    
     function renderAppInfo() {
         const container = document.getElementById('app-info-list');
         container.innerHTML = state.app_info.map((info, i) => `
@@ -218,29 +238,40 @@
             </div>`).join('');
     }
 
-    function renderTermine() {
+   function renderTermine() {
         const body = document.getElementById('termine-body');
         body.innerHTML = state.termine.map((t, i) => {
             const dateVal = t.datum ? new Date(t.datum).toISOString().split('T')[0] : "";
-            // Checke verschiedene mögliche Feldnamen vom Worker (startzeit vs Startzeit)
-            const sTime = formatTimeForInput(t.startzeit || t.Startzeit, "17:30");
-            const eTime = formatTimeForInput(t.endzeit || t.Endzeit, "21:00");
+            
+            // Checkt Groß/Kleinschreibung der Felder vom Worker
+            const sTime = formatTimeForInput(t.startzeit || t.Startzeit, "");
+            const eTime = formatTimeForInput(t.endzeit || t.Endzeit, "");
             
             return `<tr>
                 <td><input type="date" value="${dateVal}" onchange="state.termine[${i}].datum=this.value"></td>
-                <td><input type="time" value="${sTime}" onchange="state.termine[${i}].startzeit=this.value"></td>
-                <td><input type="time" value="${eTime}" onchange="state.termine[${i}].endzeit=this.value"></td>
+                
+                <td><input type="time" value="${sTime}" 
+                    onfocus="if(!this.value) this.value='17:30';" 
+                    onchange="state.termine[${i}].startzeit=this.value"></td>
+                
+                <td><input type="time" value="${eTime}" 
+                    onfocus="if(!this.value) this.value='21:00';" 
+                    onchange="state.termine[${i}].endzeit=this.value"></td>
+                
                 <td><select onchange="state.termine[${i}]['anlass_/_titel']=this.value">
                     ${state.dropdowns.anlaesse.map(a => `<option value="${a}" ${a===t['anlass_/_titel']?'selected':''}>${a}</option>`).join('')}
                 </select></td>
+                
                 <td><select onchange="updateOrt(${i}, this.value)">
                     ${state.dropdowns.orteMitMaps.map(o => `<option value="${o[0]}" ${o[0]===t.ort?'selected':''}>${o[0]}</option>`).join('')}
                 </select></td>
+                
                 <td><select onchange="state.termine[${i}].status=this.value">
                     <option value="fix" ${t.status==='fix'?'selected':''}>fix</option>
                     <option value="provisorisch" ${t.status==='provisorisch'?'selected':''}>provisorisch</option>
                     <option value="abgesagt" ${t.status==='abgesagt'?'selected':''}>abgesagt</option>
                 </select></td>
+                
                 <td><button class="btn-del" onclick="state.termine.splice(${i},1); renderAll()">🗑️</button></td>
             </tr>`;
         }).join('');
