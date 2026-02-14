@@ -65,80 +65,36 @@ function handleDeepLink() {
     }
 }
 
-// --- DATEN LADEN & RENDERN (An das neue JSON angepasst) ---
-
-// --- DATEN LADEN (Korrektur der Ort-Logik) ---
-async function loadTermine() {
-    const wrap = document.getElementById("termine");
-    const safeFetch = async (url) => {
-        try {
-            const r = await fetch(url);
-            if(!r.ok) return null;
-            return await r.json();
-        } catch(e) { return null; }
-    };
-
-    try {
-        const [resWorker, resGoogle] = await Promise.all([
-            safeFetch(WORKER_TERMINE_URL),
-            safeFetch(GOOGLE_SCRIPT_URL)
-        ]);
-
-        let harmonized = [];
-
-        // 1. Vereinsdaten (Worker)
-        if (resWorker && resWorker.termine) {
-            harmonized.push(...resWorker.termine.map(t => ({
-                titel: t.anlasstitel || "Unbenannt",
-                datum_raw: t.datum,
-                start: t.startzeit,
-                ort: t.ort || "Muhen", // Hier wird der Ort aus dem JSON genommen (z.B. "Thun" oder "Buchs")
-                status: t.status,
-                typ: 'verein',
-                dateObj: t.datum ? new Date(t.datum) : new Date(8640000000000000)
-            })));
-        }
-
-        // 2. Externe Daten (Google)
-        if (Array.isArray(resGoogle)) {
-            harmonized.push(...resGoogle.map(t => ({
-                titel: t.titel,
-                datum_raw: t.datum_iso,
-                start: t.start,
-                ort: "Schützenhaus", // Externe Termine sind immer im Haus
-                status: 'fix',
-                typ: 'extern',
-                dateObj: t.datum_iso ? new Date(t.datum_iso) : new Date(8640000000000000)
-            })));
-        }
-
-        harmonized.sort((a, b) => a.dateObj - b.dateObj);
-        allTermine = applyRundenPrefix(harmonized);
-        renderTermine(allTermine);
-
-    } catch (e) { 
-        wrap.innerHTML = "Fehler beim Laden."; 
-    }
-}
-
-// --- RENDERING (Korrektur der Anzeige) ---
 function renderTermine(data) {
     const wrap = document.getElementById("termine");
     const currentYear = new Date().getFullYear();
     wrap.innerHTML = data.length === 0 ? "Keine Termine gefunden." : "";
 
     data.forEach(t => {
-        if (t.status === "abgesagt") return;
-        if (t.typ === "extern" && t.titel.toLowerCase().includes("reinigung")) return;
-        if (!t.datum_raw || t.datum_raw === "") return;
-
-        const d = t.dateObj;
-        const weekday = d.toLocaleDateString('de-DE', { weekday: 'short' }).substring(0, 2);
-        const dateDisplay = d.toLocaleDateString('de-DE', { day: 'numeric', month: 'long' });
-        const yearInDate = d.getFullYear();
-        const subLine = (yearInDate !== currentYear) ? `${weekday} '${yearInDate.toString().substring(2)}` : weekday;
-
+        if(t.status === "abgesagt" || !t.datum) return;
         const isExtern = t.typ === "extern";
+        if(isExtern && t.titel.toLowerCase().includes("reinigung")) return;
+
+        let weekday, dateDisplay, yearInStr;
+
+        if (t.datum.includes("-")) { 
+            // NEUES FORMAT (ISO: 2026-03-12)
+            const d = new Date(t.datum);
+            weekday = d.toLocaleDateString('de-CH', {weekday: 'short'}).substring(0,2);
+            dateDisplay = d.toLocaleDateString('de-CH', {day: '2-digit', month: 'long'});
+            yearInStr = d.getFullYear().toString();
+        } else {
+            // ALTES FORMAT (Google: "Montag, 12. März 2026")
+            const parts = t.datum.split(", ");
+            if(parts.length < 2) return;
+            weekday = parts[0].substring(0, 2);
+            const dateFull = parts[1];
+            const yearMatch = dateFull.match(/\d{4}/);
+            yearInStr = yearMatch ? yearMatch[0] : currentYear.toString();
+            dateDisplay = dateFull.replace(` ${yearInStr}`, "");
+        }
+
+        const subLine = (yearInStr !== currentYear.toString()) ? `${weekday} '${yearInStr.substring(2)}` : weekday;
 
         wrap.innerHTML += `
         <div class="termin-row ${isExtern ? 'extern' : ''}">
@@ -149,7 +105,7 @@ function renderTermine(data) {
             <div class="termin-content">
                 <span class="termin-title">${isExtern ? '🏠 ' : ''}${t.titel}</span>
                 <div class="termin-meta">
-                    <span>${isExtern ? 'Schützenhaus' : '📍 ' + t.ort}</span>
+                    <span>${isExtern ? 'Schützenhaus' : '📍 ' + (t.ort || 'Muhen')}</span>
                     ${t.start ? `<span>🕒 ${t.start}</span>` : ""}
                 </div>
                 ${isExtern ? '<span class="badge-extern">Haus belegt</span>' : (t.status === 'provisorisch' ? '<span class="badge-prov">Provisorisch</span>' : '')}
@@ -157,7 +113,6 @@ function renderTermine(data) {
         </div>`;
     });
 }
-
 function filterTermine(type, btn) {
     document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
