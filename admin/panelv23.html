@@ -382,29 +382,42 @@ function createDetailedLog() {
         document.getElementById('edit-orte').innerHTML = state.dropdowns.orteMitMaps.map((o, i) => `<div style="display:flex;gap:5px;margin-bottom:5px"><input type="text" value="${o[0]}" onchange="state.dropdowns.orteMitMaps[${i}][0]=this.value"><input type="text" value="${o[1]}" onchange="state.dropdowns.orteMitMaps[${i}][1]=this.value"><button class="btn-del" onclick="state.dropdowns.orteMitMaps.splice(${i},1);renderAll()">🗑️</button></div>`).join('');
     }
 
-    function addMail(src, idx, mail) {
-        let item = src==='gv'?state.platzhalter[idx]:state.app_info[idx];
-        let prop = src==='gv'?'inhalt':'mailadresse';
-        let mails = item[prop]?item[prop].split(';').map(m=>m.trim()):[];
-        if(!mails.includes(mail)) { mails.push(mail); item[prop]=mails.join(';'); renderAll(); }
-    }
-    
-function removeMail(src, idx, mail) {
-    // 1. Das richtige Objekt auswählen
+        function addMail(src, idx, mail) {
     let item = (src === 'gv') ? state.platzhalter[idx] : state.app_info[idx];
     let prop = (src === 'gv') ? 'inhalt' : 'mailadresse';
     
-    // 2. String in Array umwandeln, trimmen, filtern und wieder zusammenfügen
+    // Bestehende Mails holen und sauber trimmen
+    let mails = item[prop] ? item[prop].split(';').map(m => m.trim()).filter(m => m !== "") : [];
+    
+    // Neue Mail trimmen und prüfen ob sie schon da ist
+    let newMail = mail.trim();
+    if(newMail && !mails.includes(newMail)) { 
+        mails.push(newMail); 
+        // WICHTIG: Mit "; " (Leerzeichen!) zusammenfügen für bessere Lesbarkeit
+        item[prop] = mails.join('; '); 
+        renderAll(); 
+    }
+}
+
+function removeMail(src, idx, mail) {
+    let item = (src === 'gv') ? state.platzhalter[idx] : state.app_info[idx];
+    let prop = (src === 'gv') ? 'inhalt' : 'mailadresse';
+    
+    // Den zu löschenden Wert ebenfalls trimmen, um sicherzugehen
+    let mailToRemove = mail.trim();
+
     if (item[prop]) {
         item[prop] = item[prop]
-            .split(';')                  // Trennen am Semikolon
-            .map(m => m.trim())          // Leerzeichen entfernen
-            .filter(m => m !== mail && m !== "") // Die gewählte Mail entfernen
-            .join(';');                 // Sauber mit "; " wieder verbinden
+            .split(';')
+            .map(m => m.trim())
+            .filter(m => m !== mailToRemove && m !== "")
+            .join('; '); // Konsistent mit "; " zusammenfügen
     }
     
     renderAll();
 }
+    
+    
     function addTermin() {
         const standardOrt = state.dropdowns.orteMitMaps[0] ? state.dropdowns.orteMitMaps[0][0] : "";
         const standardMap = state.dropdowns.orteMitMaps[0] ? state.dropdowns.orteMitMaps[0][1] : "";
