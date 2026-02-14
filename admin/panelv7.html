@@ -218,30 +218,59 @@
         renderAll();
     }
 
-    function renderGV() {
-        const container = document.getElementById('gv-list');
-        container.innerHTML = state.platzhalter.map((p, i) => {
-            const isMailField = p.platzhaltername?.includes('Mail_') || p.bezeichnung_app?.includes('Mail');
-            
-            return `
-            <div class="gv-item">
-                <label>${p.bezeichnung_app || 'Feld'}</label>
-                ${isMailField ? `
-                    <div class="tag-box">
-                        ${(p.inhalt || "").split(';').filter(m => m.trim()).map(m => `
-                            <div class="tag">${m.trim()} <span onclick="removeMail('gv', ${i}, '${m.trim()}')">×</span></div>
-                        `).join('')}
-                    </div>
-                    <select onchange="addMail('gv', ${i}, this.value); this.value=''">
-                        <option value="">+ Empfänger hinzufügen</option>
-                        ${state.members.map(m => `<option value="${m.e_mail}">${m.vorname} ${m.nachname}</option>`).join('')}
-                    </select>
-                ` : `
-                    <input type="text" value="${p.inhalt || ''}" onchange="state.platzhalter[${i}].inhalt=this.value">
-                `}
-            </div>`;
-        }).join('');
-    }
+  function renderGV() {
+    const container = document.getElementById('gv-list');
+    container.innerHTML = state.platzhalter.map((p, i) => {
+        const name = p.platzhaltername || "";
+        const label = p.bezeichnung_app || 'Feld';
+        
+        // Typ-Erkennung
+        const isMail = name.includes('Mail_') || label.includes('Mail');
+        const isDate = name.includes('Datum') || label.includes('Datum') || label.includes('bis');
+        const isTime = name.includes('Uhrzeit') || label.includes('Zeit');
+
+        let inputHtml = "";
+
+        if (isMail) {
+            // Mail-Logik mit Tags und Dropdown
+            inputHtml = `
+                <div class="tag-box">
+                    ${(p.inhalt || "").split(';').filter(m => m.trim()).map(m => `
+                        <div class="tag">${m.trim()} <span onclick="removeMail('gv', ${i}, '${m.trim()}')">×</span></div>
+                    `).join('')}
+                </div>
+                <select onchange="addMail('gv', ${i}, this.value); this.value=''">
+                    <option value="">+ Empfänger hinzufügen</option>
+                    ${state.members.map(m => `<option value="${m.e_mail}">${m.vorname} ${m.nachname}</option>`).join('')}
+                </select>`;
+        } else if (isDate) {
+            // Datums-Picker (Formatierung von ISO zu YYYY-MM-DD)
+            let dateVal = "";
+            if (p.inhalt) {
+                try { dateVal = new Date(p.inhalt).toISOString().split('T')[0]; } catch(e) {}
+            }
+            inputHtml = `<input type="date" value="${dateVal}" onchange="state.platzhalter[${i}].inhalt=this.value">`;
+        } else if (isTime) {
+            // Zeit-Picker (Extrahiert HH:mm aus dem 1899er String)
+            let timeVal = "";
+            if (p.inhalt && p.inhalt.includes('T')) {
+                timeVal = p.inhalt.split('T')[1].substring(0, 5); // extrahiert z.B. 18:30
+            } else {
+                timeVal = p.inhalt; // falls es schon sauber ist
+            }
+            inputHtml = `<input type="time" value="${timeVal}" onchange="state.platzhalter[${i}].inhalt=this.value">`;
+        } else {
+            // Standard Textfeld
+            inputHtml = `<input type="text" value="${p.inhalt || ''}" onchange="state.platzhalter[${i}].inhalt=this.value">`;
+        }
+
+        return `
+        <div class="gv-item">
+            <label>${label}</label>
+            ${inputHtml}
+        </div>`;
+    }).join('');
+}
 
     function renderAppInfo() {
         const container = document.getElementById('app-info-list');
