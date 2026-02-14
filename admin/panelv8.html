@@ -44,8 +44,24 @@
     </style>
 </head>
 <body>
+<div id="login-overlay" style="position:fixed; inset:0; background:#0f3a5d; z-index:10000; display:flex; justify-content:center; align-items:center; font-family:sans-serif;">
+    <div style="background:white; padding:30px; border-radius:16px; width:90%; max-width:350px; box-shadow:0 10px 25px rgba(0,0,0,0.2); text-align:center;">
+        <h2 style="margin-top:0; color:#0f3a5d;">Admin Login</h2>
+        <p style="color:#666; font-size:0.9rem;">Bitte wähle deinen Namen und gib das Passwort ein.</p>
+        
+        <select id="login-user" style="width:100%; padding:12px; margin-bottom:15px; border:1px solid #ccc; border-radius:8px; font-size:1rem;">
+            <option value="">Lade Admins...</option>
+        </select>
+        
+        <input type="password" id="login-pw" placeholder="Passwort" style="width:100%; padding:12px; margin-bottom:20px; border:1px solid #ccc; border-radius:8px; font-size:1rem; box-sizing:border-box;">
+        
+        <button onclick="attemptLogin()" id="login-btn" style="width:100%; padding:12px; background:#0f3a5d; color:white; border:none; border-radius:8px; font-size:1rem; font-weight:bold; cursor:pointer;">Einloggen</button>
+        
+        <p id="login-error" style="color:#ef4444; margin-top:15px; display:none; font-weight:600;">Passwort falsch!</p>
+    </div>
+</div>
 
-<div id="loader" class="loader">
+    <div id="loader" class="loader">
     <div style="width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid var(--primary); border-radius: 50%; animation: spin 1s linear infinite;"></div>
     <p>Daten werden synchronisiert...</p>
 </div>
@@ -127,6 +143,70 @@
         dropdowns: { anlaesse:[], orteMitMaps:[], kategorien:[], status:[] } 
     };
 
+// Variable, um den Namen für das Protokoll zu speichern
+let activeAdmin = "";
+
+// 1. Beim Start: Admin-Liste für das Dropdown holen
+async function initApp() {
+    try {
+        // Wir nutzen eine minimale Anfrage, um nur die Namen zu bekommen
+        const resp = await fetch(`${WORKER_URL}?action=loadAdminData`);
+        const data = await resp.json();
+        
+        if (data.adminList) {
+            const sel = document.getElementById('login-user');
+            sel.innerHTML = data.adminList.map(name => `<option value="${name}">${name}</option>`).join('');
+        }
+    } catch (e) {
+        console.error("Fehler beim Initialisieren der Admin-Liste", e);
+    }
+}
+
+// 2. Passwort prüfen
+async function attemptLogin() {
+    const user = document.getElementById('login-user').value;
+    const pw = document.getElementById('login-pw').value;
+    const btn = document.getElementById('login-btn');
+    const errorMsg = document.getElementById('login-error');
+
+    btn.innerText = "Prüfe...";
+    errorMsg.style.display = "none";
+
+    try {
+        const resp = await fetch(`${WORKER_URL}?action=checkLogin&user=${encodeURIComponent(user)}&pw=${encodeURIComponent(pw)}`);
+        const result = await resp.json();
+
+        if (result.success) {
+            activeAdmin = user; // Name für Protokoll merken
+            document.getElementById('login-overlay').style.display = 'none';
+            loadData(); // Jetzt erst die echten Admin-Daten laden
+        } else {
+            errorMsg.style.display = "block";
+            btn.innerText = "Einloggen";
+        }
+    } catch (e) {
+        alert("Login-Fehler: " + e);
+        btn.innerText = "Einloggen";
+    }
+}
+
+// 3. Beim Speichern den User mitschicken
+async function saveAll() {
+    // ... dein bestehender Code für Button-Opacity etc. ...
+    
+    const payload = {
+        ...state,
+        user: activeAdmin // Hier wird der Name für das Google-Protokoll übergeben
+    };
+
+    const resp = await fetch(`${WORKER_URL}?action=saveAdminData`, {
+        method: 'POST',
+        body: JSON.stringify(payload)
+    });
+    // ...
+}
+
+    
  // Diese Funktion ist jetzt super simpel, da GAS schon YYYY-MM-DD liefert
 function formatDateForInput(val) {
     if (!val) return "";
@@ -330,7 +410,7 @@ function renderGV() {
         btn.style.opacity = "1";
     }
 
-    window.onload = loadData;
+    window.onload = initApp;
 </script>
 </body>
 </html>
