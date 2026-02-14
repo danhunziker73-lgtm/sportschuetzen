@@ -8,25 +8,18 @@
 }
 
 /* --- BASICS --- */
-input::-webkit-outer-spin-button,
-input::-webkit-inner-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
-}
-input[type=number] { -moz-appearance: textfield; }
-
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
 body { 
     font-family: 'Inter', sans-serif; 
     background: var(--bg); 
     margin: 0; 
-    padding-bottom: calc(75px + env(safe-area-inset-bottom)); 
+    /* Platz für Header oben und Nav unten */
+    padding-top: calc(60px + env(safe-area-inset-top)); 
+    padding-bottom: calc(85px + env(safe-area-inset-bottom)); 
     color: var(--text); 
     overflow-x: hidden; 
 }
-
-main { padding-top: calc(60px + env(safe-area-inset-top)); }
 
 header {
     background: var(--primary);
@@ -40,167 +33,132 @@ header {
     z-index: 1000;
     box-shadow: 0 2px 8px rgba(0,0,0,0.15);
 }
-header h1 { margin: 0; font-size: 1.3rem; text-align: center; }
+header h1 { margin: 0; font-size: 1.2rem; font-weight: 700; }
 
 /* --- NAVIGATION --- */
 .bottom-nav { 
-    position: fixed; bottom: 0; width: 100%; height: 75px;
-    background: #ffffff; display: flex; justify-content: space-around; align-items: center;
-    border-top: 1px solid #e5e7eb; z-index: 2000; padding: 0 10px;
+    position: fixed; bottom: 0; width: 100%; 
+    height: calc(75px + env(safe-area-inset-bottom));
+    background: #ffffff; display: flex; justify-content: space-around; 
+    align-items: flex-start; /* Damit Icons oben bleiben trotz Safe Area */
+    border-top: 1px solid #e5e7eb; z-index: 2000; 
+    padding: 10px 10px 0 10px;
 }
 .nav-item { 
     background: none; border: none; color: var(--text-light); 
     font-size: 0.7rem; font-weight: 600; display: flex; flex-direction: column; 
-    justify-content: center; align-items: center; cursor: pointer; flex: 1; transition: 0.2s;
+    align-items: center; cursor: pointer; flex: 1; transition: 0.2s;
 }
 .nav-item span { font-size: 1.4rem; margin-bottom: 2px; }
 .nav-item.active { color: var(--primary); }
-.nav-home { 
-    position: relative; top: -18px; background: var(--primary) !important; 
-    color: white !important; width: 65px; height: 65px; border-radius: 50%; 
-    box-shadow: 0 4px 12px rgba(15, 58, 93, 0.4); justify-content: center;
-    flex: none !important; border: 4px solid var(--bg) !important;
-}
-.nav-home span { font-size: 1.8rem; margin-bottom: 0; }
 
-/* --- PAGES & IFRAMES --- */
+.nav-home { 
+    position: relative; top: -25px; 
+    background: var(--primary) !important; 
+    color: white !important; width: 60px; height: 60px; border-radius: 50%; 
+    box-shadow: 0 4px 12px rgba(15, 58, 93, 0.4); 
+    justify-content: center; flex: none !important; 
+    border: 5px solid var(--bg) !important;
+}
+
+/* --- PAGES --- */
 .page { 
     display: none; 
-    padding: 10px 15px 15px 15px; 
+    padding: 20px 15px; 
     max-width: 600px; 
     margin: 0 auto; 
     animation: fadeIn 0.3s ease; 
 }
-.page > .card:first-child {
-    margin-top: 0; 
-}
 .active-page { display: block; }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
-/* Zentrales Iframe Styling */
-iframe { 
-    width: 100%; 
-    height: calc(100vh - 160px - env(safe-area-inset-top) - env(safe-area-inset-bottom)); 
-    border: none; 
-    border-radius: 12px;
-    display: block;
-    background: #fff;
-}
-
-/* Spezial-Korrektur für die Upload-Seite */
-#page-upload {
-    padding: 10px 5px; 
-}
-#page-upload iframe {
-    height: calc(100vh - 140px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
-}
-
-.card { background: var(--card); padding: 1.5rem; border-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 15px; }
-
-/* --- FILTER --- */
-.filter-container { display: flex; background: #f1f5f9; padding: 4px; border-radius: 12px; margin-bottom: 20px; }
-.filter-btn {
-    flex: 1; border: none; background: none;
-    padding: 8px; font-size: 0.8rem; font-weight: 700; color: #64748b;
-    cursor: pointer; border-radius: 8px; transition: 0.2s;
-}
-.filter-btn.active { background: white; color: var(--primary); box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-
-/* --- TERMINE --- */
-
-/* --- TERMINE TIMELINE --- */
-.termine-list { display: flex; flex-direction: column; gap: 14px; }
+/* --- TERMINE LISTE --- */
+.termine-list { display: flex; flex-direction: column; gap: 10px; }
 
 .termin-row {
     display: grid;
-    grid-template-columns: minmax(105px, 120px) 1fr;
+    grid-template-columns: 85px 1fr; /* Etwas schmaler für das Datum */
     gap: 15px;
     align-items: center;
-    padding: 12px 0;
-    border-bottom: 1px solid #edf2f7;
+    padding: 12px;
+    border-radius: 16px;
+    background: #fff;
+    border-bottom: 1px solid #f1f5f9;
 }
 
-/* Hintergrund für die externe Zeile */
 .termin-row.extern {
-    background: #f8fafc;
-    border-radius: 12px;
+    background: #f8fafc; /* Ganz leichter Grauton für externe */
 }
 
-/* Das Datums-Quadrat standardmäßig */
 .termin-date {
     background: #ffffff;
     border: 1.5px solid #e2e8f0;
-    border-radius: 12px;
-    padding: 6px;
+    border-radius: 14px;
+    padding: 8px 4px;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    height: 72px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+    height: 70px;
 }
 
-
-.map-link {
-    text-decoration: none;
-    color: inherit; /* Übernimmt die Farbe der restlichen Meta-Infos */
-    display: inline-flex;
-    align-items: center;
-}
-
-.map-link:active {
-    opacity: 0.6; /* Kleines visuelles Feedback beim Tippen auf dem Handy */
-}
-
-
-
-
-
-
-
-
-
-
-
-
+.date-main { font-size: 1.0rem; font-weight: 800; color: var(--primary); }
+.date-sub { font-size: 0.7rem; color: #718096; text-transform: uppercase; font-weight: 600; }
 
 /* Spezial-Style für EXTERNE Termine (Dunkles Datum) */
 .termin-row.extern .termin-date {
-    background: #4a5568 !important; /* Schönes Dunkelgrau/Blau */
+    background: #4a5568;
     border-color: #2d3748;
 }
-
-/* Text im dunklen Quadrat auf weiß setzen */
-.termin-row.extern .date-main {
-    color: #ffffff !important;
-}
-
-.termin-row.extern .date-sub {
-    color: #cbd5e0 !important;
-}
-.date-main { font-size: 1.0rem; font-weight: 800; color: var(--primary); white-space: nowrap; }
-.date-sub { font-size: 0.75rem; color: #718096; text-transform: uppercase; font-weight: 600; margin-top: 4px; }
+.termin-row.extern .date-main { color: #ffffff; }
+.termin-row.extern .date-sub { color: #cbd5e0; }
 
 .termin-content { display: flex; flex-direction: column; gap: 2px; }
-.termin-title { font-weight: 700; font-size: 1.1rem; line-height: 1.3; color: var(--text); }
+.termin-title { font-weight: 700; font-size: 1.05rem; line-height: 1.2; color: var(--text); }
 
-.badge-prov { display: inline-block; font-size: 0.65rem; background: #fffaf0; color: #b7791f; padding: 2px 8px; border-radius: 6px; border: 1px solid #fbd38d; width: fit-content; margin-top: 4px; font-weight: 700; }
-.badge-extern { display: inline-block; font-size: 0.65rem; background: #e2e8f0; color: #4a5568; padding: 2px 8px; border-radius: 6px; width: fit-content; margin-top: 4px; font-weight: 700; }
+.termin-meta { 
+    font-size: 0.85rem; color: var(--text-light); 
+    margin-top: 4px; display: flex; flex-wrap: wrap; gap: 8px; 
+}
 
-.termin-meta { font-size: 0.9rem; color: var(--text-light); margin-top: 4px; display: flex; align-items: center; gap: 10px; }
+/* Google Maps Link Style */
+.map-link {
+    text-decoration: none;
+    color: inherit;
+    display: inline-flex;
+    align-items: center;
+}
+.map-link span { border-bottom: 1px dashed #cbd5e0; } /* Optischer Hinweis auf Klickbarkeit */
 
-/* --- UPLOAD FORM ELEMENTE --- */
-.form-group { margin-bottom: 1.2rem; text-align: left; }
-label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 0.5rem; color: var(--text-light); }
-input, select { width: 100%; padding: 0.8rem; border: 1.5px solid var(--border); border-radius: 12px; font-size: 1rem; }
-.upload-area { border: 2px dashed var(--border); border-radius: 12px; padding: 2rem; text-align: center; background: #f9fafb; cursor: pointer; }
-#preview { width: 100%; max-height: 150px; object-fit: contain; display: none; margin-top: 10px; border-radius: 8px; }
-.btn-main { width: 100%; padding: 1.1rem; background: var(--primary); color: #fff; border: none; border-radius: 14px; font-size: 1.1rem; font-weight: 700; cursor: pointer; }
+.badge-prov { 
+    font-size: 0.65rem; background: #fffaf0; color: #b7791f; 
+    padding: 2px 8px; border-radius: 6px; border: 1px solid #fbd38d; 
+    width: fit-content; margin-top: 5px; font-weight: 700; 
+}
+.badge-extern { 
+    font-size: 0.65rem; background: #e2e8f0; color: #4a5568; 
+    padding: 2px 8px; border-radius: 6px; 
+    width: fit-content; margin-top: 5px; font-weight: 700; 
+}
 
-/* --- PULL SPINNER --- */
-#pull-spinner { position: fixed; top: -50px; left: 50%; transform: translateX(-50%); width: 40px; height: 40px; background: var(--primary); border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 3px 10px rgba(0,0,0,0.2); z-index: 1001; }
-.spinner-icon { width: 20px; height: 20px; border: 3px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.8s infinite linear; }
+/* --- FILTER --- */
+.filter-container { display: flex; background: #f1f5f9; padding: 4px; border-radius: 12px; margin-bottom: 15px; }
+.filter-btn {
+    flex: 1; border: none; background: none;
+    padding: 10px; font-size: 0.8rem; font-weight: 700; color: #64748b;
+    border-radius: 8px; transition: 0.2s;
+}
+.filter-btn.active { background: white; color: var(--primary); box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+
+/* --- PULL-TO-REFRESH SPINNER --- */
+#pull-spinner { 
+    position: fixed; top: -50px; left: 50%; transform: translateX(-50%); 
+    width: 40px; height: 40px; background: var(--primary); 
+    border-radius: 50%; display: flex; align-items: center; justify-content: center; 
+    box-shadow: 0 3px 10px rgba(0,0,0,0.2); z-index: 1001; 
+}
+.spinner-icon { 
+    width: 20px; height: 20px; border: 3px solid rgba(255,255,255,0.3); 
+    border-top-color: #fff; border-radius: 50%; animation: spin 0.8s infinite linear; 
+}
 @keyframes spin { to { transform: rotate(360deg); } }
-
-/* iOS SAFE AREAS - Hier lag der Fehler (70px wurde zu 60px) */
-body, main { padding-top: calc(40px + env(safe-area-inset-top)); padding-bottom: calc(75px + env(safe-area-inset-bottom)); }
