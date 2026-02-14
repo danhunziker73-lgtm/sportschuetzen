@@ -484,18 +484,26 @@ function removeMail(src, idx, mail) {
 }
     
     
-    function addTermin() {
-        const standardOrt = state.dropdowns.orteMitMaps[0] ? state.dropdowns.orteMitMaps[0][0] : "";
-        const standardMap = state.dropdowns.orteMitMaps[0] ? state.dropdowns.orteMitMaps[0][1] : "";
-        state.termine.unshift({ 
-            datum: "", startzeit: "17:30", endzeit: "21:00", 
-            anlasstitel: state.dropdowns.anlaesse[0] || "", 
-            ort: standardOrt, austragungsorte_map: standardMap,
-            kategorie: state.dropdowns.kategorien[0] || "Jahresprogramm", 
-            status: "provisorisch" 
-        });
-        renderAll();
-    }
+function addTermin() {
+    const standardOrt = state.dropdowns.orteMitMaps[0] ? state.dropdowns.orteMitMaps[0][0] : "";
+    const standardMap = state.dropdowns.orteMitMaps[0] ? state.dropdowns.orteMitMaps[0][1] : "";
+    
+    // ÄNDERUNG: .push statt .unshift
+    state.termine.push({ 
+        datum: "", 
+        startzeit: "17:30", 
+        endzeit: "21:00", 
+        anlasstitel: state.dropdowns.anlaesse[0] || "", 
+        ort: standardOrt, 
+        austragungsorte_map: standardMap,
+        kategorie: state.dropdowns.kategorien[0] || "Jahresprogramm", 
+        status: "provisorisch" 
+    });
+    
+    renderAll();
+    // Optional: Zum Ende der Seite scrollen, damit man den neuen Termin sieht
+    window.scrollTo(0, document.body.scrollHeight);
+}
     window.onload = initApp;
 </script>
 </body>
