@@ -72,6 +72,57 @@
     <p id="loader-text">Synchronisiere...</p>
 </div>
 
+<div class="card">
+    <h3>🚀 Vereins-Tools (Automatisierung)</h3>
+    <div class="tools-grid">
+        <button class="btn-tool" onclick="runTool('genPDF')">
+            <span>📄</span> Einladungs-PDF
+        </button>
+        <button class="btn-tool" onclick="runTool('importClubdesk')">
+            <span>📥</span> Clubdesk Import
+        </button>
+        <button class="btn-tool" onclick="runTool('sendMails')">
+            <span>📧</span> GV Mails senden
+        </button>
+        <button class="btn-tool" onclick="runTool('sendPraesenz')">
+            <span>📝</span> Präsenzliste (Aktuar)
+        </button>
+    </div>
+</div>
+
+<style>
+    .tools-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+        margin-top: 10px;
+    }
+    .btn-tool {
+        background: #f8fafc;
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 15px 10px;
+        font-weight: 600;
+        color: var(--primary);
+        cursor: pointer;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+        transition: all 0.2s;
+        font-size: 0.85rem;
+    }
+    .btn-tool:active {
+        transform: scale(0.95);
+        background: #e2e8f0;
+    }
+    .btn-tool span {
+        font-size: 1.5rem;
+    }
+</style>
+
+
+    
 <header><h1 id="tab-title">Konfiguration</h1></header>
 
 <main>
@@ -124,7 +175,22 @@
     let activeAdminEmail = "";
     let originalState = null; // Speicher für den Vergleich
 
-  
+  async function runTool(actionName) {
+    if (!confirm("Möchtest du diese Aktion wirklich starten?")) return;
+    
+    document.getElementById('loader').style.display = 'flex';
+    document.getElementById('loader-text').innerText = "Führe Aktion aus...";
+
+    try {
+        const resp = await fetch(`${WORKER_URL}?action=runAppScript&tool=${actionName}`);
+        const res = await resp.json();
+        alert(res.success ? "✅ Erledigt: " + res.msg : "❌ Fehler: " + res.error);
+    } catch (e) {
+        alert("Fehler: " + e);
+    } finally {
+        document.getElementById('loader').style.display = 'none';
+    }
+}
     function formatDateForInput(val) {
         if (!val) return "";
         if (typeof val === 'string' && val.includes('-')) return val;
