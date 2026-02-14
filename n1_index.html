@@ -18,71 +18,113 @@
     <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
 
 <script>
+
+/************************************************
+ * OneSignal V16 – STABILE PRODUKTIONSVERSION
+ ************************************************/
+
 window.OneSignalDeferred = window.OneSignalDeferred || [];
 OneSignalDeferred.push(async function(OneSignal) {
 
-    const logToUI = (msg) => {
-        console.log(msg);
-        const statusEl = document.getElementById("status-box");
-        if (statusEl) statusEl.innerHTML += `<div>${msg}</div>`;
-    };
+    const log = (...args) => console.log("[OneSignal]", ...args);
 
     try {
+
+        log("Init gestartet");
+
         await OneSignal.init({
             appId: "975091f5-948b-48d4-9e61-b7f4d43a1021",
-            serviceWorkerParam: { scope: "/sportschuetzen/" },
             serviceWorkerPath: "OneSignalSDKWorker.js",
+            serviceWorkerParam: { scope: "/sportschuetzen/" },
             autoRegister: false
         });
 
+        log("Init fertig");
+
         const urlParams = new URLSearchParams(window.location.search);
         const pid = urlParams.get("pid");
-        if (!pid) return;
+
+        if (!pid) {
+            log("Kein PID vorhanden");
+            return;
+        }
 
         const targetPid = String(pid);
-        const currentExtId = OneSignal.User.externalId;
+
+        /******************************************
+         * 1️⃣ LOGIN
+         ******************************************/
+
+        const currentExtId = await OneSignal.User.getExternalId();
+        log("Aktuelle External ID:", currentExtId);
 
         if (currentExtId !== targetPid) {
-            logToUI("🔑 Login läuft...");
+            log("Login notwendig →", targetPid);
             await OneSignal.login(targetPid);
+            log("Login abgeschlossen");
+        }
 
+        /******************************************
+         * 2️⃣ PERMISSION
+         ******************************************/
+
+        if (OneSignal.Notifications.permission !== "granted") {
+            log("Permission anfordern...");
             await OneSignal.Notifications.requestPermission();
-            await OneSignal.User.PushSubscription.optIn();
+        }
 
-            setTimeout(() => location.reload(), 2000);
+        if (OneSignal.Notifications.permission !== "granted") {
+            log("❌ Permission nicht erteilt");
             return;
         }
 
-        logToUI("✅ Identität stabil");
+        /******************************************
+         * 3️⃣ PUSH SUBSCRIPTION SICHERSTELLEN
+         ******************************************/
 
-        const waitForSubscriptionReady = async (retries = 15, delay = 500) => {
-            for (let i = 0; i < retries; i++) {
+        await OneSignal.User.PushSubscription.optIn();
+
+        const waitForSubscription = async () => {
+            for (let i = 0; i < 20; i++) {
                 const subId = OneSignal.User.PushSubscription.id;
-                const permission = OneSignal.Notifications.permission;
-
-                if (subId && permission === "granted") {
-                    return true;
-                }
-
-                await new Promise(r => setTimeout(r, delay));
+                if (subId) return subId;
+                await new Promise(r => setTimeout(r, 500));
             }
-            return false;
+            return null;
         };
 
-        if (!await waitForSubscriptionReady()) {
-            logToUI("❌ Subscription nicht bereit");
+        const subscriptionId = await waitForSubscription();
+
+        if (!subscriptionId) {
+            log("❌ Keine Push Subscription erhalten");
             return;
         }
+
+        log("Push Subscription ID:", subscriptionId);
+
+        /******************************************
+         * 4️⃣ MEMBERDATEN LADEN
+         ******************************************/
+
+        log("Lade Memberdaten...");
 
         const response = await fetch("https://termine.dan-hunziker73.workers.dev/?action=loadAdminData");
         const data = await response.json();
+
         const member = data.push_onesignal.find(m => String(m.personnumber) === targetPid);
 
-        if (!member) return;
+        if (!member) {
+            log("❌ Kein Member gefunden");
+            return;
+        }
+
+        /******************************************
+         * 5️⃣ TAGS ERSTELLEN
+         ******************************************/
 
         const tags = {
-            vorname: member.firstname,
-            nachname: member.lastname,
+            vorname: member.firstname || "",
+            nachname: member.lastname || "",
             verein: "sportschuetzen_muhen"
         };
 
@@ -90,57 +132,27 @@ OneSignalDeferred.push(async function(OneSignal) {
             member.membershipcategory.split(",").forEach(cat => {
                 const key = cat
                     .trim()
-                    .replace(/\s+/g, '_')
-                    .replace(/[^a-zA-Z0-9_]/g, '');
+                    .replace(/\s+/g, "_")
+                    .replace(/[^a-zA-Z0-9_]/g, "");
 
                 if (key) tags[key] = "aktiv";
             });
         }
 
-        logToUI("📤 Sende Tags...");
+        log("Sende Tags:", tags);
+
         await OneSignal.User.addTags(tags);
-        logToUI("🚀 Tags gesetzt!");
+
+        log("✅ TAGS ERFOLGREICH GESETZT");
 
     } catch (err) {
-        logToUI("❌ Fehler: " + err.message);
+        console.error("❌ OneSignal Fehler:", err);
     }
+
 });
-
-
-/************************************************
- * iOS & Standalone Checks
- ************************************************/
-if (!window.hasIOSCheckRun) {
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-    const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
-    if (isIOS && !isStandalone) console.log("📢 Hinweis: iOS Push erfordert 'Zum Home-Bildschirm hinzufügen'.");
-    window.hasIOSCheckRun = true;
-}
-
-/************************************************
- * App Resume Logic
- ************************************************/
-(function () {
-    let lastResume = 0;
-    const MIN_INTERVAL = 1500;
-
-    function fireResume(source) {
-        const now = Date.now();
-        if (now - lastResume < MIN_INTERVAL) return;
-        lastResume = now;
-        console.log("📲 App Resume:", source);
-
-        document.querySelectorAll("iframe").forEach(iframe => {
-            iframe.contentWindow?.postMessage({ type: "app:resume", source, ts: now }, "*");
-        });
-    }
-
-    document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") fireResume("visibility"); });
-    window.addEventListener("pageshow", e => { if (e.persisted) fireResume("pageshow"); });
-    window.addEventListener("focus", () => { fireResume("focus"); });
-
-})();
 </script>
+
+
 
 
 
