@@ -353,10 +353,31 @@
         }
     }
 
-    function addTermin() {
-        state.termine.unshift({ datum: "", startzeit: "17:30", endzeit: "21:00", anlasstitel: state.dropdowns.anlaesse[0]||"", ort: state.dropdowns.orteMitMaps[0][0]||"", kategorie: "Jahresprogramm", status: "provisorisch" });
-        renderAll();
-    }
+   function addTermin() {
+    // Sicherstellen, dass die Dropdowns existieren, um Fehler zu vermeiden
+    const standardAnlass = state.dropdowns.anlaesse[0] || "";
+    const standardOrt = (state.dropdowns.orteMitMaps[0] && state.dropdowns.orteMitMaps[0][0]) || "";
+    const standardMap = (state.dropdowns.orteMitMaps[0] && state.dropdowns.orteMitMaps[0][1]) || "";
+
+    // .push fügt das Element am ENDE des Arrays hinzu
+    state.termine.push({ 
+        datum: "", 
+        startzeit: "17:30", 
+        endzeit: "21:00", 
+        anlasstitel: standardAnlass, 
+        ort: standardOrt, 
+        austragungsorte_map: standardMap, // Map-URL gleich mitsetzen
+        kategorie: "Jahresprogramm", 
+        status: "provisorisch" 
+    });
+    
+    renderAll();
+    
+    // Kleiner Bonus: Automatisch nach unten scrollen, damit man den neuen Eintrag sieht
+    setTimeout(() => {
+        window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+    }, 100);
+}
 
     function formatDateForInput(v) { if(!v) return ""; try { return v.includes('-') ? v : new Date(v).toISOString().split('T')[0]; } catch(e) { return ""; } }
     function formatTimeForInput(v) { if(!v) return ""; return v.length === 5 ? v : v; }
