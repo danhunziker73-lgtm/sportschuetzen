@@ -65,52 +65,126 @@ function handleDeepLink() {
     }
 }
 
+// --- DATEN LADEN ---
+async function loadTermine() {
+    const wrap = document.getElementById("termine");
+    
+    const safeFetch = async (url) => {
+        try {
+            const r = await fetch(url);
+            if(!r.ok) return null;
+            return await r.json();
+        } catch(e) { 
+            console.error("Fetch Fehler:", e);
+            return null; 
+        }
+    };
+
+    try {
+        const [resWorker, resGoogle] = await Promise.all([
+            safeFetch(WORKER_TERMINE_URL),
+            safeFetch(GOOGLE_SCRIPT_URL)
+        ]);
+
+        let harmonized = [];
+
+        // 1. Vereinsdaten (Worker) - Jetzt mit Check auf gültiges Datum
+        if (resWorker && resWorker.termine) {
+            resWorker.termine.forEach(t => {
+                // Nur Termine mit Datum verarbeiten
+                if (t.datum && t.datum.trim() !== "") {
+                    const dObj = new Date(t.datum);
+                    if (!isNaN(dObj.getTime())) { // Prüfen ob Datum valide ist
+                        harmonized.push({
+                            titel: t.anlasstitel || "Unbenannt",
+                            datum_raw: t.datum,
+                            start: t.startzeit,
+                            ort: t.ort || "Muhen",
+                            status: t.status,
+                            typ: 'verein',
+                            dateObj: dObj
+                        });
+                    }
+                }
+            });
+        }
+
+        // 2. Externe Daten (Google)
+        if (Array.isArray(resGoogle)) {
+            resGoogle.forEach(t => {
+                const dateStr = t.datum_iso || t.datum;
+                if (dateStr) {
+                    const dObj = new Date(dateStr);
+                    if (!isNaN(dObj.getTime())) {
+                        harmonized.push({
+                            titel: t.titel,
+                            datum_raw: dateStr,
+                            start: t.start,
+                            ort: "Schützenhaus",
+                            status: 'fix',
+                            typ: 'extern',
+                            dateObj: dObj
+                        });
+                    }
+                }
+            });
+        }
+
+        // Sortieren nach Zeit
+        harmonized.sort((a, b) => a.dateObj - b.dateObj);
+        
+        allTermine = applyRundenPrefix(harmonized);
+        renderTermine(allTermine);
+
+    } catch (e) { 
+        console.error("Hauptfehler:", e);
+        wrap.innerHTML = "Fehler beim Verarbeiten der Daten."; 
+    }
+}
+
+// --- RENDERING ---
 function renderTermine(data) {
     const wrap = document.getElementById("termine");
+    if (!wrap) return;
+
     const currentYear = new Date().getFullYear();
     wrap.innerHTML = data.length === 0 ? "Keine Termine gefunden." : "";
 
     data.forEach(t => {
-        if(t.status === "abgesagt" || !t.datum) return;
-        const isExtern = t.typ === "extern";
-        if(isExtern && t.titel.toLowerCase().includes("reinigung")) return;
+        if (t.status === "abgesagt") return;
+        if (t.typ === "extern" && t.titel.toLowerCase().includes("reinigung")) return;
 
-        let weekday, dateDisplay, yearInStr;
+        // Sicherstellen, dass dateObj existiert und gültig ist
+        const d = t.dateObj;
+        if (!d || isNaN(d.getTime())) return;
 
-        if (t.datum.includes("-")) { 
-            // NEUES FORMAT (ISO: 2026-03-12)
-            const d = new Date(t.datum);
-            weekday = d.toLocaleDateString('de-CH', {weekday: 'short'}).substring(0,2);
-            dateDisplay = d.toLocaleDateString('de-CH', {day: '2-digit', month: 'long'});
-            yearInStr = d.getFullYear().toString();
-        } else {
-            // ALTES FORMAT (Google: "Montag, 12. März 2026")
-            const parts = t.datum.split(", ");
-            if(parts.length < 2) return;
-            weekday = parts[0].substring(0, 2);
-            const dateFull = parts[1];
-            const yearMatch = dateFull.match(/\d{4}/);
-            yearInStr = yearMatch ? yearMatch[0] : currentYear.toString();
-            dateDisplay = dateFull.replace(` ${yearInStr}`, "");
-        }
+        try {
+            // 'de-CH' sorgt für Schweizer Formatierung (z.B. Mo. statt Mon)
+            const weekday = d.toLocaleDateString('de-CH', { weekday: 'short' }).substring(0, 2);
+            const dateDisplay = d.toLocaleDateString('de-CH', { day: 'numeric', month: 'long' });
+            const yearInDate = d.getFullYear();
+            const subLine = (yearInDate !== currentYear) ? `${weekday} '${yearInDate.toString().substring(2)}` : weekday;
 
-        const subLine = (yearInStr !== currentYear.toString()) ? `${weekday} '${yearInStr.substring(2)}` : weekday;
+            const isExtern = t.typ === "extern";
 
-        wrap.innerHTML += `
-        <div class="termin-row ${isExtern ? 'extern' : ''}">
-            <div class="termin-date">
-                <span class="date-main">${dateDisplay}</span>
-                <span class="date-sub">${subLine}</span>
-            </div>
-            <div class="termin-content">
-                <span class="termin-title">${isExtern ? '🏠 ' : ''}${t.titel}</span>
-                <div class="termin-meta">
-                    <span>${isExtern ? 'Schützenhaus' : '📍 ' + (t.ort || 'Muhen')}</span>
-                    ${t.start ? `<span>🕒 ${t.start}</span>` : ""}
+            wrap.innerHTML += `
+            <div class="termin-row ${isExtern ? 'extern' : ''}">
+                <div class="termin-date">
+                    <span class="date-main">${dateDisplay}</span>
+                    <span class="date-sub">${subLine}</span>
                 </div>
-                ${isExtern ? '<span class="badge-extern">Haus belegt</span>' : (t.status === 'provisorisch' ? '<span class="badge-prov">Provisorisch</span>' : '')}
-            </div>
-        </div>`;
+                <div class="termin-content">
+                    <span class="termin-title">${isExtern ? '🏠 ' : ''}${t.titel}</span>
+                    <div class="termin-meta">
+                        <span>${isExtern ? 'Schützenhaus' : '📍 ' + t.ort}</span>
+                        ${t.start ? `<span>🕒 ${t.start}</span>` : ""}
+                    </div>
+                    ${isExtern ? '<span class="badge-extern">Haus belegt</span>' : (t.status === 'provisorisch' ? '<span class="badge-prov">Provisorisch</span>' : '')}
+                </div>
+            </div>`;
+        } catch (err) {
+            console.error("Fehler beim Rendern einer Zeile:", err);
+        }
     });
 }
 function filterTermine(type, btn) {
