@@ -96,12 +96,8 @@ function handleDeepLink() {
 }
 
 // --- DATEN LADEN & RENDERN ---
-// --- DATEN LADEN & SORTIEREN ---
-
 async function loadTermine() {
     const wrap = document.getElementById("termine");
-    
-    // Hilfsfunktion für Fetch
     const safeFetch = async (url) => {
         try {
             const r = await fetch(url);
@@ -117,41 +113,32 @@ async function loadTermine() {
             safeFetch(GOOGLE_SCRIPT_URL)
         ]);
 
-        // Zusammenführen der Daten
         allTermine = [
             ...resWorker.map(t => ({...t, typ: 'verein'})),
             ...resGoogle.map(t => ({...t, typ: 'extern'}))
         ];
 
-        // Sortierung mit Priorität auf datum_iso
         allTermine.sort((a, b) => {
-            const parseDate = (obj) => {
-                // 1. Priorität: ISO Datum (Google liefert das)
+            const parse = (obj) => {
+                // Google ISO Format
                 if (obj.datum_iso) return new Date(obj.datum_iso);
-                
-                // 2. Priorität: Schweizer Format "16.02.2026" (Worker liefert das)
+                // Worker Format "16.02.2026"
                 if (obj.datum && obj.datum.includes('.')) {
-                    const parts = obj.datum.split('.');
-                    if (parts.length === 3) {
-                        return new Date(parts[2], parts[1] - 1, parts[0]);
-                    }
+                    const [d, m, y] = obj.datum.split('.');
+                    return new Date(y, m - 1, d);
                 }
-                
-                // Fallback für unparsebare Daten (ans Ende sortieren)
                 return new Date(8640000000000000);
             };
-            return parseDate(a) - parseDate(b);
+            return parse(a) - parse(b);
         });
 
-        // Runden-Präfixe für Vereinswettkämpfe anwenden
         allTermine = applyRundenPrefix(allTermine);
-        
         renderTermine(allTermine);
     } catch (e) { 
-        console.error(e);
-        wrap.innerHTML = "Fehler beim Laden der Termine."; 
+        wrap.innerHTML = "Fehler beim Laden."; 
     }
 }
+
 
 function renderTermine(data) {
     const wrap = document.getElementById("termine");
