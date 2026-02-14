@@ -1,18 +1,43 @@
 const WORKER_TERMINE_URL = "https://termine.dan-hunziker73.workers.dev?action=getTermine";
 const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzi9BVdewuF-HTXB1ruwdap5C1pLyobj6XZsgJV6XFLVQDLUU3jPYvx727tzC1y3NM/exec";
 
-// Diese Variable muss global sein, damit die Filter-Buttons darauf zugreifen können!
-let allTermine = []; 
+let allTermine = []; // Globaler Speicher für Filter
+let touchStart = 0;
+const spinner = document.getElementById('pull-spinner');
+
+// --- NAVIGATION (Damit JM, G&G etc. wieder funktionieren) ---
+function nav(id, title, btn) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active-page'));
+    const targetPage = document.getElementById(id);
+    if (targetPage) targetPage.classList.add('active-page');
+    
+    document.getElementById('main-title').textContent = title;
+    
+    document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+    if (btn) btn.classList.add('active');
+    
+    window.scrollTo(0,0);
+}
+
+// --- PULL TO REFRESH LOGIK ---
+document.addEventListener('touchstart', e => { touchStart = e.touches[0].pageY; }, {passive: true});
+document.addEventListener('touchmove', e => {
+    const distance = e.touches[0].pageY - touchStart;
+    if (window.scrollY <= 0 && distance > 0) {
+        spinner.style.top = `${Math.min(distance / 2, 100) - 40}px`;
+    }
+}, {passive: true});
+document.addEventListener('touchend', e => {
+    if (window.scrollY <= 0 && (e.changedTouches[0].pageY - touchStart) > 90) location.reload();
+    else spinner.style.top = '-50px';
+}, {passive: true});
 
 // --- DATEN LADEN ---
 async function loadTermine() {
     const wrap = document.getElementById("termine");
-    
     const fetchJson = async (url) => {
-        try {
-            const r = await fetch(url);
-            return r.ok ? await r.json() : null;
-        } catch(e) { return null; }
+        try { const r = await fetch(url); return r.ok ? await r.json() : null; }
+        catch(e) { return null; }
     };
 
     try {
@@ -23,10 +48,10 @@ async function loadTermine() {
 
         let combined = [];
 
-        // 1. Worker (Vereinstermine)
+        // 1. Worker (Verein) - Mapping deiner Keys
         if (resWorker && resWorker.termine) {
             resWorker.termine.forEach(t => {
-                if (t.datum) {
+                if (t.datum && t.datum.trim() !== "") {
                     const d = new Date(t.datum);
                     if (!isNaN(d)) {
                         combined.push({
@@ -34,7 +59,7 @@ async function loadTermine() {
                             start: t.startzeit,
                             ort: t.ort || "Muhen",
                             status: t.status,
-                            typ: 'verein', // Wichtig für den Filter!
+                            typ: 'verein',
                             d: d
                         });
                     }
@@ -42,7 +67,7 @@ async function loadTermine() {
             });
         }
 
-        // 2. Google (Hausbelegung)
+        // 2. Google (Haus)
         if (Array.isArray(resGoogle)) {
             resGoogle.forEach(t => {
                 const d = new Date(t.datum_iso || t.datum);
@@ -52,20 +77,15 @@ async function loadTermine() {
                         start: t.start,
                         ort: "Schützenhaus",
                         status: 'fix',
-                        typ: 'extern', // Wichtig für den Filter!
+                        typ: 'extern',
                         d: d
                     });
                 }
             });
         }
 
-        // Sortieren
         combined.sort((a, b) => a.d - b.d);
-        
-        // Runden-Präfixe (GM 1. Runde etc.)
-        allTermine = applyRundenPrefix(combined);
-        
-        // Initiales Rendering (Alle anzeigen)
+        allTermine = applyRundenPrefix(combined); // Speichern in globaler Variable
         renderTermine(allTermine);
 
     } catch (e) {
@@ -73,18 +93,15 @@ async function loadTermine() {
     }
 }
 
-// --- FILTER FUNKTION (Das hat gefehlt!) ---
+// --- FILTER ---
 function filterTermine(type, btn) {
-    // 1. UI: Aktiven Button umschalten
     document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
-
-    // 2. Logik: Daten filtern
+    
     if (type === 'all') {
         renderTermine(allTermine);
     } else {
-        const filtered = allTermine.filter(t => t.typ === type);
-        renderTermine(filtered);
+        renderTermine(allTermine.filter(t => t.typ === type));
     }
 }
 
@@ -92,13 +109,7 @@ function filterTermine(type, btn) {
 function renderTermine(items) {
     const wrap = document.getElementById("termine");
     const nowYear = new Date().getFullYear();
-    
-    if (!items || items.length === 0) {
-        wrap.innerHTML = '<p style="text-align:center; color:gray;">Keine Termine vorhanden.</p>';
-        return;
-    }
-
-    wrap.innerHTML = ""; // Container leeren
+    wrap.innerHTML = items.length ? "" : "Keine Termine vorhanden.";
 
     items.forEach(t => {
         if (t.status === "abgesagt") return;
@@ -127,20 +138,6 @@ function renderTermine(items) {
     });
 }
 
-// --- NAVIGATION & HILFSFUNKTIONEN ---
-function nav(id, title, btn) {
-    document.querySelectorAll('.page').forEach(p => p.classList.remove('active-page'));
-    const targetPage = document.getElementById(id);
-    if (targetPage) targetPage.classList.add('active-page');
-    
-    document.getElementById('main-title').textContent = title;
-    
-    document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
-    if (btn) btn.classList.add('active');
-    
-    window.scrollTo(0,0);
-}
-
 function applyRundenPrefix(list) {
     const rules = { "Gruppenmeisterschaft SSV": 3, "Gruppenmeisterschaft AGSV": 3, "Grenzland-Cup": 3, "Mannschaftsmeisterschaft": 7 };
     const counts = {};
@@ -154,5 +151,4 @@ function applyRundenPrefix(list) {
     });
 }
 
-// Start
 window.addEventListener('load', loadTermine);
