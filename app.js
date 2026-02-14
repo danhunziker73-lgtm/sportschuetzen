@@ -96,7 +96,6 @@ function handleDeepLink() {
 }
 
 // --- DATEN LADEN & RENDERN ---
-
 async function loadTermine() {
     const wrap = document.getElementById("termine");
     const safeFetch = async (url) => {
@@ -104,7 +103,7 @@ async function loadTermine() {
             const r = await fetch(url);
             if(!r.ok) return [];
             const d = await r.json();
-            // Dein JSON liefert ein Objekt mit dem Key "termine"
+            // Unterstützung für das Objekt-Format {"termine": [...]}
             if (d.termine && Array.isArray(d.termine)) return d.termine;
             return Array.isArray(d) ? d : [];
         } catch(e) { return []; }
@@ -119,17 +118,21 @@ async function loadTermine() {
         allTermine = [
             ...resWorker.map(t => ({
                 ...t, 
+                // Vereinheitliche Titel und Zeit (startzeit vs start)
                 titel: t.anlasstitel || t.titel || "Unbenannter Termin", 
+                zeit: t.startzeit || t.start || "",
                 typ: 'verein'
             })),
             ...resGoogle.map(t => ({
                 ...t, 
-                titel: t.anlasstitel || t.titel || "Hausbelegung", 
+                // Google liefert oft 'titel' oder 'summary'
+                titel: t.titel || t.anlasstitel || t.summary || "Hausbelegung", 
+                zeit: t.startzeit || t.start || "",
                 typ: 'extern'
             }))
         ];
 
-        // Einfache Sortierung für YYYY-MM-DD
+        // Sortierung: Termine ohne Datum nach unten
         allTermine.sort((a, b) => {
             if (!a.datum) return 1;
             if (!b.datum) return -1;
@@ -139,7 +142,7 @@ async function loadTermine() {
         allTermine = applyRundenPrefix(allTermine);
         renderTermine(allTermine);
     } catch (e) { 
-        console.error(e);
+        console.error("Fehler beim Laden:", e);
         wrap.innerHTML = "Fehler beim Verarbeiten der Daten."; 
     }
 }
@@ -154,22 +157,28 @@ function renderTermine(data) {
     const months = ["Jan.", "Feb.", "März", "April", "Mai", "Juni", "Juli", "Aug.", "Sept.", "Okt.", "Nov.", "Dez."];
 
     data.forEach(t => {
-        if(!t.titel || t.status === "abgesagt" || !t.datum) return;
+        // NUR abbrechen wenn wirklich kein Titel da ist oder abgesagt wurde
+        if(!t.titel || t.status === "abgesagt") return;
         
         const isExtern = t.typ === "extern";
         if(isExtern && t.titel.toLowerCase().includes("reinigung")) return;
 
-        // Datum parsen (Erwartet YYYY-MM-DD)
-        const d = new Date(t.datum);
-        if (isNaN(d)) return; // Ungültiges Datum überspringen
+        let dateDisplay = "---";
+        let subLine = "Datum folgt";
 
-        const dayName = days[d.getDay()];
-        const dayNum = d.getDate();
-        const monthName = months[d.getMonth()];
-        const yearNum = d.getFullYear();
+        // Wenn Datum vorhanden ist, berechnen
+        if (t.datum) {
+            const d = new Date(t.datum);
+            if (!isNaN(d)) {
+                const dayName = days[d.getDay()];
+                const dayNum = d.getDate();
+                const monthName = months[d.getMonth()];
+                const yearNum = d.getFullYear();
 
-        const dateDisplay = `${dayNum}. ${monthName}`;
-        const subLine = (yearNum !== currentYear) ? `${dayName} '${String(yearNum).substring(2)}` : dayName;
+                dateDisplay = `${dayNum}. ${monthName}`;
+                subLine = (yearNum !== currentYear) ? `${dayName} '${String(yearNum).substring(2)}` : dayName;
+            }
+        }
 
         wrap.innerHTML += `
         <div class="termin-row ${isExtern ? 'extern' : ''}">
@@ -181,13 +190,14 @@ function renderTermine(data) {
                 <span class="termin-title">${isExtern ? '🏠 ' : ''}${t.titel}</span>
                 <div class="termin-meta">
                     <span>${isExtern ? 'Schützenhaus' : '📍 ' + (t.ort || 'Muhen')}</span>
-                    ${t.startzeit ? `<span>🕒 ${t.startzeit}</span>` : ""}
+                    ${t.zeit ? `<span>🕒 ${t.zeit}</span>` : ""}
                 </div>
                 ${isExtern ? '<span class="badge-extern">Haus belegt</span>' : (t.status === 'provisorisch' ? '<span class="badge-prov">Provisorisch</span>' : '')}
             </div>
         </div>`;
     });
 }
+
 
 function filterTermine(type, btn) {
     document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
