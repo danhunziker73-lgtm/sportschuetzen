@@ -104,6 +104,8 @@ async function loadTermine() {
             const r = await fetch(url);
             if(!r.ok) return [];
             const d = await r.json();
+            // Dein JSON liefert ein Objekt mit dem Key "termine"
+            if (d.termine && Array.isArray(d.termine)) return d.termine;
             return Array.isArray(d) ? d : [];
         } catch(e) { return []; }
     };
@@ -113,65 +115,61 @@ async function loadTermine() {
             safeFetch(WORKER_TERMINE_URL),
             safeFetch(GOOGLE_SCRIPT_URL)
         ]);
-// --- KORREKTUR HIER ---
-      // --- KORREKTUR: Mapping für 'anlasstitel' hinzufügen ---
+
         allTermine = [
             ...resWorker.map(t => ({
                 ...t, 
-                // Falls 'titel' fehlt, nimm 'anlasstitel' oder 'AnlassTitel'
-                titel: t.titel || t.anlasstitel || t.AnlassTitel || "Unbenannter Termin", 
+                titel: t.anlasstitel || t.titel || "Unbenannter Termin", 
                 typ: 'verein'
             })),
             ...resGoogle.map(t => ({
                 ...t, 
-                titel: t.titel || t.anlasstitel || t.AnlassTitel || "Externer Termin", 
+                titel: t.anlasstitel || t.titel || "Hausbelegung", 
                 typ: 'extern'
             }))
         ];
 
-        
-     //   allTermine = [
-     //       ...resWorker.map(t => ({...t, typ: 'verein'})),
-     //       ...resGoogle.map(t => ({...t, typ: 'extern'}))
-     //   ];
-
-        // Sortierung... (dein bestehender Code)
+        // Einfache Sortierung für YYYY-MM-DD
         allTermine.sort((a, b) => {
-            const parse = (obj) => {
-                if(obj.datum_iso) return new Date(obj.datum_iso);
-                try {
-                    const p = obj.datum.split(", ")[1].split(" ");
-                    const months = {"Januar":0,"Februar":1,"März":2,"April":3,"Mai":4,"Juni":5,"Juli":6,"August":7,"September":8,"Oktober":9,"November":10,"Dezember":11};
-                    return new Date(p[2], months[p[1]], parseInt(p[0]));
-                } catch(e) { return new Date(8640000000000000); }
-            };
-            return parse(a) - parse(b);
+            if (!a.datum) return 1;
+            if (!b.datum) return -1;
+            return new Date(a.datum) - new Date(b.datum);
         });
-allTermine = applyRundenPrefix(allTermine);
-        
+
+        allTermine = applyRundenPrefix(allTermine);
         renderTermine(allTermine);
-    } catch (e) { wrap.innerHTML = "Fehler beim Laden."; }
+    } catch (e) { 
+        console.error(e);
+        wrap.innerHTML = "Fehler beim Verarbeiten der Daten."; 
+    }
 }
+
 
 function renderTermine(data) {
     const wrap = document.getElementById("termine");
     const currentYear = new Date().getFullYear();
     wrap.innerHTML = data.length === 0 ? "Keine Termine gefunden." : "";
 
+    const days = ["So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"];
+    const months = ["Jan.", "Feb.", "März", "April", "Mai", "Juni", "Juli", "Aug.", "Sept.", "Okt.", "Nov.", "Dez."];
+
     data.forEach(t => {
-        if(t.status === "abgesagt") return;
+        if(!t.titel || t.status === "abgesagt" || !t.datum) return;
+        
         const isExtern = t.typ === "extern";
         if(isExtern && t.titel.toLowerCase().includes("reinigung")) return;
 
-        const parts = t.datum.split(", ");
-        if(parts.length < 2) return;
+        // Datum parsen (Erwartet YYYY-MM-DD)
+        const d = new Date(t.datum);
+        if (isNaN(d)) return; // Ungültiges Datum überspringen
 
-        const weekday = parts[0].substring(0, 2); 
-        const dateFull = parts[1]; 
-        const yearMatch = dateFull.match(/\d{4}/);
-        const yearInStr = yearMatch ? yearMatch[0] : currentYear.toString();
-        const dateDisplay = dateFull.replace(` ${yearInStr}`, "");
-        const subLine = (yearInStr !== currentYear.toString()) ? `${weekday} '${yearInStr.substring(2)}` : weekday;
+        const dayName = days[d.getDay()];
+        const dayNum = d.getDate();
+        const monthName = months[d.getMonth()];
+        const yearNum = d.getFullYear();
+
+        const dateDisplay = `${dayNum}. ${monthName}`;
+        const subLine = (yearNum !== currentYear) ? `${dayName} '${String(yearNum).substring(2)}` : dayName;
 
         wrap.innerHTML += `
         <div class="termin-row ${isExtern ? 'extern' : ''}">
@@ -183,7 +181,7 @@ function renderTermine(data) {
                 <span class="termin-title">${isExtern ? '🏠 ' : ''}${t.titel}</span>
                 <div class="termin-meta">
                     <span>${isExtern ? 'Schützenhaus' : '📍 ' + (t.ort || 'Muhen')}</span>
-                    ${t.start ? `<span>🕒 ${t.start}</span>` : ""}
+                    ${t.startzeit ? `<span>🕒 ${t.startzeit}</span>` : ""}
                 </div>
                 ${isExtern ? '<span class="badge-extern">Haus belegt</span>' : (t.status === 'provisorisch' ? '<span class="badge-prov">Provisorisch</span>' : '')}
             </div>
