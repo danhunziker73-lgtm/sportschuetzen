@@ -88,19 +88,20 @@ async function loadTermine() {
 
         let harmonized = [];
 
-        // 1. Vereinsdaten (Worker) - Jetzt mit Check auf gültiges Datum
-        if (resWorker && resWorker.termine) {
+        // 1. VEREINSDATEN (Worker)
+        // WICHTIG: Wir greifen auf resWorker.termine zu!
+        if (resWorker && Array.isArray(resWorker.termine)) {
             resWorker.termine.forEach(t => {
-                // Nur Termine mit Datum verarbeiten
+                // Wir nehmen nur Termine, die ein Datum haben (dein JSON hat einige leere)
                 if (t.datum && t.datum.trim() !== "") {
                     const dObj = new Date(t.datum);
-                    if (!isNaN(dObj.getTime())) { // Prüfen ob Datum valide ist
+                    if (!isNaN(dObj.getTime())) {
                         harmonized.push({
                             titel: t.anlasstitel || "Unbenannt",
                             datum_raw: t.datum,
                             start: t.startzeit,
                             ort: t.ort || "Muhen",
-                            status: t.status,
+                            status: t.status || "fix",
                             typ: 'verein',
                             dateObj: dObj
                         });
@@ -109,7 +110,7 @@ async function loadTermine() {
             });
         }
 
-        // 2. Externe Daten (Google)
+        // 2. EXTERNE DATEN (Google)
         if (Array.isArray(resGoogle)) {
             resGoogle.forEach(t => {
                 const dateStr = t.datum_iso || t.datum;
@@ -130,18 +131,19 @@ async function loadTermine() {
             });
         }
 
-        // Sortieren nach Zeit
+        // Sortierung nach Zeit (aufsteigend)
         harmonized.sort((a, b) => a.dateObj - b.dateObj);
         
         allTermine = applyRundenPrefix(harmonized);
         renderTermine(allTermine);
 
+        // OPTIONAL: Hier könntest du resWorker.platzhalter für andere Zwecke nutzen
+
     } catch (e) { 
-        console.error("Hauptfehler:", e);
-        wrap.innerHTML = "Fehler beim Verarbeiten der Daten."; 
+        console.error("Fehler beim Verarbeiten:", e);
+        wrap.innerHTML = "Fehler beim Laden der Termine."; 
     }
 }
-
 // --- RENDERING ---
 function renderTermine(data) {
     const wrap = document.getElementById("termine");
