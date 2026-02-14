@@ -162,17 +162,18 @@
         }
     }
 
-   async function saveAll() {
+async function saveAll() {
         if (!confirm("Änderungen speichern?")) return;
         const btn = document.querySelector('.nav-save');
         btn.style.opacity = "0.5";
         
-        // Bereinigung der Termine: Wir stellen sicher, dass das neue Feld AnlassTitel benutzt wird
+        // 1. Bereinigung: Wir stellen sicher, dass NUR AnlassTitel existiert
         state.termine.forEach(t => {
+            // Falls aus dem Sheet noch alte Namen kommen, migrieren wir sie hier einmalig
             if (!t.AnlassTitel) {
-                t.AnlassTitel = t.anlass___titel || t['anlass_/_titel'];
+                t.AnlassTitel = t.anlass___titel || t['anlass_/_titel'] || "";
             }
-            // Alte Sonderzeichen-Felder löschen, um den Worker sauber zu halten
+            // Wir löschen die alten Felder radikal, damit sie nicht zurück ins Sheet geschrieben werden
             delete t.anlass___titel;
             delete t['anlass_/_titel'];
         });
@@ -189,14 +190,12 @@
             });
             const result = await response.json();
             if(result.success) {
-                alert("✅ Daten erfolgreich im Google Sheet gespeichert!");
-                await refreshData(); // Lädt alles neu, hält dich aber eingeloggt
+                alert("✅ Daten erfolgreich gespeichert!");
+                await refreshData();
             } else {
-                alert("Fehler vom Server: " + result.error);
+                alert("Fehler: " + result.error);
             }
-        } catch (e) { 
-            alert("Netzwerkfehler: " + e); 
-        }
+        } catch (e) { alert("Netzwerkfehler: " + e); }
         btn.style.opacity = "1";
     }
 
@@ -255,9 +254,14 @@
         }).join('');
     }
 
-   function renderTermine() {
-        document.getElementById('termine-body').innerHTML = state.termine.map((t, i) => {
-            const aktuellerAnlass = t.AnlassTitel || t.anlass___titel || t['anlass_/_titel'] || "";
+function renderTermine() {
+        const tbody = document.getElementById('termine-body');
+        if (!tbody) return;
+
+        tbody.innerHTML = state.termine.map((t, i) => {
+            // Wir nutzen NUR noch AnlassTitel
+            const aktuellerAnlass = t.AnlassTitel || "";
+            
             return `
             <tr>
                 <td><input type="date" value="${formatDateForInput(t.datum)}" onchange="state.termine[${i}].datum=this.value"></td>
@@ -288,19 +292,23 @@
         }).join('');
     }
 
+    function updateOrt(index, gewaehlterOrt) {
+        state.termine[index].ort = gewaehlterOrt;
+        
+        // Die Zuordnung:
+        // state.dropdowns.orteMitMaps ist ein Array von Arrays: [ ["Name", "URL"], ["Name2", "URL2"] ]
+        const ortEintrag = state.dropdowns.orteMitMaps.find(o => o[0] === gewaehlterOrt);
+        
+        if (ortEintrag) {
+            // ortEintrag[1] ist die URL aus der zweiten Spalte im Editor/Sheet
+            state.termine[index].austragungsorte_map = ortEintrag[1]; 
+        }
+    }
     function renderAnmeldungen() {
         document.getElementById('anmelde-body').innerHTML = state.anmeldungen.map(a => `<tr><td><strong>${a.vorname} ${a.nachname}</strong></td><td style="color:${a.teilnahme==='Ja'?'var(--success)':'var(--danger)'}; font-weight:bold">${a.teilnahme}</td><td>${a.zeitstempel ? a.zeitstempel.split('T')[0] : '-'}</td></tr>`).join('');
     }
 // Neue Logik: Findet die Map-URL basierend auf dem gewählten Ort
-    function updateOrt(index, gewaehlterOrt) {
-        state.termine[index].ort = gewaehlterOrt;
-        
-        // Suche in dropdowns.orteMitMaps (Struktur: [Name, URL])
-        const ortEintrag = state.dropdowns.orteMitMaps.find(o => o[0] === gewaehlterOrt);
-        if (ortEintrag) {
-            state.termine[index].austragungsorte_map = ortEintrag[1]; // Speichert die URL
-        }
-    }
+   
     
     function renderAppInfo() {
         document.getElementById('app-info-list').innerHTML = state.app_info.map((info, i) => `
