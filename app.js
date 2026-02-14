@@ -143,6 +143,9 @@ async function loadTermine() {
 function renderTermine(data) {
     const wrap = document.getElementById("termine");
     const currentYear = new Date().getFullYear();
+    const months = ["Jan.", "Feb.", "März", "April", "Mai", "Juni", "Juli", "Aug.", "Sept.", "Okt.", "Nov.", "Dez."];
+    const days = ["So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"];
+
     wrap.innerHTML = data.length === 0 ? "Keine Termine gefunden." : "";
 
     data.forEach(t => {
@@ -150,15 +153,21 @@ function renderTermine(data) {
         const isExtern = t.typ === "extern";
         if(isExtern && t.titel.toLowerCase().includes("reinigung")) return;
 
-        const parts = t.datum.split(", ");
-        if(parts.length < 2) return;
+        // Datumsobjekt erstellen
+        let dObj;
+        if (t.datum_iso) {
+            dObj = new Date(t.datum_iso);
+        } else if (t.datum && t.datum.includes('.')) {
+            const [d, m, y] = t.datum.split('.');
+            dObj = new Date(y, m - 1, d);
+        } else {
+            return; // Kein gültiges Datum
+        }
 
-        const weekday = parts[0].substring(0, 2); 
-        const dateFull = parts[1]; 
-        const yearMatch = dateFull.match(/\d{4}/);
-        const yearInStr = yearMatch ? yearMatch[0] : currentYear.toString();
-        const dateDisplay = dateFull.replace(` ${yearInStr}`, "");
-        const subLine = (yearInStr !== currentYear.toString()) ? `${weekday} '${yearInStr.substring(2)}` : weekday;
+        const weekday = days[dObj.getDay()];
+        const dateDisplay = `${dObj.getDate()}. ${months[dObj.getMonth()]}`;
+        const yearInStr = dObj.getFullYear();
+        const subLine = (yearInStr !== currentYear) ? `${weekday} '${yearInStr.toString().substring(2)}` : weekday;
 
         wrap.innerHTML += `
         <div class="termin-row ${isExtern ? 'extern' : ''}">
@@ -177,6 +186,7 @@ function renderTermine(data) {
         </div>`;
     });
 }
+
 
 function filterTermine(type, btn) {
     document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
