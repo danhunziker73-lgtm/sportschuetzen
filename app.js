@@ -113,16 +113,41 @@ async function loadTermine() {
             safeFetch(GOOGLE_SCRIPT_URL)
         ]);
 
-        allTermine = [
+        // Rohdaten zusammenführen
+        let rawData = [
             ...resWorker.map(t => ({...t, typ: 'verein'})),
             ...resGoogle.map(t => ({...t, typ: 'extern'}))
         ];
 
-        allTermine.sort((a, b) => {
+        // --- INVASIVE DUBLETTEN-PRÜFUNG ---
+        // Wir verhindern, dass Termine, die in beiden Quellen stehen, doppelt erscheinen.
+        const merged = [];
+        const seen = new Set();
+
+        rawData.forEach(t => {
+            // Eindeutiger Key: Datum + Titel-Anfang
+            const dKey = t.datum_iso || t.datum;
+            const tKey = t.titel.substring(0, 15).toLowerCase();
+            const uniqueKey = `${dKey}_${tKey}`;
+
+            if (!seen.has(uniqueKey)) {
+                merged.push(t);
+                seen.add(uniqueKey);
+            } else if (t.typ === 'verein') {
+                // Falls bereits vorhanden, aber der aktuelle vom Verein ist, 
+                // überschreiben wir den externen (Vereinsdaten sind meist präziser)
+                const idx = merged.findIndex(m => 
+                    (m.datum_iso || m.datum) === dKey && 
+                    m.titel.substring(0, 15).toLowerCase() === tKey
+                );
+                if (idx !== -1) merged[idx] = t;
+            }
+        });
+
+        // --- SORTIERUNG ---
+        allTermine = merged.sort((a, b) => {
             const parse = (obj) => {
-                // Google ISO Format
                 if (obj.datum_iso) return new Date(obj.datum_iso);
-                // Worker Format "16.02.2026"
                 if (obj.datum && obj.datum.includes('.')) {
                     const [d, m, y] = obj.datum.split('.');
                     return new Date(y, m - 1, d);
@@ -139,7 +164,6 @@ async function loadTermine() {
     }
 }
 
-
 function renderTermine(data) {
     const wrap = document.getElementById("termine");
     const currentYear = new Date().getFullYear();
@@ -149,27 +173,30 @@ function renderTermine(data) {
     wrap.innerHTML = data.length === 0 ? "Keine Termine gefunden." : "";
 
     data.forEach(t => {
+        // "Abgesagt" oder Google-Reinigungs-Termine ignorieren
         if(t.status === "abgesagt") return;
         const isExtern = t.typ === "extern";
         if(isExtern && t.titel.toLowerCase().includes("reinigung")) return;
 
-        // Datumsobjekt erstellen
+        // Vorbereitung des Google Maps Links
+        const mapQuery = encodeURIComponent(t.map || (t.ort + " Muhen"));
+        const mapLink = `https://www.google.com/maps/search/?api=1&query=${mapQuery}`;
+        
+        // Datum konvertieren
         let dObj;
-        if (t.datum_iso) {
-            dObj = new Date(t.datum_iso);
-        } else if (t.datum && t.datum.includes('.')) {
+        if (t.datum_iso) dObj = new Date(t.datum_iso);
+        else if (t.datum && t.datum.includes('.')) {
             const [d, m, y] = t.datum.split('.');
             dObj = new Date(y, m - 1, d);
-        } else {
-            return; // Kein gültiges Datum
-        }
+        } else return; // Ohne Datum kein Eintrag
 
         const weekday = days[dObj.getDay()];
         const dateDisplay = `${dObj.getDate()}. ${months[dObj.getMonth()]}`;
-        const yearInStr = dObj.getFullYear();
-        const subLine = (yearInStr !== currentYear) ? `${weekday} '${yearInStr.toString().substring(2)}` : weekday;
+        const yearVal = dObj.getFullYear();
+        const subLine = (yearVal !== currentYear) ? `${weekday} '${yearVal.toString().substring(2)}` : weekday;
 
-        wrap.innerHTML += `
+        // Render HTML
+    wrap.innerHTML += `
         <div class="termin-row ${isExtern ? 'extern' : ''}">
             <div class="termin-date">
                 <span class="date-main">${dateDisplay}</span>
@@ -178,15 +205,17 @@ function renderTermine(data) {
             <div class="termin-content">
                 <span class="termin-title">${isExtern ? '🏠 ' : ''}${t.titel}</span>
                 <div class="termin-meta">
-                    <span>${isExtern ? 'Schützenhaus' : '📍 ' + (t.ort || 'Muhen')}</span>
+                    <a href="${mapLink}" target="_blank" class="map-link">
+                        <span>${isExtern ? 'Schützenhaus' : '📍 ' + (t.ort || 'Muhen')}</span>
+                    </a>
                     ${t.start ? `<span>🕒 ${t.start}</span>` : ""}
                 </div>
-                ${isExtern ? '<span class="badge-extern">Haus belegt</span>' : (t.status === 'provisorisch' ? '<span class="badge-prov">Provisorisch</span>' : '')}
+                ${t.status === 'provisorisch' ? '<span class="badge-prov">Provisorisch</span>' : ''}
+                ${isExtern ? '<span class="badge-extern">Haus belegt</span>' : ''}
             </div>
         </div>`;
     });
 }
-
 
 function filterTermine(type, btn) {
     document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
