@@ -112,8 +112,11 @@ iframe {
 .termine-list { display: flex; flex-direction: column; gap: 14px; }
 
 .termin-row {
+    .termin-row {
     display: grid;
-    grid-template-columns: 85px 1fr; 
+    grid-template-columns: minmax(105px, 120px) 1fr;
+}
+
     gap: 15px;
     align-items: center;
     padding: 12px 0;
