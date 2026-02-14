@@ -127,12 +127,24 @@
         dropdowns: { anlaesse:[], orteMitMaps:[], kategorien:[], status:[] } 
     };
 
-    // Hilfsfunktion zur Zeit-Extraktion (behandelt "1899-..." und normale "HH:mm")
-    function formatTimeForInput(val, defaultTime = "") {
-        if (!val) return defaultTime;
-        if (val.includes('T')) return val.split('T')[1].substring(0, 5);
-        return val.substring(0, 5);
-    }
+ // Diese Funktion ist jetzt super simpel, da GAS schon YYYY-MM-DD liefert
+function formatDateForInput(val) {
+    if (!val) return "";
+    // Falls GAS es schon als String "2026-03-12" schickt:
+    if (typeof val === 'string' && val.includes('-')) return val;
+    // Fallback für alle Fälle:
+    try { return new Date(val).toISOString().split('T')[0]; } catch(e) { return ""; }
+}
+
+// Diese Funktion nimmt einfach den HH:mm String von GAS entgegen
+function formatTimeForInput(val, defaultTime = "") {
+    if (!val) return defaultTime;
+    // Wenn es ein String wie "19:30" ist, direkt zurückgeben
+    if (typeof val === 'string' && val.length === 5) return val;
+    // Falls es doch ein ISO-String ist, die Zeit rausschneiden
+    if (typeof val === 'string' && val.includes('T')) return val.split('T')[1].substring(0, 5);
+    return val;
+}
 
     async function loadData() {
         try {
