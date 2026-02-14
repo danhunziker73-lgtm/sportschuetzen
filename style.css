@@ -140,6 +140,30 @@ iframe {
     box-shadow: 0 2px 4px rgba(0,0,0,0.02);
 }
 
+
+.map-link {
+    text-decoration: none;
+    color: inherit; /* Übernimmt die Farbe der restlichen Meta-Infos */
+    display: inline-flex;
+    align-items: center;
+}
+
+.map-link:active {
+    opacity: 0.6; /* Kleines visuelles Feedback beim Tippen auf dem Handy */
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
 /* Spezial-Style für EXTERNE Termine (Dunkles Datum) */
 .termin-row.extern .termin-date {
     background: #4a5568 !important; /* Schönes Dunkelgrau/Blau */
