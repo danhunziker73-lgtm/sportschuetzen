@@ -114,16 +114,17 @@ async function loadTermine() {
             safeFetch(GOOGLE_SCRIPT_URL)
         ]);
 // --- KORREKTUR HIER ---
+      // --- KORREKTUR: Mapping für 'anlasstitel' hinzufügen ---
         allTermine = [
             ...resWorker.map(t => ({
                 ...t, 
-                // Falls 'titel' leer ist, nimm 'AnlassTitel'
-                titel: t.titel || t.AnlassTitel || "Unbenannter Termin", 
+                // Falls 'titel' fehlt, nimm 'anlasstitel' oder 'AnlassTitel'
+                titel: t.titel || t.anlasstitel || t.AnlassTitel || "Unbenannter Termin", 
                 typ: 'verein'
             })),
             ...resGoogle.map(t => ({
                 ...t, 
-                titel: t.titel || t.AnlassTitel || t.Anlass || "Externer Termin", 
+                titel: t.titel || t.anlasstitel || t.AnlassTitel || "Externer Termin", 
                 typ: 'extern'
             }))
         ];
