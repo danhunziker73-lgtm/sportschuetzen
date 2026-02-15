@@ -55,9 +55,7 @@ async function loadContestData(moduleKey) {
     container.innerHTML = `<div class="text-center p-5"><div class="spinner-border text-primary"></div><p>Lade ${config.title}...</p></div>`;
 
     try {
-        // Backend Call
         const params = `action=getManagerData&sheetName=${config.sheetName}`;
-        // WICHTIG: Falls dein Worker 'manager' noch nicht kennt, nutze 'grenzland'
         const res = await apiFetch('grenzland', params); 
         const data = await res.json();
         
@@ -89,10 +87,9 @@ function processContestData(data, config) {
 
         const teamName = row.runde_1_team || "Pool";
         
-        // Zone Logik: Wenn Backend 'stellung' liefert (bei Gruppe)
         let zoneKey = config.zones[0].key;
         if (config.zones.length > 1) {
-            const stellung = String(row.stellung || "").toLowerCase();
+            const stellung = String(row.stellung || "").toLowerCase(); // Backend liefert 'stellung' bei Gruppe
             if (stellung.includes("kniend")) zoneKey = "kniend";
             else zoneKey = "liegend";
         }
@@ -116,7 +113,6 @@ function processContestData(data, config) {
         for(let i=1; i <= config.defaultTeams; i++) addTeamToState(false);
     }
 
-    // Pool füllen
     appState.members.forEach(m => {
         if (!assignedIds.has(String(m.id))) {
             appState.pool.push({
@@ -135,7 +131,7 @@ function renderContestUI() {
     const container = document.getElementById('manager-container');
     
     container.innerHTML = `
-        <div class="d-flex justify-content-between align-items-center mb-3 sticky-top bg-white py-2 border-bottom" style="z-index:10;">
+        <div class="d-flex justify-content-between align-items-center mb-3 sticky-top bg-white py-2 border-bottom" style="z-index:100;">
             <div class="d-flex align-items-center gap-2">
                 <select id="module-selector" class="form-select fw-bold border-primary text-primary" onchange="loadContestData(this.value)">
                     <option value="grenzland" ${appState.activeModule==='grenzland'?'selected':''}>🛡️ Grenzland</option>
@@ -151,21 +147,23 @@ function renderContestUI() {
         </div>
         
         <div class="row h-100 g-3">
+            <!-- Teams -->
             <div class="col-lg-8 col-md-7">
                 <div class="row g-3">
                     ${appState.teams.map(team => renderTeamCard(team, config)).join('')}
                 </div>
             </div>
 
+            <!-- Sidebar -->
             <div class="col-lg-4 col-md-5 d-flex flex-column gap-3">
                 
-                <!-- POOL -->
+                <!-- Pool -->
                 <div class="card shadow-sm border-secondary flex-grow-1" style="max-height: 50vh; display:flex; flex-direction:column;">
                     <div class="card-header bg-secondary text-white py-2">
                         <i class="fas fa-users"></i> Schützen-Pool
                         <input type="text" class="form-control form-control-sm mt-1" placeholder="Filter..." onkeyup="filterPool(this.value)">
                     </div>
-                    <div class="card-body p-2 dropzone bg-light overflow-auto" data-target-type="pool" style="flex:1;">
+                    <div class="card-body p-2 dropzone bg-light overflow-auto" data-target-type="pool" style="flex:1; min-height:100px;">
                         ${appState.pool.map(s => renderPlayerItem(s)).join('')}
                     </div>
                     <div class="card-footer small text-muted text-center py-1">
@@ -173,13 +171,14 @@ function renderContestUI() {
                     </div>
                 </div>
 
-                <!-- MAIL -->
+                <!-- Mail -->
                 <div class="card shadow-sm border-warning" style="height: 30vh; display:flex; flex-direction:column;">
                     <div class="card-header bg-warning text-dark py-2 d-flex justify-content-between align-items-center">
                         <span><i class="fas fa-envelope"></i> Mail Versand</span>
                         <button class="btn btn-sm btn-dark py-0" onclick="sendMail()" style="font-size:0.8rem;">Erstellen</button>
                     </div>
-                    <div class="card-body p-2 dropzone bg-light overflow-auto" data-target-type="mail" style="flex:1; border: 2px dashed #ccc;">
+                    <div class="card-body p-2 dropzone bg-light overflow-auto" data-target-type="mail" style="flex:1; border: 2px dashed #ccc; min-height:80px;">
+                        ${appState.mailList.length === 0 ? '<div class="text-center text-muted small mt-4">Schützen hierher ziehen<br>(Kopie)</div>' : ''}
                         ${appState.mailList.map(s => renderMailItem(s)).join('')}
                     </div>
                     <div class="card-footer small text-muted text-center py-1">
@@ -191,7 +190,8 @@ function renderContestUI() {
         </div>
     `;
 
-    initDragAndDrop(); // WICHTIG
+    // Drag & Drop erst aktivieren, wenn Elemente im DOM sind
+    setTimeout(initDragAndDrop, 100);
 }
 
 function renderTeamCard(team, config) {
@@ -205,10 +205,10 @@ function renderTeamCard(team, config) {
 
         return `
             <div class="team-zone p-2 mb-1 border rounded dropzone" 
-                 style="background:${zoneBg}; min-height: 60px;"
+                 style="background:${zoneBg}; min-height: 80px; transition: background 0.2s;"
                  data-team="${team.name}" data-zone="${zone.key}" data-limit="${zone.limit}" data-target-type="team">
                 
-                ${config.zones.length > 1 ? `<div class="d-flex justify-content-between small fw-bold text-muted mb-1"><span>${zone.label}</span><span>${shooters.length}/${zone.limit}</span></div>` : ''}
+                ${config.zones.length > 1 ? `<div class="d-flex justify-content-between small fw-bold text-muted mb-1 pointer-events-none"><span>${zone.label}</span><span>${shooters.length}/${zone.limit}</span></div>` : ''}
                 
                 ${shooters.map(s => renderPlayerItem(s, team.name)).join('')}
             </div>
@@ -239,8 +239,8 @@ function renderPlayerItem(player, teamName = null) {
              draggable="true" 
              data-id="${player.id}" 
              style="cursor:grab; border-left: 3px solid var(--primary) !important;">
-            <div class="card-body p-1 px-2">
-                <div class="text-truncate small fw-bold">${player.name}</div>
+            <div class="card-body p-1 px-2 pointer-events-none"> <!-- Pointer Events none verhindert drop auf kind -->
+                <div class="text-truncate small fw-bold pointer-events-none">${player.name}</div>
             </div>
         </div>
     `;
@@ -257,37 +257,52 @@ function renderMailItem(player) {
     `;
 }
 
-// === DRAG & DROP LOGIK (REPARIERT) ===
-let draggedItem = null;
+// === DRAG & DROP LOGIK (ROBUST) ===
 
 function initDragAndDrop() {
     const draggables = document.querySelectorAll('.draggable-player');
     const dropzones = document.querySelectorAll('.dropzone');
 
+    // 1. Drag Start
     draggables.forEach(d => {
         d.addEventListener('dragstart', (e) => { 
-            draggedItem = d; 
+            e.dataTransfer.setData('text/plain', d.dataset.id); // WICHTIG FÜR FIREFOX
+            e.dataTransfer.effectAllowed = 'copyMove';
             d.style.opacity = '0.5'; 
-            // Wichtig für Firefox/einige Browser
-            e.dataTransfer.setData('text/plain', d.dataset.id);
         });
         d.addEventListener('dragend', () => { 
             d.style.opacity = '1'; 
-            draggedItem = null; 
         });
     });
 
+    // 2. Dropzones
     dropzones.forEach(zone => {
-        zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('bg-secondary-subtle'); });
-        zone.addEventListener('dragleave', () => { zone.classList.remove('bg-secondary-subtle'); });
+        // Drag Over (Erlauben)
+        zone.addEventListener('dragover', e => { 
+            e.preventDefault(); // NÖTIG FÜR DROP
+            e.dataTransfer.dropEffect = zone.dataset.targetType === 'mail' ? 'copy' : 'move';
+            zone.classList.add('bg-success-subtle'); // Visuelles Feedback
+        });
+
+        // Drag Leave
+        zone.addEventListener('dragleave', () => { 
+            zone.classList.remove('bg-success-subtle'); 
+        });
         
+        // DROP
         zone.addEventListener('drop', e => {
             e.preventDefault();
-            zone.classList.remove('bg-secondary-subtle');
+            zone.classList.remove('bg-success-subtle');
             
-            if (!draggedItem) return;
-            const playerId = draggedItem.dataset.id;
-            const targetType = zone.dataset.targetType; // "pool", "mail", "team"
+            // Daten holen
+            const playerId = e.dataTransfer.getData('text/plain');
+            if(!playerId) return;
+
+            // RICHTIGES ZIEL FINDEN (Falls auf Kind-Element gedroppt wurde)
+            const targetZone = e.target.closest('.dropzone');
+            if (!targetZone) return;
+
+            const targetType = targetZone.dataset.targetType; // "pool", "mail", "team"
 
             // 1. MAIL (Kopie)
             if (targetType === "mail") {
@@ -297,24 +312,22 @@ function initDragAndDrop() {
 
             // 2. POOL (Verschieben)
             if (targetType === "pool") {
-                movePlayerInState(playerId, null, null); // null = Pool
+                movePlayerInState(playerId, null, null);
                 renderContestUI();
                 return;
             }
 
             // 3. TEAM (Verschieben)
-            if (targetType === "team" || zone.dataset.team) {
-                // Limit Check
-                const limit = parseInt(zone.dataset.limit);
-                const teamName = zone.dataset.team;
-                const zoneKey = zone.dataset.zone;
+            if (targetType === "team") {
+                const limit = parseInt(targetZone.dataset.limit);
+                const teamName = targetZone.dataset.team;
+                const zoneKey = targetZone.dataset.zone;
                 
                 const team = appState.teams.find(t => t.name === teamName);
                 if (!team) return;
 
-                // Zähle Schützen in dieser Zone (außer mir selbst)
+                // Limit Check
                 const currentCount = team.shooters.filter(s => s.zone === zoneKey && s.id !== playerId).length;
-                
                 if (currentCount >= limit) { 
                     alert("Zone ist voll!"); 
                     return; 
@@ -327,13 +340,13 @@ function initDragAndDrop() {
     });
 }
 
-// === LOGIK ACTIONS ===
+// === LOGIK ===
 
 function movePlayerInState(id, targetTeam, targetZone) {
     appState.isDirty = true;
     let player = null;
     
-    // Suchen & Entfernen (egal woher)
+    // Suchen
     const poolIdx = appState.pool.findIndex(p => p.id === id);
     if (poolIdx > -1) player = appState.pool.splice(poolIdx, 1)[0];
     else {
@@ -343,14 +356,12 @@ function movePlayerInState(id, targetTeam, targetZone) {
         }
     }
 
-    if(!player) return; // Nicht gefunden
+    if(!player) return;
 
     if (!targetTeam) { 
-        // Ziel: Pool
         player.zone = null;
         appState.pool.push(player);
     } else { 
-        // Ziel: Team
         const team = appState.teams.find(t => t.name === targetTeam);
         if(team) {
             player.zone = targetZone;
@@ -360,7 +371,6 @@ function movePlayerInState(id, targetTeam, targetZone) {
 }
 
 function copyToMail(id) {
-    // Schütze finden (ohne ihn zu entfernen)
     let player = appState.pool.find(p => p.id === id);
     if (!player) {
         for(let t of appState.teams) {
@@ -368,8 +378,6 @@ function copyToMail(id) {
             if(player) break;
         }
     }
-    
-    // Prüfen ob schon in Liste
     if (player && !appState.mailList.find(m => m.id === id)) {
         appState.mailList.push({ ...player });
         renderContestUI();
@@ -431,7 +439,7 @@ function printContest() {
 
 function sendMail() {
     const mails = appState.mailList.map(m => m.email).filter(e => e && e.includes('@'));
-    if(!mails.length) return alert("Keine Emails!");
+    if(!mails.length) return alert("Keine Emails oder Schützen haben keine Email hinterlegt!");
     window.location.href = `mailto:?bcc=${mails.join(',')}&subject=Aufgebot`;
 }
 
@@ -446,13 +454,9 @@ async function saveContest() {
     
     appState.teams.forEach(team => {
         team.shooters.forEach(p => {
-            // Wir bauen das Objekt für das Backend
-            // A = Name (id), B = Team (r1_team) oder Stellung?
-            // Das Backend entscheidet anhand sheetName
-            
             let item = {
                 id: p.name, 
-                team: team.name, // Team Name
+                team: team.name, 
                 stellung: p.zone === "liegend" ? "Liegend" : (p.zone === "kniend" ? "Kniend" : "")
             };
             exportData.push(item);
