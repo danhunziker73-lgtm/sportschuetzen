@@ -32,7 +32,7 @@ let appState = {
     members: [],
     teams: [],
     pool: [],
-    mailList: [], // NEU: Liste für Mail-Verteiler
+    mailList: [],
     isDirty: false 
 };
 
@@ -46,7 +46,7 @@ async function loadContestData(moduleKey) {
     if (!moduleKey) moduleKey = appState.activeModule;
     appState.activeModule = moduleKey;
     appState.isDirty = false;
-    appState.mailList = []; // Mail Reset bei Wechsel
+    appState.mailList = []; 
 
     const config = CONTEST_CONFIG[moduleKey];
     const container = document.getElementById('manager-container');
@@ -55,8 +55,9 @@ async function loadContestData(moduleKey) {
     container.innerHTML = `<div class="text-center p-5"><div class="spinner-border text-primary"></div><p>Lade ${config.title}...</p></div>`;
 
     try {
-        // Wir senden sheetName mit, damit Backend das richtige Sheet liest
+        // Backend Call
         const params = `action=getManagerData&sheetName=${config.sheetName}`;
+        // WICHTIG: Falls dein Worker 'manager' noch nicht kennt, nutze 'grenzland'
         const res = await apiFetch('grenzland', params); 
         const data = await res.json();
         
@@ -68,34 +69,31 @@ async function loadContestData(moduleKey) {
     }
 }
 
-// === PROCESS DATA ===
+// === PROCESS ===
 function processContestData(data, config) {
     appState.members = data.members || [];
     appState.teams = []; 
     appState.pool = [];
 
     const assignedIds = new Set();
-    // Backend liefert jetzt generisch "contestData"
     const sheetData = data.contestData || []; 
 
     const tempTeams = {};
 
     sheetData.forEach(row => {
-        // Spalte A im Backend war Name
         const rowIdStr = String(row.schuetze_id || "").trim();
         if(!rowIdStr) return;
 
-        // Match Member
         let member = appState.members.find(m => String(m.id) === rowIdStr || `${m.nachname} ${m.vorname}` === rowIdStr);
         if (!member) member = { id: rowIdStr, nachname: rowIdStr, vorname: "", email: "", dummy: true };
 
         const teamName = row.runde_1_team || "Pool";
         
-        // Zone (Stellung) aus Spalte C lesen (backend sendet es als runde_1_pkt)
+        // Zone Logik: Wenn Backend 'stellung' liefert (bei Gruppe)
         let zoneKey = config.zones[0].key;
         if (config.zones.length > 1) {
-            const info = String(row.runde_1_pkt || "").toLowerCase();
-            if (info.includes("kniend")) zoneKey = "kniend";
+            const stellung = String(row.stellung || "").toLowerCase();
+            if (stellung.includes("kniend")) zoneKey = "kniend";
             else zoneKey = "liegend";
         }
 
@@ -104,8 +102,8 @@ function processContestData(data, config) {
             
             tempTeams[teamName].shooters.push({
                 id: member.id,
-                name: member.dummy ? member.id : `${member.nachname} ${member.vorname}`, // Name für Anzeige/Save
-                email: member.email, // Email speichern
+                name: member.dummy ? member.id : `${member.nachname} ${member.vorname}`,
+                email: member.email,
                 zone: zoneKey
             });
             if (!member.dummy) assignedIds.add(String(member.id));
@@ -131,32 +129,6 @@ function processContestData(data, config) {
     });
 }
 
-// === STATE ACTIONS ===
-function addTeamToState(render = true) {
-    const config = CONTEST_CONFIG[appState.activeModule];
-    let nextNum = 1;
-    const existingNums = appState.teams.map(t => {
-        const match = t.name.match(/(\d+)$/);
-        return match ? parseInt(match[1]) : 0;
-    });
-    while (existingNums.includes(nextNum)) nextNum++;
-
-    appState.teams.push({ name: `${config.baseTeamName} ${nextNum}`, shooters: [] });
-    appState.isDirty = true;
-    if(render) renderContestUI();
-}
-
-function removeTeamFromState(teamName) {
-    if(!confirm(`Team "${teamName}" auflösen?`)) return;
-    const idx = appState.teams.findIndex(t => t.name === teamName);
-    if (idx === -1) return;
-    
-    appState.teams[idx].shooters.forEach(s => appState.pool.push(s)); // Zurück in Pool
-    appState.teams.splice(idx, 1);
-    appState.isDirty = true;
-    renderContestUI();
-}
-
 // === RENDER UI ===
 function renderContestUI() {
     const config = CONTEST_CONFIG[appState.activeModule];
@@ -170,23 +142,21 @@ function renderContestUI() {
                     <option value="mannschaft" ${appState.activeModule==='mannschaft'?'selected':''}>👥 Mannschaft</option>
                     <option value="gruppe" ${appState.activeModule==='gruppe'?'selected':''}>🎯 Gruppe (SGM)</option>
                 </select>
-                <button class="btn btn-outline-secondary btn-sm" onclick="addTeamToState()" title="Neues Team"><i class="fas fa-plus"></i></button>
+                <button class="btn btn-outline-secondary btn-sm" onclick="addTeamToState()"><i class="fas fa-plus"></i></button>
             </div>
             <div class="d-flex gap-2">
-                <button class="btn btn-outline-dark" onclick="printContest()" title="PDF / Drucken"><i class="fas fa-print"></i></button>
+                <button class="btn btn-outline-dark" onclick="printContest()"><i class="fas fa-print"></i></button>
                 <button class="btn btn-success fw-bold" onclick="saveContest()">💾 Speichern</button>
             </div>
         </div>
         
         <div class="row h-100 g-3">
-            <!-- TEAMS (Links) -->
             <div class="col-lg-8 col-md-7">
                 <div class="row g-3">
                     ${appState.teams.map(team => renderTeamCard(team, config)).join('')}
                 </div>
             </div>
 
-            <!-- SIDEBAR (Rechts: Pool + Mail) -->
             <div class="col-lg-4 col-md-5 d-flex flex-column gap-3">
                 
                 <!-- POOL -->
@@ -203,14 +173,13 @@ function renderContestUI() {
                     </div>
                 </div>
 
-                <!-- MAIL VERTEILER -->
+                <!-- MAIL -->
                 <div class="card shadow-sm border-warning" style="height: 30vh; display:flex; flex-direction:column;">
                     <div class="card-header bg-warning text-dark py-2 d-flex justify-content-between align-items-center">
                         <span><i class="fas fa-envelope"></i> Mail Versand</span>
                         <button class="btn btn-sm btn-dark py-0" onclick="sendMail()" style="font-size:0.8rem;">Erstellen</button>
                     </div>
                     <div class="card-body p-2 dropzone bg-light overflow-auto" data-target-type="mail" style="flex:1; border: 2px dashed #ccc;">
-                        ${appState.mailList.length === 0 ? '<div class="text-center text-muted small mt-4">Schützen hierher ziehen<br>(Kopie)</div>' : ''}
                         ${appState.mailList.map(s => renderMailItem(s)).join('')}
                     </div>
                     <div class="card-footer small text-muted text-center py-1">
@@ -222,8 +191,7 @@ function renderContestUI() {
         </div>
     `;
 
-    initDragAndDrop();
-    updateAllCounts();
+    initDragAndDrop(); // WICHTIG
 }
 
 function renderTeamCard(team, config) {
@@ -232,15 +200,13 @@ function renderTeamCard(team, config) {
             if (config.zones.length === 1) return true;
             return s.zone === zone.key;
         });
-        const isFull = shooters.length > zone.limit;
         
-        // Farbe für Zonen (Liegend/Kniend visuell trennen)
         const zoneBg = zone.key === 'liegend' ? '#e3f2fd' : (zone.key === 'kniend' ? '#f3e5f5' : '#fff');
 
         return `
             <div class="team-zone p-2 mb-1 border rounded dropzone" 
                  style="background:${zoneBg}; min-height: 60px;"
-                 data-team="${team.name}" data-zone="${zone.key}" data-limit="${zone.limit}">
+                 data-team="${team.name}" data-zone="${zone.key}" data-limit="${zone.limit}" data-target-type="team">
                 
                 ${config.zones.length > 1 ? `<div class="d-flex justify-content-between small fw-bold text-muted mb-1"><span>${zone.label}</span><span>${shooters.length}/${zone.limit}</span></div>` : ''}
                 
@@ -254,14 +220,13 @@ function renderTeamCard(team, config) {
             <div class="card shadow-sm h-100 border-0">
                 <div class="card-header d-flex justify-content-between align-items-center bg-white pt-3 pb-1 border-bottom-0">
                     <h5 class="m-0 fw-bold text-primary">${team.name}</h5>
-                    <span class="badge bg-light text-dark border" id="count-${team.name.replace(/\s+/g,'-')}">0</span>
+                    <span class="badge bg-light text-dark border">${team.shooters.length}</span>
                 </div>
                 <div class="card-body p-2">
                     ${zonesHtml}
                 </div>
-                <!-- Löschen Button klein unten rechts -->
                 <div class="text-end p-2 pt-0">
-                     <small class="text-muted cursor-pointer" onclick="removeTeamFromState('${team.name}')" style="cursor:pointer;">Team löschen</small>
+                     <small class="text-muted" onclick="removeTeamFromState('${team.name}')" style="cursor:pointer;">Team löschen</small>
                 </div>
             </div>
         </div>
@@ -269,14 +234,13 @@ function renderTeamCard(team, config) {
 }
 
 function renderPlayerItem(player, teamName = null) {
-    // KEINE PUNKTE INPUTS MEHR - Nur Name
     return `
         <div class="card mb-1 draggable-player border-0 shadow-sm" 
              draggable="true" 
              data-id="${player.id}" 
              style="cursor:grab; border-left: 3px solid var(--primary) !important;">
-            <div class="card-body p-1 px-2 d-flex align-items-center">
-                <div class="text-truncate small fw-bold" style="width:100%">${player.name}</div>
+            <div class="card-body p-1 px-2">
+                <div class="text-truncate small fw-bold">${player.name}</div>
             </div>
         </div>
     `;
@@ -293,7 +257,7 @@ function renderMailItem(player) {
     `;
 }
 
-// === DRAG & DROP ===
+// === DRAG & DROP LOGIK (REPARIERT) ===
 let draggedItem = null;
 
 function initDragAndDrop() {
@@ -301,8 +265,16 @@ function initDragAndDrop() {
     const dropzones = document.querySelectorAll('.dropzone');
 
     draggables.forEach(d => {
-        d.addEventListener('dragstart', () => { draggedItem = d; d.style.opacity = '0.5'; });
-        d.addEventListener('dragend', () => { d.style.opacity = '1'; draggedItem = null; });
+        d.addEventListener('dragstart', (e) => { 
+            draggedItem = d; 
+            d.style.opacity = '0.5'; 
+            // Wichtig für Firefox/einige Browser
+            e.dataTransfer.setData('text/plain', d.dataset.id);
+        });
+        d.addEventListener('dragend', () => { 
+            d.style.opacity = '1'; 
+            draggedItem = null; 
+        });
     });
 
     dropzones.forEach(zone => {
@@ -312,37 +284,56 @@ function initDragAndDrop() {
         zone.addEventListener('drop', e => {
             e.preventDefault();
             zone.classList.remove('bg-secondary-subtle');
+            
             if (!draggedItem) return;
-
-            const targetType = zone.dataset.targetType;
             const playerId = draggedItem.dataset.id;
+            const targetType = zone.dataset.targetType; // "pool", "mail", "team"
 
-            // MAIL LOGIK (KOPIE)
+            // 1. MAIL (Kopie)
             if (targetType === "mail") {
                 copyToMail(playerId);
                 return;
             }
 
-            // TEAM/POOL LOGIK (VERSCHIEBEN)
-            // Limit Check
-            if (targetType !== "pool") {
-                const limit = parseInt(zone.dataset.limit);
-                const team = appState.teams.find(t => t.name === zone.dataset.team);
-                const current = team.shooters.filter(s => s.zone === zone.dataset.zone && s.id !== playerId).length;
-                if (current >= limit) { alert("Zone voll!"); return; }
+            // 2. POOL (Verschieben)
+            if (targetType === "pool") {
+                movePlayerInState(playerId, null, null); // null = Pool
+                renderContestUI();
+                return;
             }
 
-            movePlayerInState(playerId, zone.dataset.team, zone.dataset.zone);
-            renderContestUI();
+            // 3. TEAM (Verschieben)
+            if (targetType === "team" || zone.dataset.team) {
+                // Limit Check
+                const limit = parseInt(zone.dataset.limit);
+                const teamName = zone.dataset.team;
+                const zoneKey = zone.dataset.zone;
+                
+                const team = appState.teams.find(t => t.name === teamName);
+                if (!team) return;
+
+                // Zähle Schützen in dieser Zone (außer mir selbst)
+                const currentCount = team.shooters.filter(s => s.zone === zoneKey && s.id !== playerId).length;
+                
+                if (currentCount >= limit) { 
+                    alert("Zone ist voll!"); 
+                    return; 
+                }
+
+                movePlayerInState(playerId, teamName, zoneKey);
+                renderContestUI();
+            }
         });
     });
 }
+
+// === LOGIK ACTIONS ===
 
 function movePlayerInState(id, targetTeam, targetZone) {
     appState.isDirty = true;
     let player = null;
     
-    // Finden & Entfernen
+    // Suchen & Entfernen (egal woher)
     const poolIdx = appState.pool.findIndex(p => p.id === id);
     if (poolIdx > -1) player = appState.pool.splice(poolIdx, 1)[0];
     else {
@@ -352,20 +343,24 @@ function movePlayerInState(id, targetTeam, targetZone) {
         }
     }
 
-    if(!player) return;
+    if(!player) return; // Nicht gefunden
 
-    if (!targetTeam) { // Pool
+    if (!targetTeam) { 
+        // Ziel: Pool
+        player.zone = null;
         appState.pool.push(player);
-    } else { // Team
+    } else { 
+        // Ziel: Team
         const team = appState.teams.find(t => t.name === targetTeam);
-        player.zone = targetZone;
-        team.shooters.push(player);
+        if(team) {
+            player.zone = targetZone;
+            team.shooters.push(player);
+        }
     }
 }
 
-// === MAIL FUNKTIONEN ===
 function copyToMail(id) {
-    // Schütze suchen (egal wo er ist)
+    // Schütze finden (ohne ihn zu entfernen)
     let player = appState.pool.find(p => p.id === id);
     if (!player) {
         for(let t of appState.teams) {
@@ -374,12 +369,9 @@ function copyToMail(id) {
         }
     }
     
-    // Schon in Mail-Liste?
-    if (appState.mailList.find(m => m.id === id)) return;
-    
-    // Kopie hinzufügen
-    if (player) {
-        appState.mailList.push({ ...player }); // Kopie
+    // Prüfen ob schon in Liste
+    if (player && !appState.mailList.find(m => m.id === id)) {
+        appState.mailList.push({ ...player });
         renderContestUI();
     }
 }
@@ -389,74 +381,58 @@ function removeFromMail(id) {
     renderContestUI();
 }
 
-function sendMail() {
-    const emails = appState.mailList.map(m => m.email).filter(e => e && e.includes('@'));
-    if (emails.length === 0) { alert("Keine gültigen Email-Adressen gefunden!"); return; }
-    
-    const subject = `${CONTEST_CONFIG[appState.activeModule].title} - Aufgebot`;
-    const body = "Hallo zusammen,\n\nhier ist das Aufgebot...";
-    
-    // Mail Client öffnen (BCC empfohlen)
-    window.location.href = `mailto:?bcc=${emails.join(',')}&subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-}
-
-// === PDF / PRINT ===
-function printContest() {
-    const config = CONTEST_CONFIG[appState.activeModule];
-    
-    // HTML Tabelle generieren
-    let html = `
-    <html><head><title>Druckansicht</title>
-    <style>
-        body { font-family: sans-serif; padding: 20px; }
-        h1 { color: #0f3a5d; border-bottom: 2px solid #ccc; padding-bottom: 10px; }
-        .team-box { break-inside: avoid; border: 1px solid #ddd; margin-bottom: 20px; padding: 10px; border-radius: 5px; }
-        .team-header { font-weight: bold; font-size: 1.2em; margin-bottom: 10px; color: #333; }
-        .zone-label { font-size: 0.8em; text-transform: uppercase; color: #666; border-bottom: 1px solid #eee; margin-top: 5px; }
-        table { width: 100%; border-collapse: collapse; margin-top: 5px; }
-        td { padding: 4px; border-bottom: 1px solid #eee; }
-        @media print { .no-print { display: none; } }
-    </style>
-    </head><body>
-    <h1>${config.title} - Teams</h1>
-    `;
-
-    appState.teams.forEach(team => {
-        html += `<div class="team-box"><div class="team-header">${team.name}</div>`;
-        
-        config.zones.forEach(zone => {
-            const shooters = team.shooters.filter(s => s.zone === zone.key);
-            if(shooters.length > 0) {
-                if(config.zones.length > 1) html += `<div class="zone-label">${zone.label}</div>`;
-                html += `<table>`;
-                shooters.forEach(s => {
-                    html += `<tr><td>${s.name}</td></tr>`;
-                });
-                html += `</table>`;
-            }
-        });
-        html += `</div>`;
-    });
-
-    html += `<script>window.print();</script></body></html>`;
-
-    const win = window.open('', '_blank');
-    win.document.write(html);
-    win.document.close();
-}
-
 // === UTILS ===
-function updateAllCounts() {
-    appState.teams.forEach(t => {
-        const el = document.getElementById(`count-${t.name.replace(/\s+/g,'-')}`);
-        if(el) el.innerText = t.shooters.length;
+
+function addTeamToState() {
+    const config = CONTEST_CONFIG[appState.activeModule];
+    let nextNum = 1;
+    const existingNums = appState.teams.map(t => {
+        const match = t.name.match(/(\d+)$/);
+        return match ? parseInt(match[1]) : 0;
     });
+    while (existingNums.includes(nextNum)) nextNum++;
+    appState.teams.push({ name: `${config.baseTeamName} ${nextNum}`, shooters: [] });
+    renderContestUI();
 }
+
+function removeTeamFromState(teamName) {
+    if(!confirm(`Team "${teamName}" löschen?`)) return;
+    const idx = appState.teams.findIndex(t => t.name === teamName);
+    if (idx === -1) return;
+    appState.teams[idx].shooters.forEach(s => appState.pool.push(s));
+    appState.teams.splice(idx, 1);
+    renderContestUI();
+}
+
 function filterPool(val) {
     val = val.toLowerCase();
     document.querySelectorAll('.dropzone[data-target-type="pool"] .draggable-player').forEach(el => {
         el.parentElement.style.display = el.innerText.toLowerCase().includes(val) ? 'block' : 'none';
     });
+}
+
+function printContest() {
+    const config = CONTEST_CONFIG[appState.activeModule];
+    let html = `<html><head><title>Druck</title><style>
+        body{font-family:sans-serif;padding:20px} .team{border:1px solid #ccc;margin-bottom:15px;padding:10px;page-break-inside:avoid}
+        .head{font-weight:bold;font-size:1.1em;border-bottom:1px solid #eee;margin-bottom:5px}
+    </style></head><body><h1>${config.title}</h1>`;
+    
+    appState.teams.forEach(t => {
+        html += `<div class="team"><div class="head">${t.name}</div>`;
+        t.shooters.forEach(s => html += `<div>${s.name} ${s.zone==='kniend'?'(kn)':''}</div>`);
+        html += `</div>`;
+    });
+    html += `<script>window.print()</script></body></html>`;
+    const win = window.open('','_blank');
+    win.document.write(html);
+    win.document.close();
+}
+
+function sendMail() {
+    const mails = appState.mailList.map(m => m.email).filter(e => e && e.includes('@'));
+    if(!mails.length) return alert("Keine Emails!");
+    window.location.href = `mailto:?bcc=${mails.join(',')}&subject=Aufgebot`;
 }
 
 // === SAVE ===
@@ -470,14 +446,15 @@ async function saveContest() {
     
     appState.teams.forEach(team => {
         team.shooters.forEach(p => {
+            // Wir bauen das Objekt für das Backend
+            // A = Name (id), B = Team (r1_team) oder Stellung?
+            // Das Backend entscheidet anhand sheetName
+            
             let item = {
-                id: p.name, // Name an Backend
-                r1_team: team.name, 
-                r1_pkt: "" // Default leer
+                id: p.name, 
+                team: team.name, // Team Name
+                stellung: p.zone === "liegend" ? "Liegend" : (p.zone === "kniend" ? "Kniend" : "")
             };
-            if (appState.activeModule === "gruppe") {
-                item.r1_pkt = p.zone === "liegend" ? "Liegend" : "Kniend";
-            }
             exportData.push(item);
         });
     });
@@ -491,6 +468,6 @@ async function saveContest() {
         btn.innerText = "✅ OK";
         setTimeout(() => { btn.innerText = originalText; btn.disabled = false; }, 1500);
     } catch(e) { 
-        alert("Fehler: " + e); btn.disabled = false; 
+        alert("Fehler: " + e); btn.disabled = false; btn.innerText = originalText;
     }
 }
