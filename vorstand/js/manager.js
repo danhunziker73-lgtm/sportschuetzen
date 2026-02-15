@@ -320,8 +320,14 @@ function initDragAndDrop() {
             if (!currentDrag) return;
 
             const touch = e.touches[0];
-            const elemBelow = document.elementFromPoint(touch.clientX, touch.clientY);
-            const dropzone = elemBelow?.closest('.dropzone');
+       // Element kurz unsichtbar machen
+currentDrag.style.display = "none";
+
+const elemBelow = document.elementFromPoint(touch.clientX, touch.clientY);
+const dropzone = elemBelow?.closest('.dropzone');
+
+// Element wieder sichtbar machen
+currentDrag.style.display = "";
 
             document.querySelectorAll('.dropzone').forEach(z => 
                 z.classList.remove('bg-success-subtle')
@@ -332,25 +338,27 @@ function initDragAndDrop() {
             }
         }, { passive: true });
 
-        el.addEventListener('touchend', e => {
-            if (!currentDrag) return;
+       el.addEventListener('touchend', e => {
+    if (!currentDrag) return;
 
-            const touch = e.changedTouches[0];
-            const elemBelow = document.elementFromPoint(touch.clientX, touch.clientY);
-            const dropzone = elemBelow?.closest('.dropzone');
+    const touch = e.changedTouches[0];
 
-            document.querySelectorAll('.dropzone').forEach(z => 
-                z.classList.remove('bg-success-subtle')
-            );
+    currentDrag.style.display = "none";
+    const elemBelow = document.elementFromPoint(touch.clientX, touch.clientY);
+    const dropzone = elemBelow?.closest('.dropzone');
+    currentDrag.style.display = "";
 
-            if (dropzone) {
-                handleDrop(currentDrag.dataset.id, dropzone);
-            }
+    document.querySelectorAll('.dropzone')
+        .forEach(z => z.classList.remove('bg-success-subtle'));
 
-            currentDrag.classList.remove('shadow-lg');
-            currentDrag.style.opacity = '1';
-            currentDrag = null;
-        });
+    if (dropzone) {
+        handleDrop(currentDrag.dataset.id, dropzone);
+    }
+
+    currentDrag.style.opacity = '1';
+    currentDrag = null;
+});
+
     });
 }
 
