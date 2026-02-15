@@ -190,8 +190,10 @@ function renderContestUI() {
         </div>
     `;
 
-    // Drag & Drop erst aktivieren, wenn Elemente im DOM sind
-    setTimeout(initDragAndDrop, 100);
+   document.addEventListener('DOMContentLoaded', function() {
+    initDragAndDrop();
+});
+
 }
 
 function renderTeamCard(team, config) {
@@ -259,109 +261,170 @@ function renderMailItem(player) {
 
 // === DRAG & DROP LOGIK (ROBUST) ===
 
+/* ======================================================
+   DRAG & DROP ENGINE (DESKTOP + MOBILE STABIL)
+====================================================== */
+
 function initDragAndDrop() {
-    const draggables = document.querySelectorAll('.draggable-player');
-    const dropzones = document.querySelectorAll('.dropzone');
 
-    /* ==============================
-       DESKTOP DRAG & DROP
-    ============================== */
+    /* ===========================
+       DESKTOP (Event Delegation)
+    =========================== */
 
-    draggables.forEach(d => {
-        d.addEventListener('dragstart', (e) => {
-            e.dataTransfer.setData('text/plain', d.dataset.id);
-            e.dataTransfer.effectAllowed = 'copyMove';
-            d.style.opacity = '0.5';
-        });
+    document.addEventListener('dragstart', function(e) {
+        const el = e.target.closest('.draggable-player');
+        if (!el) return;
 
-        d.addEventListener('dragend', () => {
-            d.style.opacity = '1';
-        });
+        e.dataTransfer.setData('text/plain', String(el.dataset.id));
+        e.dataTransfer.effectAllowed = 'copyMove';
+        el.style.opacity = '0.5';
     });
 
-    dropzones.forEach(zone => {
-        zone.addEventListener('dragover', e => {
-            e.preventDefault();
-            e.dataTransfer.dropEffect = zone.dataset.targetType === 'mail' ? 'copy' : 'move';
-            zone.classList.add('bg-success-subtle');
-        });
+    document.addEventListener('dragend', function(e) {
+        const el = e.target.closest('.draggable-player');
+        if (!el) return;
+        el.style.opacity = '1';
+    });
 
-        zone.addEventListener('dragleave', () => {
-            zone.classList.remove('bg-success-subtle');
-        });
+    document.addEventListener('dragover', function(e) {
+        const zone = e.target.closest('.dropzone');
+        if (!zone) return;
 
-        zone.addEventListener('drop', e => {
-            e.preventDefault();
-            zone.classList.remove('bg-success-subtle');
+        e.preventDefault();
+        zone.classList.add('bg-success-subtle');
+    });
 
-            const playerId = e.dataTransfer.getData('text/plain');
-            if (!playerId) return;
+    document.addEventListener('dragleave', function(e) {
+        const zone = e.target.closest('.dropzone');
+        if (!zone) return;
 
-            handleDrop(playerId, zone);
-        });
+        zone.classList.remove('bg-success-subtle');
+    });
+
+    document.addEventListener('drop', function(e) {
+        const zone = e.target.closest('.dropzone');
+        if (!zone) return;
+
+        e.preventDefault();
+        zone.classList.remove('bg-success-subtle');
+
+        const playerId = e.dataTransfer.getData('text/plain');
+        if (!playerId) return;
+
+        handleDrop(playerId, zone);
     });
 
 
-    /* ==============================
+
+    /* ===========================
        MOBILE TOUCH SUPPORT
-    ============================== */
+    =========================== */
 
     let currentDrag = null;
 
-    draggables.forEach(el => {
+    document.addEventListener('touchstart', function(e) {
+        const el = e.target.closest('.draggable-player');
+        if (!el) return;
 
-        el.addEventListener('touchstart', e => {
-            currentDrag = el;
-            el.classList.add('shadow-lg');
-            el.style.opacity = '0.7';
-        }, { passive: true });
+        currentDrag = el;
+        el.style.opacity = '0.6';
+    }, { passive: true });
 
-        el.addEventListener('touchmove', e => {
-            if (!currentDrag) return;
+    document.addEventListener('touchmove', function(e) {
+        if (!currentDrag) return;
 
-            const touch = e.touches[0];
-       // Element kurz unsichtbar machen
-currentDrag.style.display = "none";
+        e.preventDefault();
 
-const elemBelow = document.elementFromPoint(touch.clientX, touch.clientY);
-const dropzone = elemBelow?.closest('.dropzone');
+        const touch = e.touches[0];
 
-// Element wieder sichtbar machen
-currentDrag.style.display = "";
+        // Element kurz verstecken
+        currentDrag.style.display = "none";
+        const elemBelow = document.elementFromPoint(touch.clientX, touch.clientY);
+        currentDrag.style.display = "";
 
-            document.querySelectorAll('.dropzone').forEach(z => 
-                z.classList.remove('bg-success-subtle')
-            );
+        document.querySelectorAll('.dropzone')
+            .forEach(z => z.classList.remove('bg-success-subtle'));
 
-            if (dropzone) {
-                dropzone.classList.add('bg-success-subtle');
-            }
-        }, { passive: true });
+        const dropzone = elemBelow?.closest('.dropzone');
+        if (dropzone) {
+            dropzone.classList.add('bg-success-subtle');
+        }
 
-       el.addEventListener('touchend', e => {
-    if (!currentDrag) return;
+    }, { passive: false });
 
-    const touch = e.changedTouches[0];
+    document.addEventListener('touchend', function(e) {
+        if (!currentDrag) return;
 
-    currentDrag.style.display = "none";
-    const elemBelow = document.elementFromPoint(touch.clientX, touch.clientY);
-    const dropzone = elemBelow?.closest('.dropzone');
-    currentDrag.style.display = "";
+        const touch = e.changedTouches[0];
 
-    document.querySelectorAll('.dropzone')
-        .forEach(z => z.classList.remove('bg-success-subtle'));
+        currentDrag.style.display = "none";
+        const elemBelow = document.elementFromPoint(touch.clientX, touch.clientY);
+        currentDrag.style.display = "";
 
-    if (dropzone) {
-        handleDrop(currentDrag.dataset.id, dropzone);
-    }
+        document.querySelectorAll('.dropzone')
+            .forEach(z => z.classList.remove('bg-success-subtle'));
 
-    currentDrag.style.opacity = '1';
-    currentDrag = null;
-});
+        const dropzone = elemBelow?.closest('.dropzone');
 
-    });
+        if (dropzone) {
+            handleDrop(currentDrag.dataset.id, dropzone);
+        }
+
+        currentDrag.style.opacity = '1';
+        currentDrag = null;
+
+    }, { passive: false });
 }
 
+
+/* ======================================================
+   DROP HANDLER (ROBUST + ID SAFE)
+====================================================== */
+
+function handleDrop(playerId, targetZone) {
+
+    playerId = String(playerId);
+    const targetType = targetZone.dataset.targetType;
+
+    /* ================= MAIL ================= */
+
+    if (targetType === "mail") {
+        copyToMail(playerId);
+        return;
+    }
+
+    /* ================= POOL ================= */
+
+    if (targetType === "pool") {
+        movePlayerInState(playerId, null, null);
+        renderContestUI();
+        return;
+    }
+
+    /* ================= TEAM ================= */
+
+    if (targetType === "team") {
+
+        const limit = parseInt(targetZone.dataset.limit);
+        const teamName = String(targetZone.dataset.team);
+        const zoneKey = targetZone.dataset.zone;
+
+        const team = appState.teams.find(t => String(t.name) === teamName);
+        if (!team) return;
+
+        const currentCount = team.shooters
+            .filter(s => String(s.zone) === String(zoneKey) && String(s.id) !== playerId)
+            .length;
+
+        if (currentCount >= limit) {
+            alert("Zone ist voll!");
+            return;
+        }
+
+        movePlayerInState(playerId, teamName, zoneKey);
+        renderContestUI();
+    }
+}
 
 function handleDrop(playerId, targetZone) {
 
