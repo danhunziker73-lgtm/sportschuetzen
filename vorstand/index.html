@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Portal | Sportschützen Muhen</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Icons -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root { --primary: #0f3a5d; --secondary: #1e293b; --bg: #f3f4f6; }
+        body { background-color: var(--bg); font-family: 'Segoe UI', sans-serif; height: 100vh; overflow: hidden; }
+        
+        /* Login Screen */
+        #login-screen { position: fixed; inset: 0; background: var(--primary); z-index: 2000; display: flex; justify-content: center; align-items: center; }
+        .login-card { background: white; padding: 2rem; border-radius: 1rem; width: 100%; max-width: 400px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
+
+        /* Main App Layout */
+        #app-screen { display: none; height: 100%; display: flex; flex-direction: column; }
+        .main-wrapper { display: flex; flex: 1; overflow: hidden; }
+
+        /* Sidebar */
+        .sidebar { width: 250px; background: white; border-right: 1px solid #ddd; display: flex; flex-direction: column; transition: 0.3s; }
+        .sidebar-header { padding: 1.5rem; border-bottom: 1px solid #eee; font-weight: bold; color: var(--primary); }
+        .nav-link { color: #555; padding: 0.8rem 1.5rem; border-left: 4px solid transparent; cursor: pointer; }
+        .nav-link:hover { background: #f8f9fa; }
+        .nav-link.active { background: #eef2ff; color: var(--primary); border-left-color: var(--primary); font-weight: bold; }
+        .nav-link i { width: 25px; }
+        
+        /* Content Area */
+        .content { flex: 1; padding: 20px; overflow-y: auto; position: relative; }
+        .module-view { display: none; animation: fadeIn 0.3s; }
+        .module-view.active { display: block; }
+
+        /* Mobile Adjustments */
+        @media (max-width: 768px) {
+            .sidebar { position: fixed; left: -250px; height: 100%; z-index: 1000; box-shadow: 2px 0 10px rgba(0,0,0,0.1); }
+            .sidebar.show { left: 0; }
+            .mobile-header { display: flex !important; }
+        }
+        .mobile-header { display: none; background: white; padding: 10px 20px; align-items: center; justify-content: space-between; border-bottom: 1px solid #ddd; }
+        
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body>
+
+    <!-- 1. LOGIN SCREEN -->
+    <div id="login-screen">
+        <div class="login-card text-center">
+            <img src="https://sportschuetzen-muhen.ch/images/logo.png" alt="Logo" height="60" class="mb-4"> <!-- Platzhalter Logo -->
+            <h4 class="mb-3">Vereins-Portal</h4>
+            <div class="form-floating mb-3">
+                <input type="text" class="form-control" id="login-user" placeholder="Benutzer">
+                <label>Benutzername</label>
+            </div>
+            <div class="form-floating mb-3">
+                <input type="password" class="form-control" id="login-pw" placeholder="Passwort">
+                <label>Passwort</label>
+            </div>
+            <button class="btn btn-primary w-100 py-2 fw-bold" onclick="doLogin()">Einloggen</button>
+            <p id="login-error" class="text-danger mt-3 small d-none">Zugangsdaten falsch!</p>
+        </div>
+    </div>
+
+    <!-- 2. APP SCREEN -->
+    <div id="app-screen" class="d-none">
+        <!-- Mobile Header -->
+        <div class="mobile-header">
+            <button class="btn btn-link text-dark p-0" onclick="toggleSidebar()"><i class="fas fa-bars fa-lg"></i></button>
+            <span class="fw-bold text-primary">SPORTSCHÜTZEN MUHEN</span>
+            <span id="user-badge-mobile" class="badge bg-secondary">Gast</span>
+        </div>
+
+        <div class="main-wrapper">
+            <!-- Sidebar Navigation -->
+            <nav class="sidebar" id="sidebar">
+                <div class="sidebar-header d-none d-md-block">
+                    <i class="fas fa-bullseye me-2"></i> Muhen Portal
+                    <div id="user-info" class="small text-muted fw-normal mt-1">Nicht angemeldet</div>
+                </div>
+                
+                <div class="nav flex-column mt-2">
+                    <!-- Dashboard (Alle) -->
+                    <div class="nav-link active" onclick="navTo('dashboard')"><i class="fas fa-home"></i> Übersicht</div>
+                    
+                    <!-- MODULE (Werden per JS ein-/ausgeblendet je nach Rolle) -->
+                    <div class="nav-link role-protected" data-roles="admin,vorstand,materialwart" onclick="navTo('inventar')"><i class="fas fa-boxes"></i> Inventar</div>
+                    <div class="nav-link role-protected" data-roles="admin,vorstand,aktuar" onclick="navTo('termine')"><i class="fas fa-calendar-alt"></i> Termine & GV</div>
+                    <div class="nav-link role-protected" data-roles="admin,vorstand,aktuar" onclick="navTo('resultate')"><i class="fas fa-trophy"></i> Resultate</div>
+                    <div class="nav-link role-protected" data-roles="admin,vorstand,vermieter" onclick="navTo('vermietung')"><i class="fas fa-key"></i> Vermietung</div>
+                    
+                    <div class="mt-auto border-top p-3">
+                        <button class="btn btn-outline-danger w-100 btn-sm" onclick="doLogout()"><i class="fas fa-sign-out-alt"></i> Abmelden</button>
+                    </div>
+                </div>
+            </nav>
+
+            <!-- Main Content Area -->
+            <main class="content" onclick="closeSidebarMobile()">
+                
+                <!-- VIEW: DASHBOARD -->
+                <div id="view-dashboard" class="module-view active">
+                    <h3>Willkommen zurück! 👋</h3>
+                    <p class="text-muted">Wähle einen Bereich im Menü aus.</p>
+                    <div class="row g-3 mt-2">
+                        <!-- Schnellzugriff Kacheln -->
+                        <div class="col-md-4"><div class="card p-3 shadow-sm border-0 h-100" onclick="navTo('inventar')" style="cursor:pointer"><h5>🔫 Inventar</h5><p class="small text-muted">Ausgabe & Rückgabe verwalten</p></div></div>
+                        <div class="col-md-4"><div class="card p-3 shadow-sm border-0 h-100" onclick="navTo('termine')" style="cursor:pointer"><h5>📅 Nächste Termine</h5><p class="small text-muted">Jahresprogramm ansehen</p></div></div>
+                    </div>
+                </div>
+
+                <!-- VIEW: INVENTAR -->
+                <div id="view-inventar" class="module-view">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h2>Inventar Verwaltung</h2>
+                        <button class="btn btn-sm btn-primary" onclick="loadInventarData()">🔄 Aktualisieren</button>
+                    </div>
+                    <!-- HIER KOMMT DEIN INVENTAR-HTML REIN -->
+                    <div class="alert alert-info">Lade Inventar-Modul...</div>
+                    <div id="inventar-container"></div>
+                </div>
+
+                <!-- VIEW: TERMINE -->
+                <div id="view-termine" class="module-view">
+                     <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h2>Termine & Admin</h2>
+                        <button class="btn btn-sm btn-primary" onclick="loadTermineData()">🔄 Aktualisieren</button>
+                    </div>
+                    <!-- HIER KOMMT DEIN ADMIN-PANEL HTML REIN -->
+                    <div id="termine-container"></div>
+                </div>
+
+                 <!-- VIEW: RESULTATE (Platzhalter) -->
+                 <div id="view-resultate" class="module-view">
+                    <h2>Resultate erfassen</h2>
+                    <p>Hier entsteht das Modul für Schiessresultate.</p>
+                </div>
+
+                 <!-- VIEW: VERMIETUNG (Platzhalter) -->
+                 <div id="view-vermietung" class="module-view">
+                    <h2>Gebäude Vermietung</h2>
+                    <p>Hier entsteht der Belegungsplan und Verträge.</p>
+                </div>
+
+            </main>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script>
+        // === KONFIGURATION ===
+        const WORKER_URL = "https://DEIN-NEUER-WORKER-NAME.workers.dev"; // <--- HIER DEINE URL EINTRAGEN
+
+        // === STATE ===
+        let currentUser = null;
+        let userRole = null;
+
+        // === INIT ===
+        window.onload = () => {
+            const savedUser = localStorage.getItem('portal_user');
+            const savedRole = localStorage.getItem('portal_role');
+            
+            if (savedUser && savedRole) {
+                currentUser = savedUser;
+                userRole = savedRole;
+                showApp();
+            } else {
+                document.getElementById('login-screen').style.display = 'flex';
+            }
+        };
+
+        // === LOGIN / LOGOUT ===
+        async function doLogin() {
+            const u = document.getElementById('login-user').value;
+            const p = document.getElementById('login-pw').value;
+            const btn = document.querySelector('button[onclick="doLogin()"]');
+            
+            btn.disabled = true;
+            btn.innerText = "Prüfe...";
+
+            try {
+                // Anfrage an Worker (Modul 'admin', Action 'checkLogin')
+                const res = await fetch(`${WORKER_URL}/?module=admin&action=checkLogin&user=${encodeURIComponent(u)}&pw=${encodeURIComponent(p)}`);
+                const data = await res.json();
+
+                if (data.success) {
+                    currentUser = data.name;
+                    userRole = data.role;
+                    
+                    // Speichern
+                    localStorage.setItem('portal_user', currentUser);
+                    localStorage.setItem('portal_role', userRole);
+
+                    showApp();
+                } else {
+                    document.getElementById('login-error').classList.remove('d-none');
+                }
+            } catch (e) {
+                alert("Verbindungsfehler: " + e);
+            }
+            btn.disabled = false;
+            btn.innerText = "Einloggen";
+        }
+
+        function doLogout() {
+            localStorage.removeItem('portal_user');
+            localStorage.removeItem('portal_role');
+            location.reload();
+        }
+
+        // === NAVIGATION & UI ===
+        function showApp() {
+            document.getElementById('login-screen').style.display = 'none';
+            document.getElementById('app-screen').classList.remove('d-none');
+            document.getElementById('app-screen').style.display = 'flex'; // Bootstrap fix
+            
+            // User Infos setzen
+            document.getElementById('user-info').innerText = `${currentUser} (${userRole})`;
+            document.getElementById('user-badge-mobile').innerText = userRole;
+
+            // Menüpunkte filtern (RBAC)
+            document.querySelectorAll('.role-protected').forEach(el => {
+                const allowed = el.dataset.roles.split(',');
+                if (!allowed.includes(userRole) && userRole !== 'admin') {
+                    el.classList.add('d-none'); // Verstecken wenn nicht erlaubt
+                }
+            });
+        }
+
+        function navTo(viewId) {
+            // Sidebar active state
+            document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+            event.currentTarget.classList.add('active'); // "event" funktioniert inline
+            
+            // Views umschalten
+            document.querySelectorAll('.module-view').forEach(v => v.classList.remove('active'));
+            document.getElementById('view-' + viewId).classList.add('active');
+
+            // Mobile Menu schließen
+            closeSidebarMobile();
+
+            // Daten laden bei Bedarf
+            if (viewId === 'inventar') loadInventarData();
+            if (viewId === 'termine') loadTermineData();
+        }
+
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('show');
+        }
+
+        function closeSidebarMobile() {
+            document.getElementById('sidebar').classList.remove('show');
+        }
+
+        // === API HELPER (WICHTIG FÜR ALLE MODULE) ===
+        // Diese Funktion nutzen wir statt dem normalen fetch, weil sie die Rolle mitsendet!
+        async function apiFetch(module, paramsString, options = {}) {
+            const url = `${WORKER_URL}/?module=${module}&${paramsString}`;
+            
+            // Headers vorbereiten (Rolle mitsenden!)
+            const headers = {
+                'X-User-Role': userRole,
+                'Content-Type': 'application/json',
+                ...options.headers
+            };
+
+            return fetch(url, { ...options, headers });
+        }
+
+        // === PLATZHALTER FÜR MODULE (Hier kommt später der Code rein) ===
+        async function loadInventarData() {
+            console.log("Lade Inventar...");
+            // Hier nutzen wir apiFetch statt fetch!
+            // const res = await apiFetch('inventar', 'action=getData');
+            // ...
+        }
+
+        async function loadTermineData() {
+            console.log("Lade Termine...");
+        }
+
+    </script>
+</body>
+</html>
