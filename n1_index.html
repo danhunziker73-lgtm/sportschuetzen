@@ -24,7 +24,7 @@ OneSignalDeferred.push(async function(OneSignal) {
     const log = (...args) => console.log("[OneSignal]", ...args);
 
     try {
-
+        // --- INIT ---
         await OneSignal.init({
             appId: "975091f5-948b-48d4-9e61-b7f4d43a1021",
             serviceWorkerPath: "OneSignalSDKWorker.js",
@@ -34,96 +34,60 @@ OneSignalDeferred.push(async function(OneSignal) {
 
         log("Init fertig");
 
+        // --- PID HANDLING ---
+        // 1. PID aus URL holen
         const urlParams = new URLSearchParams(window.location.search);
-        const pid = urlParams.get("pid");
-        if (!pid) return;
+        let pid = urlParams.get("pid");
+        
+        // 2. Falls keine PID in URL: aus localStorage laden
+        if (!pid) {
+            pid = localStorage.getItem("sportschuetzen_pid");
+            if (pid) {
+                log("PID aus localStorage geladen:", pid);
+            } else {
+                log("Keine PID gefunden (weder URL noch localStorage)");
+                return;
+            }
+        } else {
+            // 3. PID aus URL → in localStorage speichern für spätere Nutzung
+            localStorage.setItem("sportschuetzen_pid", pid);
+            log("PID aus URL gespeichert:", pid);
+        }
 
         const targetPid = String(pid);
 
-        /******** LOGIN ********/
-
+        // --- LOGIN (External ID setzen) ---
         const currentExtId = OneSignal.User.externalId;
-        log("Current External ID:", currentExtId);
-
         if (currentExtId !== targetPid) {
-            log("Login...");
+            log("Login mit External ID:", targetPid);
             await OneSignal.login(targetPid);
-            log("Login done");
+        } else {
+            log("External ID bereits gesetzt:", targetPid);
         }
 
-   /******** PERMISSION ********/
+        // --- PERMISSION CHECK ---
+        const currentPermission = OneSignal.Notifications.permission;
+        log("Permission Status:", currentPermission);
 
-const permission = OneSignal.Notifications.permission;
-log("Permission Status:", permission);
-
-// Wenn denied → nicht abbrechen!
-// Wir setzen trotzdem Tags
-
-if (permission === "default") {
-    log("Permission anfordern...");
-    await OneSignal.Notifications.requestPermission();
-}
-
-const finalPermission = OneSignal.Notifications.permission;
-log("Final Permission:", finalPermission);
-
-/******** SUBSCRIPTION ********/
-
-if (finalPermission === "granted") {
-
-    await OneSignal.User.PushSubscription.optIn();
-
-    const waitForSub = async () => {
-        for (let i = 0; i < 20; i++) {
-            const id = OneSignal.User.PushSubscription.id;
-            if (id) return id;
-            await new Promise(r => setTimeout(r, 500));
-        }
-        return null;
-    };
-
-    const subId = await waitForSub();
-
-    if (subId) {
-        log("Subscription ID:", subId);
-    } else {
-        log("Keine Subscription ID");
-    }
-
-} else {
-    log("Push nicht erlaubt – Tags werden trotzdem gesetzt");
-}
-
-
-        /******** MEMBER DATEN ********/
-
-        const response = await fetch("https://termine.dan-hunziker73.workers.dev/?action=loadAdminData");
-        const data = await response.json();
-        const member = data.push_onesignal.find(m => String(m.personnumber) === targetPid);
-
-        if (!member) {
-            log("Member nicht gefunden");
+        if (currentPermission === "granted") {
+            log("✅ Push bereits aktiviert");
             return;
         }
 
-        const tags = {
-            vorname: member.firstname || "",
-            nachname: member.lastname || "",
-            verein: "sportschuetzen_muhen"
-        };
-
-        if (member.membershipcategory) {
-            member.membershipcategory.split(",").forEach(cat => {
-                const key = cat.trim().replace(/\s+/g, "_").replace(/[^a-zA-Z0-9_]/g, "");
-                if (key) tags[key] = "aktiv";
-            });
+        if (currentPermission === "denied") {
+            log("⚠️ Push wurde blockiert (User muss Browser-Einstellungen ändern)");
+            return;
         }
 
-        log("Sende Tags:", tags);
-
-        await OneSignal.User.addTags(tags);
-
-        log("✅ TAGS ERFOLGREICH GESETZT");
+        // Permission = "default" → User noch nicht gefragt
+        log("Frage User nach Push-Berechtigung...");
+        const permissionGranted = await OneSignal.Notifications.requestPermission();
+        
+        if (permissionGranted) {
+            log("✅ User hat Push-Berechtigung erteilt");
+        } else {
+            log("❌ User hat Push-Berechtigung abgelehnt (PID bleibt in localStorage für späteren Versuch)");
+        }
 
     } catch (err) {
         console.error("❌ OneSignal Fehler:", err);
@@ -131,8 +95,6 @@ if (finalPermission === "granted") {
 
 });
 </script>
-
-
 
 
 
