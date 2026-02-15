@@ -34,14 +34,21 @@ function navTo(viewId) {
     if(event && event.currentTarget) event.currentTarget.classList.add('active');
     
     document.querySelectorAll('.module-view').forEach(v => v.classList.remove('active'));
-    document.getElementById('view-' + viewId).classList.add('active');
+     const targetView = document.getElementById('view-' + viewId);
+    if(targetView) {
+        targetView.classList.add('active');
+    } else {
+        console.error("View nicht gefunden: view-" + viewId);
+    }
 
     closeSidebarMobile();
 
     // Module laden
     if (viewId === 'inventar' && typeof loadInventarData === 'function') loadInventarData();
     if (viewId === 'manager' && typeof loadmanagerData === 'function') loadmanagerData();
-    if (viewId === 'termine' && typeof loadTermineData === 'function') loadTermineData();
+      if (viewId === 'manager' && typeof loadContestData === 'function') {
+        loadContestData(); // Lädt Standard (Grenzland) oder letzten State
+ 
 }
 
 function toggleSidebar() {
