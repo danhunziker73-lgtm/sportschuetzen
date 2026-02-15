@@ -1,0 +1,771 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Schiess-Manager 2026</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" rel="stylesheet">
+    
+    <!-- jsPDF & html2canvas für Export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+    <style>
+        :root {
+            --primary: #0d6efd;
+            --secondary: #6c757d;
+            --success: #198754;
+            --warning: #ffc107;
+            --danger: #dc3545;
+            --light: #f8f9fa;
+        }
+
+        body {
+            background-color: #f0f2f5;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            overscroll-behavior: none; /* Verhindert Pull-to-Refresh */
+        }
+
+        /* Drag & Drop Styles */
+        .draggable-player {
+            cursor: grab;
+            user-select: none;
+            touch-action: none; /* WICHTIG für Touch! */
+            transition: transform 0.1s, box-shadow 0.1s;
+        }
+
+        .draggable-player:active {
+            cursor: grabbing;
+        }
+
+        .dropzone {
+            transition: background-color 0.2s, border-color 0.2s;
+        }
+
+        .dropzone.drag-over {
+            background-color: rgba(25, 135, 84, 0.1) !important;
+            border: 2px dashed var(--success) !important;
+        }
+
+        .zone-full {
+            background-color: #f8f9fa !important;
+            border: 1px solid #dee2e6 !important;
+        }
+
+        /* Ghost Slot Style */
+        .ghost-slot {
+            border: 2px dashed #cbd5e1 !important;
+            background: rgba(255,255,255,0.5);
+            pointer-events: none;
+        }
+
+        /* Touch Drag Clone */
+        .drag-clone {
+            position: fixed;
+            pointer-events: none;
+            z-index: 9999;
+            background: white;
+            padding: 8px 12px;
+            border-radius: 4px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            border-left: 4px solid var(--primary);
+            opacity: 0.9;
+            width: 200px;
+        }
+
+        /* PDF Print Styles */
+        @media print {
+            .no-print { display: none !important; }
+            .card { break-inside: avoid; border: 1px solid #ccc !important; box-shadow: none !important; }
+            body { background: white; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container-fluid py-3" id="app">
+        <!-- HEADER / TOOLBAR -->
+        <div class="d-flex justify-content-between align-items-center mb-3 sticky-top bg-white p-3 shadow-sm rounded no-print" style="z-index:1000;">
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+                <select id="module-selector" class="form-select fw-bold border-primary text-primary" style="width:auto; min-width:160px;">
+                    <option value="grenzland">🛡️ Grenzland</option>
+                    <option value="mannschaft">👥 Mannschaft</option>
+                    <option value="gruppe">🎯 Gruppe (SGM)</option>
+                </select>
+                <button class="btn btn-outline-secondary btn-sm" onclick="addTeamToState()" title="Neues Team">
+                    <i class="fas fa-plus"></i> <span class="d-none d-sm-inline">Team</span>
+                </button>
+            </div>
+            
+            <div class="d-flex gap-2">
+                <button class="btn btn-outline-dark btn-sm" onclick="exportPDF()" title="PDF Export">
+                    <i class="fas fa-file-pdf text-danger"></i> <span class="d-none d-sm-inline">PDF</span>
+                </button>
+                <button class="btn btn-success btn-sm fw-bold" onclick="saveContest()">
+                    <i class="fas fa-save"></i> <span class="d-none d-sm-inline">Speichern</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- MAIN CONTENT -->
+        <div id="manager-container" class="row g-3 h-100">
+            <!-- Wird dynamisch gefüllt -->
+            <div class="text-center p-5">
+                <div class="spinner-border text-primary"></div>
+                <p class="mt-2 text-muted">Lade Anwendung...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- SCRIPTS -->
+    <script>
+        // === KONFIGURATION ===
+        const CONTEST_CONFIG = {
+            "grenzland": {
+                title: "🛡️ Grenzland Cup",
+                sheetName: "aktuell_Grenzland",
+                baseTeamName: "Muhen",
+                defaultTeams: 4,
+                zones: [ { key: "main", label: "Schützen", limit: 4 } ]
+            },
+            "mannschaft": {
+                title: "👥 Mannschafts-Meisterschaft",
+                sheetName: "aktuell_Mannschaft",
+                baseTeamName: "Muhen", 
+                defaultTeams: 1,
+                zones: [ { key: "main", label: "Mannschaft (8)", limit: 8 } ]
+            },
+            "gruppe": {
+                title: "🎯 Gruppen-Meisterschaft (SGM)",
+                sheetName: "aktuell_Gruppe",
+                baseTeamName: "Muhen",
+                defaultTeams: 2,
+                zones: [
+                    { key: "liegend", label: "Liegend (3)", limit: 3 },
+                    { key: "kniend",  label: "Kniend (2)",  limit: 2 }
+                ]
+            }
+        };
+
+        // === STATE ===
+        let appState = {
+            activeModule: "grenzland",
+            members: [], // Alle verfügbaren Schützen
+            teams: [],   // Struktur: { name: "Team 1", shooters: [{id, name, zone}] }
+            pool: [],    // Schützen ohne Team
+            mailList: [],// Für Mail-Versand
+            isDirty: false 
+        };
+
+        // Mock Data für Demo (falls API nicht da)
+        const MOCK_DATA = {
+            members: [
+                {id: "1", nachname: "Müller", vorname: "Hans", email: "hans@test.com"},
+                {id: "2", nachname: "Meier", vorname: "Peter", email: "peter@test.com"},
+                {id: "3", nachname: "Schmid", vorname: "Anna", email: "anna@test.com"},
+                {id: "4", nachname: "Weber", vorname: "Lukas", email: ""},
+                {id: "5", nachname: "Huber", vorname: "Sarah", email: "sarah@test.com"},
+                {id: "6", nachname: "Frei", vorname: "Thomas", email: ""},
+                {id: "7", nachname: "Koch", vorname: "Julia", email: "julia@test.com"},
+                {id: "8", nachname: "Bauer", vorname: "Max", email: "max@test.com"},
+                {id: "9", nachname: "Wolf", vorname: "Lisa", email: "lisa@test.com"}
+            ],
+            contestData: [] // Leeres Start-Setup
+        };
+
+        // === INIT ===
+        document.addEventListener('DOMContentLoaded', () => {
+            // Event Listener für Selektor
+            const selector = document.getElementById('module-selector');
+            selector.addEventListener('change', (e) => loadContestData(e.target.value));
+
+            // Init Load
+            loadContestData("grenzland");
+
+            // Drag & Drop Init
+            initDragAndDrop();
+        });
+
+        // === LOAD DATA ===
+        async function loadContestData(moduleKey) {
+            if (appState.isDirty && !confirm("Ungespeicherte Änderungen verwerfen?")) {
+                document.getElementById('module-selector').value = appState.activeModule;
+                return;
+            }
+
+            appState.activeModule = moduleKey || appState.activeModule;
+            appState.isDirty = false;
+            appState.mailList = []; 
+            
+            const config = CONTEST_CONFIG[appState.activeModule];
+            
+            // UI Reset
+            renderLoadingState();
+
+            try {
+                // SIMULIERTER API CALL (Ersetze dies durch deinen echten fetch)
+                // const params = `action=getManagerData&sheetName=${config.sheetName}`;
+                // const res = await apiFetch('grenzland', params); 
+                // const data = await res.json();
+                
+                // Nutze Mock Data für Demo
+                await new Promise(r => setTimeout(r, 600)); // Fake Delay
+                const data = MOCK_DATA; 
+
+                processContestData(data, config);
+                renderContestUI();
+                
+            } catch (e) {
+                document.getElementById('manager-container').innerHTML = 
+                    `<div class="col-12"><div class="alert alert-danger">Fehler: ${e.message}</div></div>`;
+            }
+        }
+
+        function renderLoadingState() {
+            const config = CONTEST_CONFIG[appState.activeModule];
+            document.getElementById('manager-container').innerHTML = 
+                `<div class="col-12 text-center p-5"><div class="spinner-border text-primary"></div><p>Lade ${config.title}...</p></div>`;
+        }
+
+        // === PROCESS DATA ===
+        function processContestData(data, config) {
+            appState.members = data.members || [];
+            appState.teams = []; 
+            appState.pool = [];
+            const assignedIds = new Set();
+
+            // Bestehende Teams aus Backend verarbeiten
+            const sheetData = data.contestData || []; 
+            const tempTeams = {};
+
+            sheetData.forEach(row => {
+                const rowIdStr = String(row.schuetze_id || "").trim();
+                if(!rowIdStr) return;
+
+                let member = appState.members.find(m => String(m.id) === rowIdStr);
+                if (!member) member = { id: rowIdStr, nachname: rowIdStr, vorname: "?", email: "", dummy: true };
+
+                const teamName = row.runde_1_team || "Pool";
+                let zoneKey = config.zones[0].key;
+
+                if (config.zones.length > 1) {
+                    const stellung = String(row.stellung || "").toLowerCase(); 
+                    if (stellung.includes("kniend")) zoneKey = "kniend";
+                    else zoneKey = "liegend";
+                }
+
+                if (teamName !== "Pool" && teamName) {
+                    if (!tempTeams[teamName]) tempTeams[teamName] = { name: teamName, shooters: [] };
+                    
+                    tempTeams[teamName].shooters.push({
+                        id: member.id,
+                        name: member.dummy ? member.id : `${member.nachname} ${member.vorname}`,
+                        email: member.email,
+                        zone: zoneKey
+                    });
+                    assignedIds.add(String(member.id));
+                }
+            });
+
+            if (Object.keys(tempTeams).length > 0) {
+                appState.teams = Object.values(tempTeams).sort((a,b) => a.name.localeCompare(b.name, undefined, {numeric: true}));
+            } else {
+                for(let i=1; i <= config.defaultTeams; i++) addTeamToState(true); // true = silent (no render)
+            }
+
+            // Rest in Pool
+            appState.members.forEach(m => {
+                if (!assignedIds.has(String(m.id))) {
+                    appState.pool.push({
+                        id: m.id,
+                        name: `${m.nachname} ${m.vorname}`,
+                        email: m.email,
+                        zone: null
+                    });
+                }
+            });
+        }
+
+        // === RENDER UI ===
+        function renderContestUI() {
+            const config = CONTEST_CONFIG[appState.activeModule];
+            const container = document.getElementById('manager-container');
+            
+            // Teams HTML
+            const teamsHtml = appState.teams.map(team => renderTeamCard(team, config)).join('');
+
+            // Sidebar HTML (Pool + Mail)
+            const sidebarHtml = `
+                <div class="d-flex flex-column gap-3 h-100">
+                    
+                    <!-- POOL -->
+                    <div class="card shadow-sm border-secondary flex-grow-1" style="min-height: 300px;">
+                        <div class="card-header bg-secondary text-white py-2">
+                            <i class="fas fa-users"></i> Schützen-Pool
+                            <input type="text" class="form-control form-control-sm mt-1" placeholder="Suchen..." onkeyup="filterPool(this.value)">
+                        </div>
+                        <div class="card-body p-2 dropzone bg-light overflow-auto" data-target-type="pool" style="height: 250px;">
+                            ${appState.pool.map(s => renderPlayerItem(s)).join('')}
+                            ${appState.pool.length === 0 ? '<div class="text-muted text-center small mt-3">Alle Schützen eingeteilt</div>' : ''}
+                        </div>
+                        <div class="card-footer small text-muted text-center py-1">
+                            ${appState.pool.length} verfügbar
+                        </div>
+                    </div>
+
+                    <!-- MAIL -->
+                    <div class="card shadow-sm border-warning">
+                        <div class="card-header bg-warning text-dark py-2 d-flex justify-content-between align-items-center">
+                            <span><i class="fas fa-envelope"></i> Mail Versand</span>
+                            <button class="btn btn-sm btn-dark py-0" onclick="sendMail()" style="font-size:0.8rem;">Erstellen</button>
+                        </div>
+                        <div class="card-body p-2 dropzone bg-light overflow-auto" data-target-type="mail" style="height: 150px; border: 2px dashed #ccc;">
+                            ${appState.mailList.length === 0 ? '<div class="text-center text-muted small mt-4">Schützen hierher ziehen<br>(Kopie)</div>' : ''}
+                            ${appState.mailList.map(s => renderMailItem(s)).join('')}
+                        </div>
+                        <div class="card-footer small text-muted text-center py-1">
+                            ${appState.mailList.length} Empfänger
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            container.innerHTML = `
+                <div class="col-lg-8 col-md-7">
+                    <div class="row g-3" id="teams-area">
+                        ${teamsHtml}
+                    </div>
+                </div>
+                <div class="col-lg-4 col-md-5">
+                    ${sidebarHtml}
+                </div>
+            `;
+        }
+
+        function renderTeamCard(team, config) {
+            const zonesHtml = config.zones.map((zone) => {
+                const shooters = team.shooters.filter(s => {
+                    if (config.zones.length === 1) return true;
+                    return s.zone === zone.key;
+                });
+
+                const limit = zone.limit;
+                const filled = shooters.length;
+                const remaining = Math.max(0, limit - filled);
+                const isFull = filled >= limit;
+
+                let zoneBg = zone.key === 'liegend' ? '#e3f2fd' : (zone.key === 'kniend' ? '#f3e5f5' : '#fff');
+                if (isFull) zoneBg = '#f8f9fa'; 
+
+                // Spieler Items
+                let contentHtml = shooters.map(s => renderPlayerItem(s, team.name)).join('');
+
+                // Ghost Slots (Leere Plätze)
+                for (let i = 0; i < remaining; i++) {
+                    contentHtml += `
+                        <div class="card mb-1 ghost-slot">
+                            <div class="card-body p-1 px-2 text-center small text-muted fst-italic">
+                                <i class="fas fa-plus-circle opacity-50"></i> ${zone.label}
+                            </div>
+                        </div>`;
+                }
+
+                // Header Info
+                const headerColor = isFull ? 'text-success' : 'text-secondary';
+                const headerIcon = isFull ? '<i class="fas fa-check-circle"></i>' : '';
+
+                return `
+                    <div class="team-zone p-2 mb-2 border rounded dropzone ${isFull ? 'zone-full' : ''}" 
+                        style="background:${zoneBg}; min-height: 60px;"
+                        data-team="${team.name}" 
+                        data-zone="${zone.key}" 
+                        data-limit="${limit}" 
+                        data-target-type="team">
+                        
+                        ${config.zones.length > 1 ? `
+                            <div class="d-flex justify-content-between small fw-bold ${headerColor} mb-2 pe-none">
+                                <span>${zone.label}</span>
+                                <span>${headerIcon} ${filled}/${limit}</span>
+                            </div>` 
+                        : ''}
+                        
+                        <div>${contentHtml}</div>
+                    </div>
+                `;
+            }).join('');
+
+            // Gesamtstatus
+            const totalShooters = team.shooters.length;
+            const totalSlots = config.zones.reduce((sum, z) => sum + z.limit, 0);
+            const teamComplete = totalShooters >= totalSlots;
+
+            return `
+                <div class="col-xl-6 col-12">
+                    <div class="card shadow-sm h-100 border-0 ${teamComplete ? 'border-start border-success border-4' : ''}">
+                        <div class="card-header d-flex justify-content-between align-items-center bg-white pt-3 pb-1 border-bottom-0">
+                            <h5 class="m-0 fw-bold text-primary text-truncate">${team.name}</h5>
+                            <span class="badge ${teamComplete ? 'bg-success' : 'bg-light text-dark border'}">${totalShooters}/${totalSlots}</span>
+                        </div>
+                        <div class="card-body p-2">
+                            ${zonesHtml}
+                        </div>
+                        <div class="text-end p-2 pt-0">
+                            <small class="text-danger text-decoration-underline" onclick="removeTeamFromState('${team.name}')" style="cursor:pointer; font-size: 0.75rem;">Team entfernen</small>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderPlayerItem(player, teamName = null) {
+            return `
+                <div class="card mb-1 draggable-player border-0 shadow-sm" 
+                    draggable="true" 
+                    data-id="${player.id}"
+                    style="border-left: 3px solid var(--primary) !important;">
+                    <div class="card-body p-1 px-2 pointer-events-none">
+                        <div class="text-truncate small fw-bold pointer-events-none">${player.name}</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderMailItem(player) {
+            return `
+                <div class="card mb-1 border-0 shadow-sm bg-white">
+                    <div class="card-body p-1 px-2 d-flex justify-content-between align-items-center">
+                        <div class="text-truncate small" style="max-width:80%">${player.name}</div>
+                        <i class="fas fa-times text-danger" style="cursor:pointer;" onclick="removeFromMail('${player.id}')"></i>
+                    </div>
+                </div>
+            `;
+        }
+
+
+        // === DRAG & DROP ENGINE (IOS/ANDROID/DESKTOP ROBUST) ===
+        function initDragAndDrop() {
+            let dragSrcEl = null;
+            let dragId = null;
+            let touchClone = null;
+
+            // --- DESKTOP ---
+            document.addEventListener('dragstart', (e) => {
+                const el = e.target.closest('.draggable-player');
+                if (!el) return;
+                dragSrcEl = el;
+                dragId = el.dataset.id;
+                e.dataTransfer.effectAllowed = 'move';
+                e.dataTransfer.setData('text/plain', dragId);
+                setTimeout(() => el.style.opacity = '0.4', 0);
+            });
+
+            document.addEventListener('dragend', (e) => {
+                const el = e.target.closest('.draggable-player');
+                if (el) el.style.opacity = '1';
+                removeDropHighlights();
+                dragSrcEl = null;
+            });
+
+            document.addEventListener('dragover', (e) => {
+                e.preventDefault(); // Necessary for drop
+                const zone = e.target.closest('.dropzone');
+                if (zone) zone.classList.add('drag-over');
+            });
+
+            document.addEventListener('dragleave', (e) => {
+                const zone = e.target.closest('.dropzone');
+                if (zone) zone.classList.remove('drag-over');
+            });
+
+            document.addEventListener('drop', (e) => {
+                e.preventDefault();
+                const zone = e.target.closest('.dropzone');
+                if (zone && dragId) {
+                    handleDrop(dragId, zone);
+                }
+                removeDropHighlights();
+            });
+
+
+            // --- MOBILE TOUCH ---
+            document.addEventListener('touchstart', (e) => {
+                const el = e.target.closest('.draggable-player');
+                if (!el) return;
+                
+                // clone erstellen für visuelles Feedback
+                dragId = el.dataset.id;
+                dragSrcEl = el;
+                
+                touchClone = el.cloneNode(true);
+                touchClone.classList.add('drag-clone');
+                document.body.appendChild(touchClone);
+                
+                // Initial Position
+                const touch = e.touches[0];
+                moveClone(touch.clientX, touch.clientY);
+                
+                el.style.opacity = '0.4';
+            }, {passive: false});
+
+            document.addEventListener('touchmove', (e) => {
+                if (!dragId || !touchClone) return;
+                e.preventDefault(); // Verhindert Scrollen
+                
+                const touch = e.touches[0];
+                moveClone(touch.clientX, touch.clientY);
+
+                // Highlight Zone unter Finger
+                removeDropHighlights();
+                const elemBelow = document.elementFromPoint(touch.clientX, touch.clientY);
+                const zone = elemBelow ? elemBelow.closest('.dropzone') : null;
+                if (zone) zone.classList.add('drag-over');
+
+            }, {passive: false});
+
+            document.addEventListener('touchend', (e) => {
+                if (!dragId) return;
+                
+                const touch = e.changedTouches[0];
+                const elemBelow = document.elementFromPoint(touch.clientX, touch.clientY);
+                const zone = elemBelow ? elemBelow.closest('.dropzone') : null;
+
+                if (zone) {
+                    handleDrop(dragId, zone);
+                }
+
+                // Cleanup
+                if (touchClone) touchClone.remove();
+                if (dragSrcEl) dragSrcEl.style.opacity = '1';
+                removeDropHighlights();
+                
+                dragId = null;
+                touchClone = null;
+                dragSrcEl = null;
+            });
+
+            function moveClone(x, y) {
+                if(touchClone) {
+                    touchClone.style.left = (x - 20) + 'px';
+                    touchClone.style.top = (y - 20) + 'px';
+                }
+            }
+
+            function removeDropHighlights() {
+                document.querySelectorAll('.dropzone').forEach(z => z.classList.remove('drag-over'));
+            }
+        }
+
+        // === LOGIK ===
+        function handleDrop(playerId, targetZone) {
+            const targetType = targetZone.dataset.targetType;
+
+            // MAIL
+            if (targetType === "mail") {
+                copyToMail(playerId);
+                return;
+            }
+
+            // POOL
+            if (targetType === "pool") {
+                movePlayerInState(playerId, null, null);
+                renderContestUI();
+                return;
+            }
+
+            // TEAM
+            if (targetType === "team") {
+                const limit = parseInt(targetZone.dataset.limit);
+                const teamName = targetZone.dataset.team;
+                const zoneKey = targetZone.dataset.zone;
+
+                const team = appState.teams.find(t => t.name === teamName);
+                if (!team) return;
+
+                // Check Limit
+                const currentCount = team.shooters.filter(s => s.zone === zoneKey && s.id !== playerId).length;
+                if (currentCount >= limit) {
+                    // Kurzes Wackeln oder Alert wäre möglich
+                    return; 
+                }
+
+                movePlayerInState(playerId, teamName, zoneKey);
+                renderContestUI();
+            }
+        }
+
+        function movePlayerInState(id, targetTeam, targetZone) {
+            appState.isDirty = true;
+            let player = null;
+            
+            // Suche im Pool
+            const poolIdx = appState.pool.findIndex(p => p.id === id);
+            if (poolIdx > -1) {
+                player = appState.pool.splice(poolIdx, 1)[0];
+            } else {
+                // Suche in Teams
+                for(let t of appState.teams) {
+                    const idx = t.shooters.findIndex(s => s.id === id);
+                    if(idx > -1) { player = t.shooters.splice(idx, 1)[0]; break; }
+                }
+            }
+
+            if(!player) return;
+
+            if (!targetTeam) { 
+                player.zone = null;
+                appState.pool.push(player);
+            } else { 
+                const team = appState.teams.find(t => t.name === targetTeam);
+                if(team) {
+                    player.zone = targetZone;
+                    team.shooters.push(player);
+                }
+            }
+        }
+
+        function copyToMail(id) {
+            // Finde Spieler (egal wo er ist)
+            let player = appState.pool.find(p => p.id === id);
+            if (!player) {
+                for(let t of appState.teams) {
+                    player = t.shooters.find(s => s.id === id);
+                    if(player) break;
+                }
+            }
+            // Check Duplikat
+            if (player && !appState.mailList.find(m => m.id === id)) {
+                appState.mailList.push({ ...player });
+                renderContestUI();
+            }
+        }
+
+        function removeFromMail(id) {
+            appState.mailList = appState.mailList.filter(m => m.id !== id);
+            renderContestUI();
+        }
+
+        // === UTILS ===
+        function addTeamToState(silent = false) {
+            const config = CONTEST_CONFIG[appState.activeModule];
+            let nextNum = 1;
+            const existingNums = appState.teams.map(t => {
+                const match = t.name.match(/(\d+)$/);
+                return match ? parseInt(match[1]) : 0;
+            });
+            while (existingNums.includes(nextNum)) nextNum++;
+            
+            appState.teams.push({ name: `${config.baseTeamName} ${nextNum}`, shooters: [] });
+            if(!silent) renderContestUI();
+        }
+
+        function removeTeamFromState(teamName) {
+            if(!confirm(`Team "${teamName}" wirklich löschen?`)) return;
+            const idx = appState.teams.findIndex(t => t.name === teamName);
+            if (idx === -1) return;
+            
+            // Spieler zurück in Pool
+            appState.teams[idx].shooters.forEach(s => {
+                s.zone = null;
+                appState.pool.push(s);
+            });
+            appState.teams.splice(idx, 1);
+            renderContestUI();
+        }
+
+        function filterPool(val) {
+            val = val.toLowerCase();
+            document.querySelectorAll('.dropzone[data-target-type="pool"] .draggable-player').forEach(el => {
+                el.parentElement.style.display = el.innerText.toLowerCase().includes(val) ? 'block' : 'none';
+            });
+        }
+
+        function sendMail() {
+            const mails = appState.mailList.map(m => m.email).filter(e => e && e.includes('@'));
+            if(!mails.length) return alert("Keine gültigen E-Mails gefunden!");
+            window.location.href = `mailto:?bcc=${mails.join(',')}&subject=Aufgebot ${CONTEST_CONFIG[appState.activeModule].title}`;
+        }
+
+        async function saveContest() {
+            alert("Speichern simuliert! (Hier API Call einfügen)");
+            appState.isDirty = false;
+        }
+
+        // === PDF EXPORT ===
+        async function exportPDF() {
+            const { jsPDF } = window.jspdf;
+            const config = CONTEST_CONFIG[appState.activeModule];
+            
+            // Setup PDF
+            const doc = new jsPDF();
+            const pageWidth = doc.internal.pageSize.getWidth();
+            const margin = 15;
+            let yPos = 20;
+
+            // Header
+            doc.setFontSize(18);
+            doc.setTextColor(13, 110, 253); // Primary Blue
+            doc.text(config.title, margin, yPos);
+            
+            yPos += 10;
+            doc.setFontSize(10);
+            doc.setTextColor(100);
+            const dateStr = new Date().toLocaleDateString('de-CH', { day: '2-digit', month: '2-digit', year: 'numeric' });
+            doc.text(`Generiert am: ${dateStr}`, margin, yPos);
+            
+            yPos += 15;
+
+            // Content
+            appState.teams.forEach((team, index) => {
+                // Check Page Break
+                if (yPos > 250) {
+                    doc.addPage();
+                    yPos = 20;
+                }
+
+                // Team Header
+                doc.setFillColor(240, 242, 245);
+                doc.rect(margin, yPos, pageWidth - (margin*2), 8, 'F');
+                doc.setFontSize(12);
+                doc.setTextColor(0);
+                doc.setFont("helvetica", "bold");
+                doc.text(team.name, margin + 2, yPos + 6);
+                yPos += 14;
+
+                // Shooters
+                doc.setFont("helvetica", "normal");
+                doc.setFontSize(11);
+
+                if (team.shooters.length === 0) {
+                    doc.setTextColor(150);
+                    doc.text("- Keine Schützen -", margin + 5, yPos);
+                    yPos += 8;
+                } else {
+                    // Sortiere nach Zone
+                    const sorted = team.shooters.sort((a,b) => (a.zone || "").localeCompare(b.zone || ""));
+                    
+                    sorted.forEach(s => {
+                        const zoneLabel = s.zone ? `(${s.zone.charAt(0).toUpperCase() + s.zone.slice(1)})` : "";
+                        doc.setTextColor(0);
+                        doc.text(`• ${s.name}`, margin + 5, yPos);
+                        
+                        doc.setTextColor(100);
+                        doc.setFontSize(9);
+                        doc.text(zoneLabel, pageWidth - margin - 30, yPos);
+                        doc.setFontSize(11);
+                        
+                        yPos += 7;
+                    });
+                }
+                yPos += 5; // Space between teams
+            });
+
+            // Save
+            doc.save(`${config.title.replace(/[^a-z0-9]/gi, '_')}_${dateStr}.pdf`);
+        }
+    </script>
+</body>
+</html>
