@@ -555,8 +555,9 @@ async function saveContest() {
     } catch(e) { 
         alert("Fehler: " + e); btn.disabled = false; btn.innerText = originalText;
     }
-    document.addEventListener('DOMContentLoaded', function() {
-    initDragAndDrop();
-});
+  
 
 }
+  document.addEventListener('DOMContentLoaded', function() {
+    initDragAndDrop();
+});
