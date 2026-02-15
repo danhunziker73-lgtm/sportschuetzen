@@ -190,9 +190,7 @@ function renderContestUI() {
         </div>
     `;
 
-   document.addEventListener('DOMContentLoaded', function() {
-    initDragAndDrop();
-});
+  
 
 }
 
@@ -381,50 +379,7 @@ function initDragAndDrop() {
    DROP HANDLER (ROBUST + ID SAFE)
 ====================================================== */
 
-function handleDrop(playerId, targetZone) {
 
-    playerId = String(playerId);
-    const targetType = targetZone.dataset.targetType;
-
-    /* ================= MAIL ================= */
-
-    if (targetType === "mail") {
-        copyToMail(playerId);
-        return;
-    }
-
-    /* ================= POOL ================= */
-
-    if (targetType === "pool") {
-        movePlayerInState(playerId, null, null);
-        renderContestUI();
-        return;
-    }
-
-    /* ================= TEAM ================= */
-
-    if (targetType === "team") {
-
-        const limit = parseInt(targetZone.dataset.limit);
-        const teamName = String(targetZone.dataset.team);
-        const zoneKey = targetZone.dataset.zone;
-
-        const team = appState.teams.find(t => String(t.name) === teamName);
-        if (!team) return;
-
-        const currentCount = team.shooters
-            .filter(s => String(s.zone) === String(zoneKey) && String(s.id) !== playerId)
-            .length;
-
-        if (currentCount >= limit) {
-            alert("Zone ist voll!");
-            return;
-        }
-
-        movePlayerInState(playerId, teamName, zoneKey);
-        renderContestUI();
-    }
-}
 
 function handleDrop(playerId, targetZone) {
 
@@ -600,4 +555,8 @@ async function saveContest() {
     } catch(e) { 
         alert("Fehler: " + e); btn.disabled = false; btn.innerText = originalText;
     }
+    document.addEventListener('DOMContentLoaded', function() {
+    initDragAndDrop();
+});
+
 }
