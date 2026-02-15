@@ -263,81 +263,136 @@ function initDragAndDrop() {
     const draggables = document.querySelectorAll('.draggable-player');
     const dropzones = document.querySelectorAll('.dropzone');
 
-    // 1. Drag Start
+    /* ==============================
+       DESKTOP DRAG & DROP
+    ============================== */
+
     draggables.forEach(d => {
-        d.addEventListener('dragstart', (e) => { 
-            e.dataTransfer.setData('text/plain', d.dataset.id); // WICHTIG FÜR FIREFOX
+        d.addEventListener('dragstart', (e) => {
+            e.dataTransfer.setData('text/plain', d.dataset.id);
             e.dataTransfer.effectAllowed = 'copyMove';
-            d.style.opacity = '0.5'; 
+            d.style.opacity = '0.5';
         });
-        d.addEventListener('dragend', () => { 
-            d.style.opacity = '1'; 
+
+        d.addEventListener('dragend', () => {
+            d.style.opacity = '1';
         });
     });
 
-    // 2. Dropzones
     dropzones.forEach(zone => {
-        // Drag Over (Erlauben)
-        zone.addEventListener('dragover', e => { 
-            e.preventDefault(); // NÖTIG FÜR DROP
+        zone.addEventListener('dragover', e => {
+            e.preventDefault();
             e.dataTransfer.dropEffect = zone.dataset.targetType === 'mail' ? 'copy' : 'move';
-            zone.classList.add('bg-success-subtle'); // Visuelles Feedback
+            zone.classList.add('bg-success-subtle');
         });
 
-        // Drag Leave
-        zone.addEventListener('dragleave', () => { 
-            zone.classList.remove('bg-success-subtle'); 
+        zone.addEventListener('dragleave', () => {
+            zone.classList.remove('bg-success-subtle');
         });
-        
-        // DROP
+
         zone.addEventListener('drop', e => {
             e.preventDefault();
             zone.classList.remove('bg-success-subtle');
-            
-            // Daten holen
+
             const playerId = e.dataTransfer.getData('text/plain');
-            if(!playerId) return;
+            if (!playerId) return;
 
-            // RICHTIGES ZIEL FINDEN (Falls auf Kind-Element gedroppt wurde)
-            const targetZone = e.target.closest('.dropzone');
-            if (!targetZone) return;
-
-            const targetType = targetZone.dataset.targetType; // "pool", "mail", "team"
-
-            // 1. MAIL (Kopie)
-            if (targetType === "mail") {
-                copyToMail(playerId);
-                return;
-            }
-
-            // 2. POOL (Verschieben)
-            if (targetType === "pool") {
-                movePlayerInState(playerId, null, null);
-                renderContestUI();
-                return;
-            }
-
-            // 3. TEAM (Verschieben)
-            if (targetType === "team") {
-                const limit = parseInt(targetZone.dataset.limit);
-                const teamName = targetZone.dataset.team;
-                const zoneKey = targetZone.dataset.zone;
-                
-                const team = appState.teams.find(t => t.name === teamName);
-                if (!team) return;
-
-                // Limit Check
-                const currentCount = team.shooters.filter(s => s.zone === zoneKey && s.id !== playerId).length;
-                if (currentCount >= limit) { 
-                    alert("Zone ist voll!"); 
-                    return; 
-                }
-
-                movePlayerInState(playerId, teamName, zoneKey);
-                renderContestUI();
-            }
+            handleDrop(playerId, zone);
         });
     });
+
+
+    /* ==============================
+       MOBILE TOUCH SUPPORT
+    ============================== */
+
+    let currentDrag = null;
+
+    draggables.forEach(el => {
+
+        el.addEventListener('touchstart', e => {
+            currentDrag = el;
+            el.classList.add('shadow-lg');
+            el.style.opacity = '0.7';
+        }, { passive: true });
+
+        el.addEventListener('touchmove', e => {
+            if (!currentDrag) return;
+
+            const touch = e.touches[0];
+            const elemBelow = document.elementFromPoint(touch.clientX, touch.clientY);
+            const dropzone = elemBelow?.closest('.dropzone');
+
+            document.querySelectorAll('.dropzone').forEach(z => 
+                z.classList.remove('bg-success-subtle')
+            );
+
+            if (dropzone) {
+                dropzone.classList.add('bg-success-subtle');
+            }
+        }, { passive: true });
+
+        el.addEventListener('touchend', e => {
+            if (!currentDrag) return;
+
+            const touch = e.changedTouches[0];
+            const elemBelow = document.elementFromPoint(touch.clientX, touch.clientY);
+            const dropzone = elemBelow?.closest('.dropzone');
+
+            document.querySelectorAll('.dropzone').forEach(z => 
+                z.classList.remove('bg-success-subtle')
+            );
+
+            if (dropzone) {
+                handleDrop(currentDrag.dataset.id, dropzone);
+            }
+
+            currentDrag.classList.remove('shadow-lg');
+            currentDrag.style.opacity = '1';
+            currentDrag = null;
+        });
+    });
+}
+
+
+function handleDrop(playerId, targetZone) {
+
+    const targetType = targetZone.dataset.targetType;
+
+    // MAIL (Kopie)
+    if (targetType === "mail") {
+        copyToMail(playerId);
+        return;
+    }
+
+    // POOL
+    if (targetType === "pool") {
+        movePlayerInState(playerId, null, null);
+        renderContestUI();
+        return;
+    }
+
+    // TEAM
+    if (targetType === "team") {
+
+        const limit = parseInt(targetZone.dataset.limit);
+        const teamName = targetZone.dataset.team;
+        const zoneKey = targetZone.dataset.zone;
+
+        const team = appState.teams.find(t => t.name === teamName);
+        if (!team) return;
+
+        const currentCount = team.shooters
+            .filter(s => s.zone === zoneKey && s.id !== playerId).length;
+
+        if (currentCount >= limit) {
+            alert("Zone ist voll!");
+            return;
+        }
+
+        movePlayerInState(playerId, teamName, zoneKey);
+        renderContestUI();
+    }
 }
 
 // === LOGIK ===
