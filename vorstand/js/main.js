@@ -40,7 +40,7 @@ function navTo(viewId) {
 
     // Module laden
     if (viewId === 'inventar' && typeof loadInventarData === 'function') loadInventarData();
-    if (viewId === 'grenzland' && typeof loadGrenzlandData === 'function') loadGrenzlandData();
+    if (viewId === 'manager' && typeof loadmanagerData === 'function') loadmanagerData();
     if (viewId === 'termine' && typeof loadTermineData === 'function') loadTermineData();
 }
 
