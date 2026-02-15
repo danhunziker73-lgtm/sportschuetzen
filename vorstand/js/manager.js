@@ -12,7 +12,7 @@ const CONTEST_CONFIG = {
     "mannschaft": {
         title: "👥 Mannschafts-Meisterschaft",
         sheetName: "aktuell_Mannschaft",
-        baseTeamName: "Muhen", // Auch hier Muhen 1, 2 etc.
+        baseTeamName: "Muhen", 
         defaultTeams: 1,
         zones: [
             { key: "main", label: "Mannschaft (8)", limit: 8 }
@@ -36,7 +36,7 @@ let appState = {
     members: [],
     teams: [],
     pool: [],
-    isDirty: false // Trackt ungespeicherte Änderungen
+    isDirty: false 
 };
 
 // === INIT & LADEN ===
@@ -45,7 +45,6 @@ async function loadContestData(moduleKey) {
     // Sicherheits-Check bei ungespeicherten Daten
     if (appState.isDirty) {
         if (!confirm("Du hast ungespeicherte Änderungen! Wirklich wechseln? Die Änderungen gehen verloren.")) {
-            // Dropdown zurücksetzen (visuell)
             document.getElementById('module-selector').value = appState.activeModule;
             return;
         }
@@ -58,11 +57,15 @@ async function loadContestData(moduleKey) {
 
     const config = CONTEST_CONFIG[moduleKey];
     
-    const container = document.getElementById('grenzland-container');
+    // WICHTIG: Container ID muss zur HTML passen (manager-container)
+    const container = document.getElementById('manager-container');
+    if (!container) { console.error("Container #manager-container fehlt!"); return; }
+    
     container.innerHTML = `<div class="text-center p-5"><div class="spinner-border text-primary"></div><p>Lade ${config.title}...</p></div>`;
 
     try {
-        // Backend Request (nutzt generischen Endpoint)
+        // Backend Request: Wir nutzen weiterhin das Modul 'grenzland', da der Worker das kennt.
+        // Wenn du im Worker 'manager' als Modul eingetragen hast, ändere 'grenzland' hier zu 'manager'.
         const res = await apiFetch('grenzland', 'action=getGrenzlandData'); 
         const data = await res.json();
         
@@ -70,12 +73,9 @@ async function loadContestData(moduleKey) {
         renderContestUI();
         
     } catch (e) {
-        container.innerHTML = `<div class="alert alert-danger">Fehler: ${e.message}</div>`;
+        container.innerHTML = `<div class="alert alert-danger">Fehler beim Laden: ${e.message}</div>`;
     }
 }
-
-// Wrapper für Kompatibilität mit index.html
-function loadGrenzlandData() { loadContestData("grenzland"); }
 
 
 // === DATEN VERARBEITUNG ===
@@ -87,44 +87,33 @@ function processContestData(data, config) {
 
     const assignedIds = new Set();
     
-    // Daten aus dem gewählten Sheet (oder Fallback)
-    // Achtung: Backend liefert evtl. immer alles in 'grenzland' oder 'members'
-    // Hier gehen wir davon aus, dass wir filtern müssen oder das Backend passendes liefert.
-    // Da wir vorerst denselben Backend-Call nutzen, müssen wir client-seitig schauen, 
-    // ob wir Daten für das aktuelle Modul filtern können. 
-    // VEREINFACHUNG: Wir laden immer frisch und das Backend liefert (hoffentlich) die richtigen Sheet-Daten
-    // Wenn das Backend für alle Module gleich antwortet, müssen wir hier mapping betreiben.
-    // Für jetzt nehmen wir an: data.grenzland enthält die Zeilen des aktuellen Sheets.
-    
+    // Daten aus dem gewählten Sheet laden
     const sheetData = data[config.sheetName] || data.grenzland || []; 
 
     const tempTeams = {};
 
     sheetData.forEach(row => {
-        // ID oder Name match
+        // ID oder Name normalisieren
         const rowIdStr = String(row.schuetze_id || row.id || row.schuetze || row.name || "").trim();
         
         // Versuchen den Schützen in der Mitgliederliste zu finden
         let member = appState.members.find(m => String(m.id) === rowIdStr || `${m.nachname} ${m.vorname}` === rowIdStr);
         
-        // Wenn nicht gefunden, aber Name existiert (z.B. manueller Eintrag), bauen wir Dummy
+        // Fallback für manuelle Einträge
         if (!member && rowIdStr.length > 2) {
-             // Fallback falls ID eigentlich der Name ist
              member = { id: rowIdStr, nachname: rowIdStr, vorname: "", dummy: true };
         }
 
         if (member) {
             const teamName = row.runde_1_team || row.team || "Pool";
             
-            // Logik für Gruppe: Woher wissen wir ob Liegend/Kniend?
-            // Wenn Spalte B (Stellung) im Backend gelesen wird, müsste sie hier ankommen.
-            // Wir nehmen an: row.stellung oder row.pos existiert, ODER wir raten.
-            // Falls das Backend 'stellung' liefert:
+            // Zone bestimmen (für SGM)
             let zoneKey = config.zones[0].key; // Default
             
             if (config.zones.length > 1) {
-                const stellung = String(row.stellung || row.runde_1_pkt || "").toLowerCase(); // Missbrauch pkt spalte falls nötig
-                if (stellung.includes("kniend")) zoneKey = "kniend";
+                // Wir prüfen, ob im Backend "Liegend" oder "Kniend" (in Spalte Pkt/Stellung) steht
+                const info = String(row.runde_1_pkt || row.stellung || "").toLowerCase(); 
+                if (info.includes("kniend")) zoneKey = "kniend";
                 else zoneKey = "liegend";
             }
 
@@ -133,10 +122,10 @@ function processContestData(data, config) {
                 
                 tempTeams[teamName].shooters.push({
                     id: member.id,
-                    nachname: member.nachname, // Wichtig fürs Speichern
+                    nachname: member.nachname, 
                     vorname: member.vorname,
                     name: `${member.nachname} ${member.vorname}`,
-                    pkt: row.runde_1_pkt || "", // Punkte oder leer
+                    pkt: row.runde_1_pkt || "", 
                     zone: zoneKey
                 });
                 if (!member.dummy) assignedIds.add(String(member.id));
@@ -148,11 +137,11 @@ function processContestData(data, config) {
     if (Object.keys(tempTeams).length > 0) {
         appState.teams = Object.values(tempTeams).sort((a,b) => a.name.localeCompare(b.name, undefined, {numeric: true}));
     } else {
-        // Defaults
+        // Defaults erstellen
         for(let i=1; i <= config.defaultTeams; i++) addTeamToState(false);
     }
 
-    // Rest in Pool
+    // Rest in den Pool
     appState.members.forEach(m => {
         if (!assignedIds.has(String(m.id))) {
             appState.pool.push({
@@ -172,9 +161,10 @@ function processContestData(data, config) {
 function addTeamToState(render = true) {
     const config = CONTEST_CONFIG[appState.activeModule];
     let nextNum = 1;
-    // Smarte Nummerierung: Lücken füllen oder hochzählen
+    
+    // Nächste freie Nummer finden
     const existingNums = appState.teams.map(t => {
-        const match = t.name.match(/(\d+)$/);
+        const match = t.name.match(/(\d+)$/); // Regex gefixt (kein doppelter Backslash nötig)
         return match ? parseInt(match[1]) : 0;
     });
     while (existingNums.includes(nextNum)) nextNum++;
@@ -188,12 +178,13 @@ function addTeamToState(render = true) {
 }
 
 function removeTeamFromState(teamName) {
-    if(!confirm(`Team "${teamName}" und alle Schützen auflösen?`)) return;
+    if(!confirm(`Team "${teamName}" wirklich löschen?`)) return;
     
     const teamIdx = appState.teams.findIndex(t => t.name === teamName);
     if (teamIdx === -1) return;
 
     const team = appState.teams[teamIdx];
+    // Schützen zurück in Pool
     team.shooters.forEach(s => {
         s.pkt = ""; 
         s.zone = null;
@@ -210,12 +201,12 @@ function removeTeamFromState(teamName) {
 
 function renderContestUI() {
     const config = CONTEST_CONFIG[appState.activeModule];
-    const container = document.getElementById('grenzland-container');
+    const container = document.getElementById('manager-container');
     
     container.innerHTML = `
         <div class="d-flex justify-content-between align-items-center mb-3 sticky-top bg-white py-2 border-bottom" style="z-index:10;">
             <div class="d-flex align-items-center gap-3">
-                <select id="module-selector" class="form-select fw-bold border-primary text-primary" style="width:auto;" onchange="loadContestData(this.value)">
+                <select id="module-selector" class="form-select fw-bold border-primary text-primary shadow-sm" style="width:auto; cursor:pointer;" onchange="loadContestData(this.value)">
                     <option value="grenzland" ${appState.activeModule==='grenzland'?'selected':''}>🛡️ Grenzland Cup</option>
                     <option value="mannschaft" ${appState.activeModule==='mannschaft'?'selected':''}>👥 Mannschaft</option>
                     <option value="gruppe" ${appState.activeModule==='gruppe'?'selected':''}>🎯 Gruppe (SGM)</option>
@@ -224,23 +215,24 @@ function renderContestUI() {
                     <i class="fas fa-plus"></i> Team
                 </button>
             </div>
-            <button class="btn btn-success fw-bold" onclick="saveContest()">💾 Speichern</button>
+            <button class="btn btn-success fw-bold shadow-sm" onclick="saveContest()">💾 Speichern</button>
         </div>
         
         <div class="row h-100 g-3">
+            <!-- TEAMS BEREICH -->
             <div class="col-lg-9 col-md-8">
                 <div class="row g-3" id="teams-grid">
                     ${appState.teams.map(team => renderTeamCard(team, config)).join('')}
                 </div>
             </div>
 
+            <!-- POOL BEREICH -->
             <div class="col-lg-3 col-md-4">
                 <div class="card shadow-sm border-secondary h-100" style="max-height: calc(100vh - 150px); display:flex; flex-direction:column;">
                     <div class="card-header bg-secondary text-white py-2">
                         <i class="fas fa-users"></i> Pool
                         <input type="text" class="form-control form-control-sm mt-2" placeholder="Suchen..." onkeyup="filterPool(this.value)">
                     </div>
-                    <!-- POOL DROPZONE -->
                     <div class="card-body p-2 dropzone bg-light overflow-auto" data-target-type="pool" style="flex:1;">
                         ${appState.pool.map(s => renderPlayerItem(s)).join('')}
                     </div>
@@ -253,21 +245,23 @@ function renderContestUI() {
     `;
 
     initDragAndDrop();
-    updateAllCounts(); // Zählt Schützen statt Punkte
+    updateAllCounts();
 }
 
 function renderTeamCard(team, config) {
     const zonesHtml = config.zones.map((zone, index) => {
-        // Schützen für diese Zone filtern
+        // Schützen filtern
         const shootersInZone = team.shooters.filter(s => {
             if (config.zones.length === 1) return true;
             return s.zone === zone.key;
         });
 
+        // Styling
         const bgStyle = config.zones.length > 1 ? (index % 2 === 0 ? 'background:#fff;' : 'background:#f8f9fa;') : 'background:#fff;';
         
-        // Zähler für Zone (z.B. 2/3)
-        const countBadge = `<span class="badge ${shootersInZone.length > zone.limit ? 'bg-danger' : 'bg-light text-dark border'} float-end">${shootersInZone.length} / ${zone.limit}</span>`;
+        // Badge (Rot wenn voll)
+        const isFull = shootersInZone.length > zone.limit;
+        const countBadge = `<span class="badge ${isFull ? 'bg-danger' : 'bg-light text-dark border'} float-end">${shootersInZone.length} / ${zone.limit}</span>`;
 
         return `
             <div class="team-zone p-2 mb-1 border rounded dropzone position-relative" 
@@ -276,12 +270,15 @@ function renderTeamCard(team, config) {
                  data-zone="${zone.key}"
                  data-limit="${zone.limit}">
                 
-                ${config.zones.length > 1 ? `<div class="small text-muted fw-bold mb-2 text-uppercase">${zone.label} ${countBadge}</div>` : ''}
+                ${config.zones.length > 1 ? `<div class="small text-muted fw-bold mb-2 text-uppercase d-flex justify-content-between align-items-center"><span>${zone.label}</span> ${countBadge}</div>` : ''}
                 
                 ${shootersInZone.map(s => renderPlayerItem(s, team.name)).join('')}
             </div>
         `;
     }).join('');
+
+    // ID für Counter generieren (ohne Leerzeichen)
+    const counterId = `count-${team.name.replace(/\s+/g, '-')}`;
 
     return `
         <div class="col-xl-4 col-lg-6 col-12">
@@ -296,7 +293,7 @@ function renderTeamCard(team, config) {
                 <div class="card-footer bg-white border-top-0 pt-0 pb-3">
                     <div class="d-flex justify-content-between align-items-center bg-light rounded p-2">
                         <span class="small fw-bold text-muted">SCHÜTZEN</span>
-                        <span class="fw-bold" id="count-${team.name.replace(/\s+/g,'-')}">0</span>
+                        <span class="fw-bold" id="${counterId}">0</span>
                     </div>
                 </div>
             </div>
@@ -305,14 +302,13 @@ function renderTeamCard(team, config) {
 }
 
 function renderPlayerItem(player, teamName = null) {
-    const config = CONTEST_CONFIG[appState.activeModule];
-    // Punktefeld nur anzeigen wenn nicht Gruppe (bei Gruppe zählt nur Position, oder?)
-    // User hat nicht spezifiziert, ob Gruppe Punkte braucht. Wir lassen es vorerst weg bei Gruppe.
-    
     let extraField = '';
+    
+    // Nur bei Grenzland & Mannschaft zeigen wir Punktefeld an
+    // Bei Gruppe ist 'pkt' eigentlich die Stellung (Liegend/Kniend), daher kein Input nötig
     if (teamName && appState.activeModule !== 'gruppe') {
         extraField = `<input type="number" class="form-control form-control-sm p-0 text-center fw-bold border-0 bg-transparent" 
-             style="width: 40px;" value="${player.pkt}" placeholder="-" 
+             style="width: 45px;" value="${player.pkt}" placeholder="Pkt" 
              onclick="this.select()" 
              onchange="updatePoints('${teamName}', '${player.id}', this.value)">`;
     }
@@ -323,7 +319,7 @@ function renderPlayerItem(player, teamName = null) {
              data-id="${player.id}" 
              style="cursor:grab; border-left: 4px solid var(--primary) !important;">
             <div class="card-body p-2 d-flex align-items-center justify-content-between">
-                <div class="text-truncate" style="max-width: 80%;">
+                <div class="text-truncate" style="max-width: ${extraField ? '75%' : '100%'};">
                     <span class="fw-bold small player-name">${player.name}</span>
                 </div>
                 ${extraField}
@@ -366,17 +362,17 @@ function initDragAndDrop() {
             const targetZoneKey = zone.dataset.zone;
             const targetType = zone.dataset.targetType; // "pool"
 
-            // LIMIT PRÜFUNG (Wichtig für Gruppe!)
+            // LIMIT PRÜFUNG
             if (targetType !== "pool") {
                 const limit = parseInt(zone.dataset.limit);
                 const team = appState.teams.find(t => t.name === targetTeam);
                 
-                // Zähle Schützen in dieser Zone, ABER ignoriere mich selbst (falls ich nur innerhalb verschoben werde)
+                // Zähle Schützen in dieser Zone (ohne mich selbst)
                 const currentCount = team.shooters.filter(s => s.zone === targetZoneKey && String(s.id) !== String(playerId)).length;
                 
                 if (currentCount >= limit) {
                     alert(`⚠️ Zone ist voll! Maximal ${limit} Schützen erlaubt.`);
-                    return; // Abbruch
+                    return; 
                 }
             }
 
@@ -390,7 +386,7 @@ function movePlayerInState(playerId, targetTeamName, targetZoneKey) {
     let player = null;
     appState.isDirty = true;
 
-    // 1. Finden & Entfernen
+    // 1. Suchen & Entfernen
     const poolIdx = appState.pool.findIndex(p => String(p.id) === String(playerId));
     if (poolIdx > -1) {
         player = appState.pool.splice(poolIdx, 1)[0];
@@ -408,15 +404,15 @@ function movePlayerInState(playerId, targetTeamName, targetZoneKey) {
 
     // 2. Einfügen
     if (!targetTeamName) {
-        // In den Pool
+        // Pool
         player.pkt = ""; 
         player.zone = null;
         appState.pool.push(player);
     } else {
-        // In ein Team
+        // Team
         const team = appState.teams.find(t => t.name === targetTeamName);
         if (team) {
-            player.zone = targetZoneKey; // "liegend" oder "kniend" oder "main"
+            player.zone = targetZoneKey; 
             team.shooters.push(player);
         }
     }
@@ -460,27 +456,17 @@ async function saveContest() {
     
     appState.teams.forEach(team => {
         team.shooters.forEach(p => {
-            // Basis Datenobjekt
             let item = {
-                // WICHTIG: User will Nachname Vorname in Spalte A.
-                // Wir senden das im 'id'-Feld, damit das Backend es in Spalte A schreibt (falls Mapping so ist)
-                // Oder wir senden es als 'name' und hoffen das Backend versteht es.
-                // Da Backend Code 'id' auf Col A mappt:
+                // Sende "Nachname Vorname" als ID für Spalte A
                 id: `${p.nachname} ${p.vorname}`, 
-                
-                r1_team: team.name, // Spalte Team
+                r1_team: team.name, 
             };
 
-            // Spezialfall GRUPPE
             if (appState.activeModule === "gruppe") {
-                // Spalte B soll Stellung sein (Liegend/Kniend)
-                // Wir senden es als r1_pkt (Spalte Punkte), da wir Spalte B nicht direkt ansprechen können ohne Backend-Änderung?
-                // DOCH: Wir senden das Feld, das im Backend auf Spalte B gemappt werden muss.
-                // Aktuelles Backend hat Mapping: r1_pkt -> Spalte Punkte. 
-                // Hack: Wir senden den Text "Liegend"/"Kniend" als "Punkte".
+                // Gruppe: Sende "Liegend" oder "Kniend" statt Punkte
                 item.r1_pkt = p.zone === "liegend" ? "Liegend" : "Kniend";
             } else {
-                // Normalfall
+                // Normal: Sende Punkte
                 item.r1_pkt = p.pkt;
             }
 
@@ -489,6 +475,7 @@ async function saveContest() {
     });
 
     try {
+        // WICHTIG: Modulname anpassen falls Worker geändert wurde
         await apiFetch('grenzland', 'action=saveGrenzlandData', {
             method: 'POST',
             body: JSON.stringify({
@@ -509,7 +496,7 @@ async function saveContest() {
         }, 2000);
 
     } catch(e) { 
-        alert("Fehler: " + e); 
+        alert("Fehler beim Speichern: " + e); 
         btn.disabled = false; btn.innerText = originalText;
     }
 }
