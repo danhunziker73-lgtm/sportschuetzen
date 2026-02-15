@@ -1,22 +1,18 @@
-// === KONFIGURATION DER WETTBEWERBE ===
+// === KONFIGURATION ===
 const CONTEST_CONFIG = {
     "grenzland": {
         title: "🛡️ Grenzland Cup",
         sheetName: "aktuell_Grenzland",
         baseTeamName: "Muhen",
         defaultTeams: 4,
-        zones: [
-            { key: "main", label: "Schützen", limit: 4 }
-        ]
+        zones: [ { key: "main", label: "Schützen", limit: 4 } ]
     },
     "mannschaft": {
         title: "👥 Mannschafts-Meisterschaft",
         sheetName: "aktuell_Mannschaft",
         baseTeamName: "Muhen", 
         defaultTeams: 1,
-        zones: [
-            { key: "main", label: "Mannschaft (8)", limit: 8 }
-        ]
+        zones: [ { key: "main", label: "Mannschaft (8)", limit: 8 } ]
     },
     "gruppe": {
         title: "🎯 Gruppen-Meisterschaft (SGM)",
@@ -30,216 +26,198 @@ const CONTEST_CONFIG = {
     }
 };
 
-// === GLOBALER STATE ===
+// === STATE ===
 let appState = {
     activeModule: "grenzland",
     members: [],
     teams: [],
     pool: [],
+    mailList: [], // NEU: Liste für Mail-Verteiler
     isDirty: false 
 };
 
-// === INIT & LADEN ===
-
+// === LOAD ===
 async function loadContestData(moduleKey) {
-    // Sicherheits-Check bei ungespeicherten Daten
-    if (appState.isDirty) {
-        if (!confirm("Du hast ungespeicherte Änderungen! Wirklich wechseln? Die Änderungen gehen verloren.")) {
-            document.getElementById('module-selector').value = appState.activeModule;
-            return;
-        }
+    if (appState.isDirty && !confirm("Ungespeicherte Änderungen verwerfen?")) {
+        document.getElementById('module-selector').value = appState.activeModule;
+        return;
     }
 
-    // Fallback falls kein Parameter
     if (!moduleKey) moduleKey = appState.activeModule;
     appState.activeModule = moduleKey;
     appState.isDirty = false;
+    appState.mailList = []; // Mail Reset bei Wechsel
 
     const config = CONTEST_CONFIG[moduleKey];
-    
-    // WICHTIG: Container ID muss zur HTML passen (manager-container)
     const container = document.getElementById('manager-container');
-    if (!container) { console.error("Container #manager-container fehlt!"); return; }
+    if (!container) return;
     
     container.innerHTML = `<div class="text-center p-5"><div class="spinner-border text-primary"></div><p>Lade ${config.title}...</p></div>`;
 
     try {
-        // Backend Request: Wir nutzen weiterhin das Modul 'grenzland', da der Worker das kennt.
-        // Wenn du im Worker 'manager' als Modul eingetragen hast, ändere 'grenzland' hier zu 'manager'.
-        const res = await apiFetch('grenzland', 'action=getGrenzlandData'); 
+        // Wir senden sheetName mit, damit Backend das richtige Sheet liest
+        const params = `action=getManagerData&sheetName=${config.sheetName}`;
+        const res = await apiFetch('grenzland', params); 
         const data = await res.json();
         
         processContestData(data, config);
         renderContestUI();
         
     } catch (e) {
-        container.innerHTML = `<div class="alert alert-danger">Fehler beim Laden: ${e.message}</div>`;
+        container.innerHTML = `<div class="alert alert-danger">Fehler: ${e.message}</div>`;
     }
 }
 
-
-// === DATEN VERARBEITUNG ===
-
+// === PROCESS DATA ===
 function processContestData(data, config) {
     appState.members = data.members || [];
     appState.teams = []; 
     appState.pool = [];
 
     const assignedIds = new Set();
-    
-    // Daten aus dem gewählten Sheet laden
-    const sheetData = data[config.sheetName] || data.grenzland || []; 
+    // Backend liefert jetzt generisch "contestData"
+    const sheetData = data.contestData || []; 
 
     const tempTeams = {};
 
     sheetData.forEach(row => {
-        // ID oder Name normalisieren
-        const rowIdStr = String(row.schuetze_id || row.id || row.schuetze || row.name || "").trim();
-        
-        // Versuchen den Schützen in der Mitgliederliste zu finden
+        // Spalte A im Backend war Name
+        const rowIdStr = String(row.schuetze_id || "").trim();
+        if(!rowIdStr) return;
+
+        // Match Member
         let member = appState.members.find(m => String(m.id) === rowIdStr || `${m.nachname} ${m.vorname}` === rowIdStr);
+        if (!member) member = { id: rowIdStr, nachname: rowIdStr, vorname: "", email: "", dummy: true };
+
+        const teamName = row.runde_1_team || "Pool";
         
-        // Fallback für manuelle Einträge
-        if (!member && rowIdStr.length > 2) {
-             member = { id: rowIdStr, nachname: rowIdStr, vorname: "", dummy: true };
+        // Zone (Stellung) aus Spalte C lesen (backend sendet es als runde_1_pkt)
+        let zoneKey = config.zones[0].key;
+        if (config.zones.length > 1) {
+            const info = String(row.runde_1_pkt || "").toLowerCase();
+            if (info.includes("kniend")) zoneKey = "kniend";
+            else zoneKey = "liegend";
         }
 
-        if (member) {
-            const teamName = row.runde_1_team || row.team || "Pool";
+        if (teamName !== "Pool" && teamName) {
+            if (!tempTeams[teamName]) tempTeams[teamName] = { name: teamName, shooters: [] };
             
-            // Zone bestimmen (für SGM)
-            let zoneKey = config.zones[0].key; // Default
-            
-            if (config.zones.length > 1) {
-                // Wir prüfen, ob im Backend "Liegend" oder "Kniend" (in Spalte Pkt/Stellung) steht
-                const info = String(row.runde_1_pkt || row.stellung || "").toLowerCase(); 
-                if (info.includes("kniend")) zoneKey = "kniend";
-                else zoneKey = "liegend";
-            }
-
-            if (teamName !== "Pool" && teamName) {
-                if (!tempTeams[teamName]) tempTeams[teamName] = { name: teamName, shooters: [] };
-                
-                tempTeams[teamName].shooters.push({
-                    id: member.id,
-                    nachname: member.nachname, 
-                    vorname: member.vorname,
-                    name: `${member.nachname} ${member.vorname}`,
-                    pkt: row.runde_1_pkt || "", 
-                    zone: zoneKey
-                });
-                if (!member.dummy) assignedIds.add(String(member.id));
-            }
+            tempTeams[teamName].shooters.push({
+                id: member.id,
+                name: member.dummy ? member.id : `${member.nachname} ${member.vorname}`, // Name für Anzeige/Save
+                email: member.email, // Email speichern
+                zone: zoneKey
+            });
+            if (!member.dummy) assignedIds.add(String(member.id));
         }
     });
 
-    // Teams sortieren
     if (Object.keys(tempTeams).length > 0) {
         appState.teams = Object.values(tempTeams).sort((a,b) => a.name.localeCompare(b.name, undefined, {numeric: true}));
     } else {
-        // Defaults erstellen
         for(let i=1; i <= config.defaultTeams; i++) addTeamToState(false);
     }
 
-    // Rest in den Pool
+    // Pool füllen
     appState.members.forEach(m => {
         if (!assignedIds.has(String(m.id))) {
             appState.pool.push({
                 id: m.id,
-                nachname: m.nachname,
-                vorname: m.vorname,
                 name: `${m.nachname} ${m.vorname}`,
-                pkt: ""
+                email: m.email,
+                zone: null
             });
         }
     });
 }
 
-
-// === STATE MANAGEMENT ===
-
+// === STATE ACTIONS ===
 function addTeamToState(render = true) {
     const config = CONTEST_CONFIG[appState.activeModule];
     let nextNum = 1;
-    
-    // Nächste freie Nummer finden
     const existingNums = appState.teams.map(t => {
-        const match = t.name.match(/(\d+)$/); // Regex gefixt (kein doppelter Backslash nötig)
+        const match = t.name.match(/(\d+)$/);
         return match ? parseInt(match[1]) : 0;
     });
     while (existingNums.includes(nextNum)) nextNum++;
 
-    appState.teams.push({
-        name: `${config.baseTeamName} ${nextNum}`,
-        shooters: []
-    });
+    appState.teams.push({ name: `${config.baseTeamName} ${nextNum}`, shooters: [] });
     appState.isDirty = true;
     if(render) renderContestUI();
 }
 
 function removeTeamFromState(teamName) {
-    if(!confirm(`Team "${teamName}" wirklich löschen?`)) return;
+    if(!confirm(`Team "${teamName}" auflösen?`)) return;
+    const idx = appState.teams.findIndex(t => t.name === teamName);
+    if (idx === -1) return;
     
-    const teamIdx = appState.teams.findIndex(t => t.name === teamName);
-    if (teamIdx === -1) return;
-
-    const team = appState.teams[teamIdx];
-    // Schützen zurück in Pool
-    team.shooters.forEach(s => {
-        s.pkt = ""; 
-        s.zone = null;
-        appState.pool.push(s);
-    });
-
-    appState.teams.splice(teamIdx, 1);
+    appState.teams[idx].shooters.forEach(s => appState.pool.push(s)); // Zurück in Pool
+    appState.teams.splice(idx, 1);
     appState.isDirty = true;
     renderContestUI();
 }
 
-
-// === UI RENDERING ===
-
+// === RENDER UI ===
 function renderContestUI() {
     const config = CONTEST_CONFIG[appState.activeModule];
     const container = document.getElementById('manager-container');
     
     container.innerHTML = `
         <div class="d-flex justify-content-between align-items-center mb-3 sticky-top bg-white py-2 border-bottom" style="z-index:10;">
-            <div class="d-flex align-items-center gap-3">
-                <select id="module-selector" class="form-select fw-bold border-primary text-primary shadow-sm" style="width:auto; cursor:pointer;" onchange="loadContestData(this.value)">
-                    <option value="grenzland" ${appState.activeModule==='grenzland'?'selected':''}>🛡️ Grenzland Cup</option>
+            <div class="d-flex align-items-center gap-2">
+                <select id="module-selector" class="form-select fw-bold border-primary text-primary" onchange="loadContestData(this.value)">
+                    <option value="grenzland" ${appState.activeModule==='grenzland'?'selected':''}>🛡️ Grenzland</option>
                     <option value="mannschaft" ${appState.activeModule==='mannschaft'?'selected':''}>👥 Mannschaft</option>
                     <option value="gruppe" ${appState.activeModule==='gruppe'?'selected':''}>🎯 Gruppe (SGM)</option>
                 </select>
-                <button class="btn btn-outline-secondary btn-sm" onclick="addTeamToState()">
-                    <i class="fas fa-plus"></i> Team
-                </button>
+                <button class="btn btn-outline-secondary btn-sm" onclick="addTeamToState()" title="Neues Team"><i class="fas fa-plus"></i></button>
             </div>
-            <button class="btn btn-success fw-bold shadow-sm" onclick="saveContest()">💾 Speichern</button>
+            <div class="d-flex gap-2">
+                <button class="btn btn-outline-dark" onclick="printContest()" title="PDF / Drucken"><i class="fas fa-print"></i></button>
+                <button class="btn btn-success fw-bold" onclick="saveContest()">💾 Speichern</button>
+            </div>
         </div>
         
         <div class="row h-100 g-3">
-            <!-- TEAMS BEREICH -->
-            <div class="col-lg-9 col-md-8">
-                <div class="row g-3" id="teams-grid">
+            <!-- TEAMS (Links) -->
+            <div class="col-lg-8 col-md-7">
+                <div class="row g-3">
                     ${appState.teams.map(team => renderTeamCard(team, config)).join('')}
                 </div>
             </div>
 
-            <!-- POOL BEREICH -->
-            <div class="col-lg-3 col-md-4">
-                <div class="card shadow-sm border-secondary h-100" style="max-height: calc(100vh - 150px); display:flex; flex-direction:column;">
+            <!-- SIDEBAR (Rechts: Pool + Mail) -->
+            <div class="col-lg-4 col-md-5 d-flex flex-column gap-3">
+                
+                <!-- POOL -->
+                <div class="card shadow-sm border-secondary flex-grow-1" style="max-height: 50vh; display:flex; flex-direction:column;">
                     <div class="card-header bg-secondary text-white py-2">
-                        <i class="fas fa-users"></i> Pool
-                        <input type="text" class="form-control form-control-sm mt-2" placeholder="Suchen..." onkeyup="filterPool(this.value)">
+                        <i class="fas fa-users"></i> Schützen-Pool
+                        <input type="text" class="form-control form-control-sm mt-1" placeholder="Filter..." onkeyup="filterPool(this.value)">
                     </div>
                     <div class="card-body p-2 dropzone bg-light overflow-auto" data-target-type="pool" style="flex:1;">
                         ${appState.pool.map(s => renderPlayerItem(s)).join('')}
                     </div>
-                    <div class="card-footer small text-muted text-center">
+                    <div class="card-footer small text-muted text-center py-1">
                         ${appState.pool.length} verfügbar
                     </div>
                 </div>
+
+                <!-- MAIL VERTEILER -->
+                <div class="card shadow-sm border-warning" style="height: 30vh; display:flex; flex-direction:column;">
+                    <div class="card-header bg-warning text-dark py-2 d-flex justify-content-between align-items-center">
+                        <span><i class="fas fa-envelope"></i> Mail Versand</span>
+                        <button class="btn btn-sm btn-dark py-0" onclick="sendMail()" style="font-size:0.8rem;">Erstellen</button>
+                    </div>
+                    <div class="card-body p-2 dropzone bg-light overflow-auto" data-target-type="mail" style="flex:1; border: 2px dashed #ccc;">
+                        ${appState.mailList.length === 0 ? '<div class="text-center text-muted small mt-4">Schützen hierher ziehen<br>(Kopie)</div>' : ''}
+                        ${appState.mailList.map(s => renderMailItem(s)).join('')}
+                    </div>
+                    <div class="card-footer small text-muted text-center py-1">
+                        ${appState.mailList.length} Empfänger
+                    </div>
+                </div>
+
             </div>
         </div>
     `;
@@ -250,51 +228,40 @@ function renderContestUI() {
 
 function renderTeamCard(team, config) {
     const zonesHtml = config.zones.map((zone, index) => {
-        // Schützen filtern
-        const shootersInZone = team.shooters.filter(s => {
+        const shooters = team.shooters.filter(s => {
             if (config.zones.length === 1) return true;
             return s.zone === zone.key;
         });
-
-        // Styling
-        const bgStyle = config.zones.length > 1 ? (index % 2 === 0 ? 'background:#fff;' : 'background:#f8f9fa;') : 'background:#fff;';
+        const isFull = shooters.length > zone.limit;
         
-        // Badge (Rot wenn voll)
-        const isFull = shootersInZone.length > zone.limit;
-        const countBadge = `<span class="badge ${isFull ? 'bg-danger' : 'bg-light text-dark border'} float-end">${shootersInZone.length} / ${zone.limit}</span>`;
+        // Farbe für Zonen (Liegend/Kniend visuell trennen)
+        const zoneBg = zone.key === 'liegend' ? '#e3f2fd' : (zone.key === 'kniend' ? '#f3e5f5' : '#fff');
 
         return `
-            <div class="team-zone p-2 mb-1 border rounded dropzone position-relative" 
-                 style="${bgStyle} min-height: 80px;"
-                 data-team="${team.name}" 
-                 data-zone="${zone.key}"
-                 data-limit="${zone.limit}">
+            <div class="team-zone p-2 mb-1 border rounded dropzone" 
+                 style="background:${zoneBg}; min-height: 60px;"
+                 data-team="${team.name}" data-zone="${zone.key}" data-limit="${zone.limit}">
                 
-                ${config.zones.length > 1 ? `<div class="small text-muted fw-bold mb-2 text-uppercase d-flex justify-content-between align-items-center"><span>${zone.label}</span> ${countBadge}</div>` : ''}
+                ${config.zones.length > 1 ? `<div class="d-flex justify-content-between small fw-bold text-muted mb-1"><span>${zone.label}</span><span>${shooters.length}/${zone.limit}</span></div>` : ''}
                 
-                ${shootersInZone.map(s => renderPlayerItem(s, team.name)).join('')}
+                ${shooters.map(s => renderPlayerItem(s, team.name)).join('')}
             </div>
         `;
     }).join('');
 
-    // ID für Counter generieren (ohne Leerzeichen)
-    const counterId = `count-${team.name.replace(/\s+/g, '-')}`;
-
     return `
-        <div class="col-xl-4 col-lg-6 col-12">
+        <div class="col-xl-6 col-12">
             <div class="card shadow-sm h-100 border-0">
-                <div class="card-header d-flex justify-content-between align-items-center bg-white border-bottom-0 pt-3">
+                <div class="card-header d-flex justify-content-between align-items-center bg-white pt-3 pb-1 border-bottom-0">
                     <h5 class="m-0 fw-bold text-primary">${team.name}</h5>
-                    <button class="btn btn-link text-danger p-0" onclick="removeTeamFromState('${team.name}')"><i class="fas fa-trash-alt"></i></button>
+                    <span class="badge bg-light text-dark border" id="count-${team.name.replace(/\s+/g,'-')}">0</span>
                 </div>
                 <div class="card-body p-2">
                     ${zonesHtml}
                 </div>
-                <div class="card-footer bg-white border-top-0 pt-0 pb-3">
-                    <div class="d-flex justify-content-between align-items-center bg-light rounded p-2">
-                        <span class="small fw-bold text-muted">SCHÜTZEN</span>
-                        <span class="fw-bold" id="${counterId}">0</span>
-                    </div>
+                <!-- Löschen Button klein unten rechts -->
+                <div class="text-end p-2 pt-0">
+                     <small class="text-muted cursor-pointer" onclick="removeTeamFromState('${team.name}')" style="cursor:pointer;">Team löschen</small>
                 </div>
             </div>
         </div>
@@ -302,34 +269,31 @@ function renderTeamCard(team, config) {
 }
 
 function renderPlayerItem(player, teamName = null) {
-    let extraField = '';
-    
-    // Nur bei Grenzland & Mannschaft zeigen wir Punktefeld an
-    // Bei Gruppe ist 'pkt' eigentlich die Stellung (Liegend/Kniend), daher kein Input nötig
-    if (teamName && appState.activeModule !== 'gruppe') {
-        extraField = `<input type="number" class="form-control form-control-sm p-0 text-center fw-bold border-0 bg-transparent" 
-             style="width: 45px;" value="${player.pkt}" placeholder="Pkt" 
-             onclick="this.select()" 
-             onchange="updatePoints('${teamName}', '${player.id}', this.value)">`;
-    }
-
+    // KEINE PUNKTE INPUTS MEHR - Nur Name
     return `
-        <div class="card mb-2 draggable-player border-0 shadow-sm" 
+        <div class="card mb-1 draggable-player border-0 shadow-sm" 
              draggable="true" 
              data-id="${player.id}" 
-             style="cursor:grab; border-left: 4px solid var(--primary) !important;">
-            <div class="card-body p-2 d-flex align-items-center justify-content-between">
-                <div class="text-truncate" style="max-width: ${extraField ? '75%' : '100%'};">
-                    <span class="fw-bold small player-name">${player.name}</span>
-                </div>
-                ${extraField}
+             style="cursor:grab; border-left: 3px solid var(--primary) !important;">
+            <div class="card-body p-1 px-2 d-flex align-items-center">
+                <div class="text-truncate small fw-bold" style="width:100%">${player.name}</div>
             </div>
         </div>
     `;
 }
 
-// === DRAG & DROP LOGIK ===
+function renderMailItem(player) {
+    return `
+        <div class="card mb-1 border-0 shadow-sm bg-white">
+            <div class="card-body p-1 px-2 d-flex justify-content-between align-items-center">
+                <div class="text-truncate small" style="max-width:80%">${player.name}</div>
+                <i class="fas fa-times text-danger" style="cursor:pointer;" onclick="removeFromMail('${player.id}')"></i>
+            </div>
+        </div>
+    `;
+}
 
+// === DRAG & DROP ===
 let draggedItem = null;
 
 function initDragAndDrop() {
@@ -342,110 +306,160 @@ function initDragAndDrop() {
     });
 
     dropzones.forEach(zone => {
-        zone.addEventListener('dragover', e => {
-            e.preventDefault();
-            zone.classList.add('bg-primary-subtle');
-        });
+        zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('bg-secondary-subtle'); });
+        zone.addEventListener('dragleave', () => { zone.classList.remove('bg-secondary-subtle'); });
         
-        zone.addEventListener('dragleave', () => {
-            zone.classList.remove('bg-primary-subtle');
-        });
-
         zone.addEventListener('drop', e => {
             e.preventDefault();
-            zone.classList.remove('bg-primary-subtle');
-            
+            zone.classList.remove('bg-secondary-subtle');
             if (!draggedItem) return;
 
+            const targetType = zone.dataset.targetType;
             const playerId = draggedItem.dataset.id;
-            const targetTeam = zone.dataset.team; 
-            const targetZoneKey = zone.dataset.zone;
-            const targetType = zone.dataset.targetType; // "pool"
 
-            // LIMIT PRÜFUNG
-            if (targetType !== "pool") {
-                const limit = parseInt(zone.dataset.limit);
-                const team = appState.teams.find(t => t.name === targetTeam);
-                
-                // Zähle Schützen in dieser Zone (ohne mich selbst)
-                const currentCount = team.shooters.filter(s => s.zone === targetZoneKey && String(s.id) !== String(playerId)).length;
-                
-                if (currentCount >= limit) {
-                    alert(`⚠️ Zone ist voll! Maximal ${limit} Schützen erlaubt.`);
-                    return; 
-                }
+            // MAIL LOGIK (KOPIE)
+            if (targetType === "mail") {
+                copyToMail(playerId);
+                return;
             }
 
-            movePlayerInState(playerId, targetTeam, targetZoneKey);
+            // TEAM/POOL LOGIK (VERSCHIEBEN)
+            // Limit Check
+            if (targetType !== "pool") {
+                const limit = parseInt(zone.dataset.limit);
+                const team = appState.teams.find(t => t.name === zone.dataset.team);
+                const current = team.shooters.filter(s => s.zone === zone.dataset.zone && s.id !== playerId).length;
+                if (current >= limit) { alert("Zone voll!"); return; }
+            }
+
+            movePlayerInState(playerId, zone.dataset.team, zone.dataset.zone);
             renderContestUI();
         });
     });
 }
 
-function movePlayerInState(playerId, targetTeamName, targetZoneKey) {
-    let player = null;
+function movePlayerInState(id, targetTeam, targetZone) {
     appState.isDirty = true;
-
-    // 1. Suchen & Entfernen
-    const poolIdx = appState.pool.findIndex(p => String(p.id) === String(playerId));
-    if (poolIdx > -1) {
-        player = appState.pool.splice(poolIdx, 1)[0];
-    } else {
-        for (const team of appState.teams) {
-            const sIdx = team.shooters.findIndex(s => String(s.id) === String(playerId));
-            if (sIdx > -1) {
-                player = team.shooters.splice(sIdx, 1)[0];
-                break;
-            }
+    let player = null;
+    
+    // Finden & Entfernen
+    const poolIdx = appState.pool.findIndex(p => p.id === id);
+    if (poolIdx > -1) player = appState.pool.splice(poolIdx, 1)[0];
+    else {
+        for(let t of appState.teams) {
+            const idx = t.shooters.findIndex(s => s.id === id);
+            if(idx > -1) { player = t.shooters.splice(idx, 1)[0]; break; }
         }
     }
 
-    if (!player) return;
+    if(!player) return;
 
-    // 2. Einfügen
-    if (!targetTeamName) {
-        // Pool
-        player.pkt = ""; 
-        player.zone = null;
+    if (!targetTeam) { // Pool
         appState.pool.push(player);
-    } else {
-        // Team
-        const team = appState.teams.find(t => t.name === targetTeamName);
-        if (team) {
-            player.zone = targetZoneKey; 
-            team.shooters.push(player);
+    } else { // Team
+        const team = appState.teams.find(t => t.name === targetTeam);
+        player.zone = targetZone;
+        team.shooters.push(player);
+    }
+}
+
+// === MAIL FUNKTIONEN ===
+function copyToMail(id) {
+    // Schütze suchen (egal wo er ist)
+    let player = appState.pool.find(p => p.id === id);
+    if (!player) {
+        for(let t of appState.teams) {
+            player = t.shooters.find(s => s.id === id);
+            if(player) break;
         }
     }
-}
-
-function updatePoints(teamName, playerId, val) {
-    const team = appState.teams.find(t => t.name === teamName);
-    if(team) {
-        const p = team.shooters.find(s => String(s.id) === String(playerId));
-        if(p) p.pkt = val;
-        appState.isDirty = true;
+    
+    // Schon in Mail-Liste?
+    if (appState.mailList.find(m => m.id === id)) return;
+    
+    // Kopie hinzufügen
+    if (player) {
+        appState.mailList.push({ ...player }); // Kopie
+        renderContestUI();
     }
 }
 
-function updateAllCounts() {
+function removeFromMail(id) {
+    appState.mailList = appState.mailList.filter(m => m.id !== id);
+    renderContestUI();
+}
+
+function sendMail() {
+    const emails = appState.mailList.map(m => m.email).filter(e => e && e.includes('@'));
+    if (emails.length === 0) { alert("Keine gültigen Email-Adressen gefunden!"); return; }
+    
+    const subject = `${CONTEST_CONFIG[appState.activeModule].title} - Aufgebot`;
+    const body = "Hallo zusammen,\n\nhier ist das Aufgebot...";
+    
+    // Mail Client öffnen (BCC empfohlen)
+    window.location.href = `mailto:?bcc=${emails.join(',')}&subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+}
+
+// === PDF / PRINT ===
+function printContest() {
+    const config = CONTEST_CONFIG[appState.activeModule];
+    
+    // HTML Tabelle generieren
+    let html = `
+    <html><head><title>Druckansicht</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; }
+        h1 { color: #0f3a5d; border-bottom: 2px solid #ccc; padding-bottom: 10px; }
+        .team-box { break-inside: avoid; border: 1px solid #ddd; margin-bottom: 20px; padding: 10px; border-radius: 5px; }
+        .team-header { font-weight: bold; font-size: 1.2em; margin-bottom: 10px; color: #333; }
+        .zone-label { font-size: 0.8em; text-transform: uppercase; color: #666; border-bottom: 1px solid #eee; margin-top: 5px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 5px; }
+        td { padding: 4px; border-bottom: 1px solid #eee; }
+        @media print { .no-print { display: none; } }
+    </style>
+    </head><body>
+    <h1>${config.title} - Teams</h1>
+    `;
+
     appState.teams.forEach(team => {
-        const count = team.shooters.length;
-        const el = document.getElementById(`count-${team.name.replace(/\s+/g,'-')}`);
-        if(el) el.innerText = count;
+        html += `<div class="team-box"><div class="team-header">${team.name}</div>`;
+        
+        config.zones.forEach(zone => {
+            const shooters = team.shooters.filter(s => s.zone === zone.key);
+            if(shooters.length > 0) {
+                if(config.zones.length > 1) html += `<div class="zone-label">${zone.label}</div>`;
+                html += `<table>`;
+                shooters.forEach(s => {
+                    html += `<tr><td>${s.name}</td></tr>`;
+                });
+                html += `</table>`;
+            }
+        });
+        html += `</div>`;
     });
+
+    html += `<script>window.print();</script></body></html>`;
+
+    const win = window.open('', '_blank');
+    win.document.write(html);
+    win.document.close();
 }
 
-function filterPool(text) {
-    const val = text.toLowerCase();
+// === UTILS ===
+function updateAllCounts() {
+    appState.teams.forEach(t => {
+        const el = document.getElementById(`count-${t.name.replace(/\s+/g,'-')}`);
+        if(el) el.innerText = t.shooters.length;
+    });
+}
+function filterPool(val) {
+    val = val.toLowerCase();
     document.querySelectorAll('.dropzone[data-target-type="pool"] .draggable-player').forEach(el => {
-        const name = el.querySelector('.player-name').innerText.toLowerCase();
-        el.parentElement.style.display = name.includes(val) ? 'block' : 'none'; 
+        el.parentElement.style.display = el.innerText.toLowerCase().includes(val) ? 'block' : 'none';
     });
 }
 
-
-// === SPEICHERN ===
-
+// === SAVE ===
 async function saveContest() {
     const btn = document.querySelector('button[onclick="saveContest()"]');
     const originalText = btn.innerText;
@@ -457,46 +471,26 @@ async function saveContest() {
     appState.teams.forEach(team => {
         team.shooters.forEach(p => {
             let item = {
-                // Sende "Nachname Vorname" als ID für Spalte A
-                id: `${p.nachname} ${p.vorname}`, 
+                id: p.name, // Name an Backend
                 r1_team: team.name, 
+                r1_pkt: "" // Default leer
             };
-
             if (appState.activeModule === "gruppe") {
-                // Gruppe: Sende "Liegend" oder "Kniend" statt Punkte
                 item.r1_pkt = p.zone === "liegend" ? "Liegend" : "Kniend";
-            } else {
-                // Normal: Sende Punkte
-                item.r1_pkt = p.pkt;
             }
-
             exportData.push(item);
         });
     });
 
     try {
-        // WICHTIG: Modulname anpassen falls Worker geändert wurde
         await apiFetch('grenzland', 'action=saveGrenzlandData', {
             method: 'POST',
-            body: JSON.stringify({
-                data: exportData,
-                sheetName: config.sheetName
-            })
+            body: JSON.stringify({ data: exportData, sheetName: config.sheetName })
         });
-        
         appState.isDirty = false;
-        btn.classList.remove('btn-success');
-        btn.classList.add('btn-primary');
-        btn.innerText = "✅ Gespeichert";
-        setTimeout(() => {
-            btn.classList.add('btn-success');
-            btn.classList.remove('btn-primary');
-            btn.innerText = originalText;
-            btn.disabled = false;
-        }, 2000);
-
+        btn.innerText = "✅ OK";
+        setTimeout(() => { btn.innerText = originalText; btn.disabled = false; }, 1500);
     } catch(e) { 
-        alert("Fehler beim Speichern: " + e); 
-        btn.disabled = false; btn.innerText = originalText;
+        alert("Fehler: " + e); btn.disabled = false; 
     }
 }
