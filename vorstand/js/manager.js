@@ -368,7 +368,7 @@ function renderContestUI() {
             <div class="card shadow-sm border-warning sidebar-card">
                 <div class="card-header bg-warning text-dark py-2 d-flex justify-content-between align-items-center">
                     <span><i class="fas fa-envelope"></i> Mail Versand</span>
-                    <button class="btn btn-sm btn-dark py-0" onclick="sendMail()" style="font-size:0.8rem;">Erstellen</button>
+                    <button class="btn btn-sm btn-dark py-0" onclick="sendMailWithPdfVisible()" style="font-size:0.8rem;">Erstellen</button>
                 </div>
                 <div class="card-body dropzone bg-light overflow-auto mail-body" data-target-type="mail">
                     ${appState.mailList.length === 0 ? '<div class="text-center text-muted small mt-3">Schützen hierher ziehen<br>(Kopie)</div>' : ''}
@@ -750,11 +750,19 @@ function filterPool(val) {
 }
 
 function sendMail() {
-    const config = CONTEST_CONFIG[appState.activeModule];
-    const mails = appState.mailList.map(m => m.email).filter(e => e && e.includes('@'));
-    if (!mails.length) return alert("Keine gültigen E-Mails gefunden!");
+  const config = CONTEST_CONFIG[appState.activeModule];
 
-    window.location.href = `mailto:?bcc=${encodeURIComponent(mails.join(','))}&subject=${encodeURIComponent("Aufgebot " + config.title)}`;
+  const mails = appState.mailList
+    .map(m => (m.email || "").trim())
+    .filter(e => e.includes("@"));
+
+  if (!mails.length) return alert("Keine gültigen E-Mails gefunden!");
+
+  const bcc = mails.join(","); // nicht encoden, damit Clients es sauber übernehmen
+  const subject = encodeURIComponent("Aufgebot " + config.title);
+    console.log("BCC:", bcc);
+
+  window.location.href = `mailto:?bcc=${bcc}&subject=${subject}`;
 }
 
 
@@ -821,10 +829,9 @@ async function saveContest() {
 // =========================================================
 //  PDF EXPORT (aus Standalone übernommen)
 // =========================================================
-async function exportPDF() {
+function buildPdfDoc() {
     if (!window.jspdf || !window.jspdf.jsPDF) {
-        alert("jsPDF nicht geladen. Bitte index.html prüfen (CDN Scripts).");
-        return;
+        throw new Error("jsPDF nicht geladen. Bitte index.html prüfen (CDN Scripts).");
     }
 
     const { jsPDF } = window.jspdf;
@@ -835,26 +842,36 @@ async function exportPDF() {
     const margin = 15;
     let yPos = 20;
 
+    // Titel
     doc.setFontSize(18);
     doc.setTextColor(13, 110, 253);
     doc.text(config.title, margin, yPos);
 
+    // Datum
     yPos += 10;
     doc.setFontSize(10);
     doc.setTextColor(100);
-    const dateStr = new Date().toLocaleDateString('de-CH', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    const dateStr = new Date().toLocaleDateString('de-CH', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+    });
     doc.text(`Generiert am: ${dateStr}`, margin, yPos);
 
     yPos += 15;
 
+    // Teams
     appState.teams.forEach((team) => {
-        if (yPos > 250) {
+
+        if (yPos > 270) {
             doc.addPage();
             yPos = 20;
         }
 
+        // Team Header
         doc.setFillColor(240, 242, 245);
         doc.rect(margin, yPos, pageWidth - (margin * 2), 8, 'F');
+
         doc.setFontSize(12);
         doc.setTextColor(0);
         doc.setFont("helvetica", "bold");
@@ -864,17 +881,27 @@ async function exportPDF() {
         doc.setFont("helvetica", "normal");
         doc.setFontSize(11);
 
-        if (team.shooters.length === 0) {
+        // Keine Schützen
+        if (!team.shooters || team.shooters.length === 0) {
             doc.setTextColor(150);
             doc.text("- Keine Schützen -", margin + 5, yPos);
             yPos += 8;
         } else {
-            const sorted = [...team.shooters].sort((a, b) => (a.zone || "").localeCompare(b.zone || ""));
 
-            sorted.forEach(s => {
-                const zoneLabel = (appState.activeModule === "gruppe")
-                    ? (s.zone ? `(${s.zone.charAt(0).toUpperCase() + s.zone.slice(1)})` : "")
-                    : "";
+            const sorted = [...team.shooters]
+                .sort((a, b) => (a.zone || "").localeCompare(b.zone || ""));
+
+            sorted.forEach((s) => {
+
+                if (yPos > 280) {
+                    doc.addPage();
+                    yPos = 20;
+                }
+
+                const zoneLabel =
+                    (appState.activeModule === "gruppe" && s.zone)
+                        ? `(${s.zone.charAt(0).toUpperCase() + s.zone.slice(1)})`
+                        : "";
 
                 doc.setTextColor(0);
                 doc.text(`• ${s.name}`, margin + 5, yPos);
@@ -893,7 +920,56 @@ async function exportPDF() {
         yPos += 5;
     });
 
-    doc.save(`${config.title.replace(/[^a-z0-9]/gi, '_')}_${dateStr}.pdf`);
+    return {
+        doc,
+        dateStr,
+        title: config.title
+    };
+}
+
+
+async function exportPDF() {
+    try {
+        const { doc, dateStr, title } = buildPdfDoc();
+
+        const safeFileName = title.replace(/[^a-z0-9]/gi, '_');
+
+        doc.save(`${safeFileName}_${dateStr}.pdf`);
+
+    } catch (error) {
+        alert(error.message);
+        console.error(error);
+    }
+}
+async function sendMailWithPdfVisible() {
+  if (!window.jspdf?.jsPDF) return alert("jsPDF nicht geladen.");
+
+  const config = CONTEST_CONFIG[appState.activeModule];
+  const mails = appState.mailList
+    .map(m => (m.email || "").trim())
+    .filter(e => e.includes("@"));
+
+  if (!mails.length) return alert("Keine gültigen E-Mails gefunden!");
+
+  const { doc, dateStr, title } = buildPdfDoc();
+  const blob = doc.output("blob");
+  const fileName = `${title.replace(/[^a-z0-9]/gi, '_')}_${dateStr}.pdf`;
+  const file = new File([blob], fileName, { type: "application/pdf" });
+
+  // Preferred: Share Sheet (mit Anhang)
+  const shareData = { files: [file], title: "Aufgebot", text: `Aufgebot ${config.title}` };
+
+  if (navigator.canShare && navigator.canShare(shareData)) {
+    await navigator.share(shareData);
+    return;
+  }
+
+  // Fallback: mailto ohne Anhang (Attachment geht dort nicht)
+  const subject = encodeURIComponent("Aufgebot " + config.title);
+  const cc = mails.join(","); // sichtbar für alle (CC)
+  alert("Dein Browser unterstützt kein Datei-Teilen. PDF wird heruntergeladen; bitte manuell anhängen.");
+  doc.save(fileName);
+  window.location.href = `mailto:?cc=${cc}&subject=${subject}`;
 }
 
 
