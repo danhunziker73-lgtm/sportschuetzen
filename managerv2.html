@@ -386,16 +386,17 @@
                - Sidebar links (auf md+), Teams rechts
                - Auf Mobile kommt Sidebar zuerst (oben), Teams darunter
             */
-            container.innerHTML = `
-                <div class="col-lg-4 col-md-5 order-1">
-                    ${sidebarHtml}
-                </div>
-                <div class="col-lg-8 col-md-7 order-2">
-                    <div class="row g-3" id="teams-area">
-                        ${teamsHtml}
-                    </div>
-                </div>
-            `;
+          container.innerHTML = `
+  <div class="col-5 col-md-5 col-lg-4 order-1 mobile-sticky">
+    ${sidebarHtml}
+  </div>
+  <div class="col-7 col-md-7 col-lg-8 order-2">
+    <div class="row g-3" id="teams-area">
+      ${teamsHtml}
+    </div>
+  </div>
+`;
+
         }
 
         function renderTeamCard(team, config) {
