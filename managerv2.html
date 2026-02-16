@@ -28,6 +28,17 @@
             --pool-max: 420px;
         }
 
+        :root { --toolbar-h: 76px; } /* Fallback */
+
+@media (max-width: 576px) {
+  .mobile-sticky{
+    position: sticky;
+    top: calc(var(--toolbar-h) + .5rem);
+    align-self: flex-start;
+  }
+}
+
+        
         body {
             background-color: #f0f2f5;
             font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
