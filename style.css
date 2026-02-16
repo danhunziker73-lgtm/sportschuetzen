@@ -72,6 +72,20 @@ header h1 { margin: 0; font-size: 1.2rem; font-weight: 700; }
 .active-page { display: block; }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
+.page iframe {
+    width: 100%;
+    height: calc(
+        100vh 
+        - 60px 
+        - 75px 
+        - env(safe-area-inset-top) 
+        - env(safe-area-inset-bottom)
+    );
+    border: none;
+    display: block;
+}
+
+
 /* --- TERMINE LISTE --- */
 .termine-list { display: flex; flex-direction: column; gap: 10px; }
 
