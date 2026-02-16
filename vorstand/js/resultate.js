@@ -91,16 +91,27 @@ function ensureResultateShell() {
         <div class="card-body">
           <div id="resultate-wrap"></div>
 
-          <div class="mt-3 p-2 border rounded bg-light">
-            <div class="fw-bold mb-2">Schütze hinzufügen (nur aus Mitglieder)</div>
-            <div class="d-flex gap-2 flex-wrap align-items-center">
-              <select id="new-member-select" class="form-select form-select-sm" style="max-width: 420px;">
-                <option value="">— Mitglied wählen —</option>
-              </select>
-              <button class="btn btn-primary btn-sm" onclick="confirmAddSelectedMember()">Hinzufügen</button>
-              <div id="avail-count" class="small text-muted"></div>
-            </div>
-          </div>
+   <div class="mt-3 p-2 border rounded bg-light">
+  <div class="fw-bold mb-2">Schütze hinzufügen (nur aus Mitglieder)</div>
+  <div class="d-flex gap-2 flex-wrap align-items-center">
+    <select id="new-member-select" class="form-select form-select-sm" style="max-width: 360px;">
+      <option value="">— Mitglied wählen —</option>
+    </select>
+
+    <select id="new-start-round" class="form-select form-select-sm" style="max-width: 170px;">
+      <option value="r1">Start ab Runde 1</option>
+      <option value="r2">Start ab Runde 2</option>
+      <option value="r3">Start ab Runde 3</option>
+    </select>
+
+    <select id="new-start-team" class="form-select form-select-sm" style="max-width: 220px;">
+      <option value="">— Team wählen —</option>
+    </select>
+
+    <button class="btn btn-primary btn-sm" onclick="confirmAddSelectedMember()">Hinzufügen</button>
+    <div id="avail-count" class="small text-muted"></div>
+  </div>
+</div>
 
         </div>
       </div>
@@ -114,19 +125,36 @@ function injectStylesOnce() {
   s.id = "resultate-inline-style";
   s.textContent = `
     .round-head { border-left: 6px solid #0d6efd; }
-    .round-1 { border-left-color: #0d6efd; background: #eef5ff; }
-    .round-2 { border-left-color: #198754; background: #eefaf2; }
-    .round-3 { border-left-color: #fd7e14; background: #fff3e6; }
+  .round-1 .team-card { border-top: 4px solid #0d6efd; background: #fbfdff; }
+.round-2 .team-card { border-top: 4px solid #198754; background: #fbfffd; }
+.round-3 .team-card { border-top: 4px solid #fd7e14; background: #fffdf9; }
 
     .team-card { border: 1px solid rgba(0,0,0,.08); }
-    .team-card .card-header { font-weight: 700; }
+    .team-card .card-body {
+  overflow-x: hidden;
+}
     .team-badge { font-size: .75rem; }
-    .rowline { display: grid; grid-template-columns: 1fr 150px 90px; gap: .5rem; align-items: center; }
+    .rowline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem;
+  align-items: center;
+}
     @media (max-width: 576px) {
       .rowline { grid-template-columns: 1fr 1fr 80px; }
     }
-    .name-cell { min-width: 180px; }
-    .points-input { max-width: 90px; }
+    .name-cell {
+  flex: 1 1 220px;
+  min-width: 160px;
+}
+.rowline select {
+  flex: 0 1 170px;
+  min-width: 140px;
+}
+    .points-input {
+  flex: 0 0 90px;
+  max-width: 100%;
+}
   `;
   document.head.appendChild(s);
 }
@@ -145,6 +173,7 @@ function renderUI() {
 
 function renderMemberDropdown() {
   const sel = document.getElementById("new-member-select");
+  const teamSel = document.getElementById("new-start-team");
   const cnt = document.getElementById("avail-count");
   if (!sel) return;
 
@@ -158,8 +187,16 @@ function renderMemberDropdown() {
     return `<option value="${escapeHtml(m.id)}">${escapeHtml(label)}</option>`;
   }).join("");
 
+  if (teamSel) {
+    const teamsPlusPool = [...resultateState.teams, POOL_LABEL];
+    teamSel.innerHTML = `<option value="">— Team wählen —</option>` + teamsPlusPool.map(t =>
+      `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`
+    ).join("");
+  }
+
   if (cnt) cnt.innerText = `${available.length} verfügbar`;
 }
+
 
 function renderRounds() {
   const wrap = document.getElementById("resultate-wrap");
@@ -356,35 +393,65 @@ function roundLabel(roundKey) {
 
 function confirmAddSelectedMember() {
   const sel = document.getElementById("new-member-select");
+  const roundSel = document.getElementById("new-start-round");
+  const teamSel = document.getElementById("new-start-team");
+
   const memberId = sel ? String(sel.value || "") : "";
+  const startRound = roundSel ? String(roundSel.value || "r1") : "r1";
+  const startTeamUi = teamSel ? String(teamSel.value || "") : "";
+
   if (!memberId) return alert("Bitte zuerst ein Mitglied wählen.");
+  if (!startTeamUi) return alert("Bitte Start-Team wählen.");
 
   const member = resultateState.members.find(m => String(m.id) === memberId);
   if (!member) return alert("Mitglied nicht gefunden.");
 
   const name = `${member.nachname} ${member.vorname}`.trim();
-  const newRow = normalizeRow({
-    id: memberId,
-    name,
-    r1_team: "",
-    r1_p1: "",
-    r2_team: "",
-    r2_p1: "",
-    r3_team: "",
-    r3_p1: ""
-  });
+  const teamValue = (startTeamUi === POOL_LABEL) ? "" : startTeamUi;
 
-  // Vorschlag: erstes Team falls vorhanden, sonst leer (-> Pool im UI)
-  if (resultateState.teams.length) newRow.r1_team = resultateState.teams[0];
-  applyTeamInheritance(newRow, true);
+  const newRow = normalizeRow({ id: memberId, name });
+
+  // Alles vor Start-Runde = Pool (leer)
+  newRow.r1_team = "";
+  newRow.r2_team = "";
+  newRow.r3_team = "";
+
+  // Setze Start-Runde Team explizit
+  if (startRound === "r1") {
+    newRow.r1_team = teamValue;
+    newRow._autoR2 = true;
+    newRow._autoR3 = true;
+    applyTeamInheritance(newRow, true);
+  }
+
+  if (startRound === "r2") {
+    newRow.r2_team = teamValue;
+    newRow._autoR2 = false; // manuell gesetzt
+    newRow._autoR3 = true;  // r3 darf erben
+    if (!newRow.r3_team) newRow.r3_team = newRow.r2_team || "";
+  }
+
+  if (startRound === "r3") {
+    newRow.r3_team = teamValue;
+    newRow._autoR2 = false;
+    newRow._autoR3 = false;
+  }
+
+  // Limit-Check für die gewählte Runde/Team (Pool ausgenommen)
+  if (teamValue) {
+    const cnt = countTeamAssignments(startRound, teamValue, -1);
+    if (cnt >= TEAM_LIMIT) {
+      return alert(`Team "${teamValue}" hat in ${roundLabel(startRound)} bereits ${TEAM_LIMIT} Zuteilungen. Bitte Pool oder anderes Team wählen.`);
+    }
+  }
 
   resultateState.rows.push(newRow);
   resultateState.isDirty = true;
 
   renderUI();
-  // reset selection
   sel.value = "";
 }
+
 
 // ---------- Save / Push ----------
 
