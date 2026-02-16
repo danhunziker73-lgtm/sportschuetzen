@@ -1,3 +1,10 @@
+// =========================================================
+//  MODULE: MANAGER (Grenzland / Mannschaft / Gruppe)
+//  - UI/Drag&Drop/PDF: aus Standalone übernommen
+//  - Backend: Cloudflare Worker -> GAS (getManagerData / saveManagerData)
+//  - Primärschlüssel: NUMERISCHE Mitglieder-ID (zusätzliche ID-Spalte im Sheet)
+// =========================================================
+
 // === KONFIGURATION ===
 const CONTEST_CONFIG = {
     "grenzland": {
@@ -5,14 +12,14 @@ const CONTEST_CONFIG = {
         sheetName: "aktuell_Grenzland",
         baseTeamName: "Muhen",
         defaultTeams: 4,
-        zones: [ { key: "main", label: "Schützen", limit: 4 } ]
+        zones: [{ key: "main", label: "Schützen", limit: 4 }]
     },
     "mannschaft": {
         title: "👥 Mannschafts-Meisterschaft",
         sheetName: "aktuell_Mannschaft",
-        baseTeamName: "Muhen", 
+        baseTeamName: "Muhen",
         defaultTeams: 1,
-        zones: [ { key: "main", label: "Mannschaft (8)", limit: 8 } ]
+        zones: [{ key: "main", label: "Mannschaft (8)", limit: 8 }]
     },
     "gruppe": {
         title: "🎯 Gruppen-Meisterschaft (SGM)",
@@ -21,7 +28,7 @@ const CONTEST_CONFIG = {
         defaultTeams: 2,
         zones: [
             { key: "liegend", label: "Liegend (3)", limit: 3 },
-            { key: "kniend",  label: "Kniend (2)",  limit: 2 }
+            { key: "kniend", label: "Kniend (2)", limit: 2 }
         ]
     }
 };
@@ -29,218 +36,463 @@ const CONTEST_CONFIG = {
 // === STATE ===
 let appState = {
     activeModule: "grenzland",
-    members: [],
-    teams: [],
-    pool: [],
+    members: [], // [{id, vorname, nachname, email}]
+    teams: [],   // [{ name, shooters:[{id,name,email,zone}] }]
+    pool: [],    // [{id,name,email,zone:null}]
     mailList: [],
-    isDirty: false 
+    isDirty: false,
+    _dndInited: false
 };
 
-// === LOAD ===
+
+// =========================================================
+//  STYLES (aus Standalone; als <style> injizieren)
+// =========================================================
+(function injectManagerStylesOnce() {
+    if (document.getElementById('manager-inline-styles')) return;
+
+    const style = document.createElement('style');
+    style.id = 'manager-inline-styles';
+    style.textContent = `
+        :root {
+            --primary: #0d6efd;
+            --secondary: #6c757d;
+            --success: #198754;
+            --warning: #ffc107;
+            --danger: #dc3545;
+            --light: #f8f9fa;
+
+            --mail-max: 180px;
+            --pool-max: 420px;
+        }
+
+        :root { --toolbar-h: 76px; }
+
+        @media (max-width: 576px) {
+          .mobile-sticky{
+            position: sticky;
+            top: calc(var(--toolbar-h) + .5rem);
+            align-self: flex-start;
+          }
+        }
+
+        /* Drag & Drop Styles */
+        .draggable-player {
+            cursor: grab;
+            user-select: none;
+            touch-action: none;
+            transition: transform 0.1s, box-shadow 0.1s;
+        }
+        .draggable-player:active { cursor: grabbing; }
+
+        .dropzone {
+            transition: background-color 0.2s, border-color 0.2s;
+        }
+        .dropzone.drag-over {
+            background-color: rgba(25, 135, 84, 0.1) !important;
+            border: 2px dashed var(--success) !important;
+        }
+        .zone-full {
+            background-color: #f8f9fa !important;
+            border: 1px solid #dee2e6 !important;
+        }
+
+        .ghost-slot {
+            border: 2px dashed #cbd5e1 !important;
+            background: rgba(255,255,255,0.5);
+            pointer-events: none;
+        }
+
+        .drag-clone {
+            position: fixed;
+            pointer-events: none;
+            z-index: 9999;
+            background: white;
+            padding: 8px 12px;
+            border-radius: 4px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            border-left: 4px solid var(--primary);
+            opacity: 0.9;
+            width: 200px;
+        }
+
+        .sidebar-stack { display: flex; flex-direction: column; gap: .75rem; }
+        .sidebar-card .card-header { padding: .45rem .65rem; }
+        .sidebar-card .card-body { padding: .5rem; }
+
+        .mail-body {
+            max-height: var(--mail-max);
+            overflow: auto;
+            border: 2px dashed #ccc;
+        }
+        .pool-body {
+            max-height: var(--pool-max);
+            overflow: auto;
+        }
+
+        @media print {
+            .no-print { display: none !important; }
+            .card { break-inside: avoid; border: 1px solid #ccc !important; box-shadow: none !important; }
+            body { background: white; }
+        }
+
+        @media (max-width: 576px) {
+            :root {
+                --mail-max: 22vh;
+                --pool-max: 34vh;
+            }
+
+            .container-fluid.py-3 { padding-top: .5rem !important; padding-bottom: .5rem !important; }
+            .sticky-top.no-print { padding: .6rem !important; }
+            .sidebar-card .card-header { padding: .4rem .55rem; }
+            .sidebar-card .card-body { padding: .45rem; }
+            .drag-clone { width: 170px; }
+        }
+    `;
+    document.head.appendChild(style);
+})();
+
+
+// =========================================================
+//  ENTRY: called from main.js navTo('manager')
+// =========================================================
 async function loadContestData(moduleKey) {
+    // Wenn manager view noch nicht sichtbar ist, trotzdem container vorbereiten
+    ensureManagerShell();
+
     if (appState.isDirty && !confirm("Ungespeicherte Änderungen verwerfen?")) {
-        document.getElementById('module-selector').value = appState.activeModule;
+        // Selector wieder auf alten Wert zurück
+        const sel = document.getElementById('module-selector');
+        if (sel) sel.value = appState.activeModule;
         return;
     }
 
-    if (!moduleKey) moduleKey = appState.activeModule;
-    appState.activeModule = moduleKey;
+    appState.activeModule = moduleKey || appState.activeModule;
     appState.isDirty = false;
-    appState.mailList = []; 
+    appState.mailList = [];
 
-    const config = CONTEST_CONFIG[moduleKey];
-    const container = document.getElementById('manager-container');
-    if (!container) return;
-    
-    container.innerHTML = `<div class="text-center p-5"><div class="spinner-border text-primary"></div><p>Lade ${config.title}...</p></div>`;
+    const config = CONTEST_CONFIG[appState.activeModule];
+
+    renderLoadingState();
 
     try {
-        const params = `action=getManagerData&sheetName=${config.sheetName}`;
-        const res = await apiFetch('grenzland', params); 
-        const data = await res.json();
-        
+        const params = `action=getManagerData&sheetName=${encodeURIComponent(config.sheetName)}`;
+        const res = await apiFetch('manager', params);
+
+        // Falls GAS mal HTML zurückliefert (Fehlerseite), knallt res.json(); daher text->tryParse
+        const txt = await res.text();
+        let data;
+        try { data = JSON.parse(txt); }
+        catch (e) { throw new Error("Backend-Antwort ist kein JSON (prüfe GAS Fehlerseite)"); }
+
+        if (data.error) throw new Error(data.error);
+
         processContestData(data, config);
         renderContestUI();
-        
+
+        // DnD einmalig initialisieren (global events)
+        if (!appState._dndInited) {
+            initDragAndDrop();
+            appState._dndInited = true;
+        }
+
+        // Selector-Value setzen (falls loadContestData() ohne param)
+        const sel = document.getElementById('module-selector');
+        if (sel) sel.value = appState.activeModule;
+
     } catch (e) {
-        container.innerHTML = `<div class="alert alert-danger">Fehler: ${e.message}</div>`;
+        const c = document.getElementById('manager-container');
+        if (c) c.innerHTML = `<div class="col-12"><div class="alert alert-danger">Fehler: ${escapeHtml(e.message)}</div></div>`;
     }
 }
 
-// === PROCESS ===
+
+// =========================================================
+//  UI Shell (Toolbar + Container) in Portal-View #view-manager
+// =========================================================
+function ensureManagerShell() {
+    const host = document.getElementById('manager-container');
+    if (!host) return;
+
+    // Nur einmal einhängen
+    if (document.getElementById('manager-app')) return;
+
+    host.innerHTML = `
+      <div class="container-fluid py-3" id="manager-app">
+        <!-- HEADER / TOOLBAR -->
+        <div class="d-flex justify-content-between align-items-center mb-3 sticky-top bg-white p-3 shadow-sm rounded no-print" style="z-index:1000;">
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+                <select id="module-selector" class="form-select fw-bold border-primary text-primary" style="width:auto; min-width:160px;">
+                    <option value="grenzland">🛡️ Grenzland</option>
+                    <option value="mannschaft">👥 Mannschaft</option>
+                    <option value="gruppe">🎯 Gruppe (SGM)</option>
+                </select>
+                <button class="btn btn-outline-secondary btn-sm" onclick="addTeamToState()" title="Neues Team">
+                    <i class="fas fa-plus"></i> <span class="d-none d-sm-inline">Team</span>
+                </button>
+            </div>
+
+            <div class="d-flex gap-2">
+                <button class="btn btn-outline-dark btn-sm" onclick="exportPDF()" title="PDF Export">
+                    <i class="fas fa-file-pdf text-danger"></i> <span class="d-none d-sm-inline">PDF</span>
+                </button>
+                <button id="btn-save-manager" class="btn btn-success btn-sm fw-bold" onclick="saveContest()">
+                    <i class="fas fa-save"></i> <span class="d-none d-sm-inline">Speichern</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- MAIN CONTENT -->
+        <div id="manager-inner" class="row g-3 h-100">
+            <div class="col-12 text-center p-5">
+                <div class="spinner-border text-primary"></div>
+                <p class="mt-2 text-muted">Lade Anwendung...</p>
+            </div>
+        </div>
+      </div>
+    `;
+
+    // Selector Listener (einmalig)
+    const selector = document.getElementById('module-selector');
+    selector.addEventListener('change', (e) => loadContestData(e.target.value));
+}
+
+function renderLoadingState() {
+    const config = CONTEST_CONFIG[appState.activeModule];
+    const inner = document.getElementById('manager-inner');
+    if (!inner) return;
+    inner.innerHTML = `<div class="col-12 text-center p-5"><div class="spinner-border text-primary"></div><p>Lade ${escapeHtml(config.title)}...</p></div>`;
+}
+
+
+// =========================================================
+//  DATA PROCESSING
+//  Backend liefert:
+//   - members: [{id,vorname,nachname,email}]
+//   - contestData: objects mit id (numerisch) + runde_1_team + stellung
+// =========================================================
 function processContestData(data, config) {
-    appState.members = data.members || [];
-    appState.teams = []; 
+    appState.members = (data.members || []).map(m => ({
+        id: String(m.id),
+        vorname: m.vorname || "",
+        nachname: m.nachname || "",
+        email: m.email || ""
+    }));
+
+    // index für schnellen Zugriff
+    const memberById = new Map(appState.members.map(m => [String(m.id), m]));
+
+    appState.teams = [];
     appState.pool = [];
 
     const assignedIds = new Set();
-    const sheetData = data.contestData || []; 
 
+    // Teams aus contestData (wenn vorhanden)
+    const sheetData = data.contestData || [];
     const tempTeams = {};
 
     sheetData.forEach(row => {
-        const rowIdStr = String(row.schuetze_id || "").trim();
-        if(!rowIdStr) return;
+        const rowId = row.id != null ? String(row.id).trim() : "";
+        if (!rowId) return;
 
-        let member = appState.members.find(m => String(m.id) === rowIdStr || `${m.nachname} ${m.vorname}` === rowIdStr);
-        if (!member) member = { id: rowIdStr, nachname: rowIdStr, vorname: "", email: "", dummy: true };
+        const member = memberById.get(rowId);
+        const displayName = member ? `${member.nachname} ${member.vorname}`.trim() : `ID ${rowId}`;
+        const email = member ? (member.email || "") : "";
 
-        const teamName = row.runde_1_team || "Pool";
-        
+        // Teamname: in unseren Sheets ist runde_1_team die Team-Spalte
+        // Für Gruppe ist das Team (Muhen X) in runde_1_team, Stellung in stellung
+        const teamName = String(row.runde_1_team || "").trim() || "Pool";
+
+        // Zone:
+        // - Grenzland/Mannschaft: nur eine Zone "main"
+        // - Gruppe: zone = "liegend" oder "kniend" basierend auf stellung
         let zoneKey = config.zones[0].key;
+
         if (config.zones.length > 1) {
-            const stellung = String(row.stellung || "").toLowerCase(); // Backend liefert 'stellung' bei Gruppe
+            const stellung = String(row.stellung || "").toLowerCase();
             if (stellung.includes("kniend")) zoneKey = "kniend";
             else zoneKey = "liegend";
         }
 
         if (teamName !== "Pool" && teamName) {
             if (!tempTeams[teamName]) tempTeams[teamName] = { name: teamName, shooters: [] };
-            
+
             tempTeams[teamName].shooters.push({
-                id: member.id,
-                name: member.dummy ? member.id : `${member.nachname} ${member.vorname}`,
-                email: member.email,
+                id: rowId,
+                name: displayName,
+                email: email,
                 zone: zoneKey
             });
-            if (!member.dummy) assignedIds.add(String(member.id));
+
+            assignedIds.add(rowId);
         }
     });
 
     if (Object.keys(tempTeams).length > 0) {
-        appState.teams = Object.values(tempTeams).sort((a,b) => a.name.localeCompare(b.name, undefined, {numeric: true}));
+        appState.teams = Object.values(tempTeams).sort((a, b) =>
+            a.name.localeCompare(b.name, undefined, { numeric: true })
+        );
     } else {
-        for(let i=1; i <= config.defaultTeams; i++) addTeamToState(false);
+        for (let i = 1; i <= config.defaultTeams; i++) addTeamToState(true);
     }
 
+    // Rest in Pool
     appState.members.forEach(m => {
-        if (!assignedIds.has(String(m.id))) {
+        const id = String(m.id);
+        if (!assignedIds.has(id)) {
             appState.pool.push({
-                id: m.id,
-                name: `${m.nachname} ${m.vorname}`,
-                email: m.email,
+                id: id,
+                name: `${m.nachname} ${m.vorname}`.trim(),
+                email: m.email || "",
                 zone: null
             });
         }
     });
 }
 
-// === RENDER UI ===
+
+// =========================================================
+//  RENDER UI (Layout aus Standalone übernommen)
+// =========================================================
 function renderContestUI() {
     const config = CONTEST_CONFIG[appState.activeModule];
-    const container = document.getElementById('manager-container');
-    
-    container.innerHTML = `
-        <div class="d-flex justify-content-between align-items-center mb-3 sticky-top bg-white py-2 border-bottom" style="z-index:100;">
-            <div class="d-flex align-items-center gap-2">
-                <select id="module-selector" class="form-select fw-bold border-primary text-primary" onchange="loadContestData(this.value)">
-                    <option value="grenzland" ${appState.activeModule==='grenzland'?'selected':''}>🛡️ Grenzland</option>
-                    <option value="mannschaft" ${appState.activeModule==='mannschaft'?'selected':''}>👥 Mannschaft</option>
-                    <option value="gruppe" ${appState.activeModule==='gruppe'?'selected':''}>🎯 Gruppe (SGM)</option>
-                </select>
-                <button class="btn btn-outline-secondary btn-sm" onclick="addTeamToState()"><i class="fas fa-plus"></i></button>
-            </div>
-            <div class="d-flex gap-2">
-                <button class="btn btn-outline-dark" onclick="printContest()"><i class="fas fa-print"></i></button>
-                <button class="btn btn-success fw-bold" onclick="saveContest()">💾 Speichern</button>
-            </div>
-        </div>
-        
-        <div class="row h-100 g-3">
-            <!-- Teams -->
-            <div class="col-lg-8 col-md-7">
-                <div class="row g-3">
-                    ${appState.teams.map(team => renderTeamCard(team, config)).join('')}
+    const container = document.getElementById('manager-inner');
+    if (!container) return;
+
+    const teamsHtml = appState.teams.map(team => renderTeamCard(team, config)).join('');
+
+    const sidebarHtml = `
+        <div class="sidebar-stack h-100">
+
+            <!-- MAIL -->
+            <div class="card shadow-sm border-warning sidebar-card">
+                <div class="card-header bg-warning text-dark py-2 d-flex justify-content-between align-items-center">
+                    <span><i class="fas fa-envelope"></i> Mail Versand</span>
+                    <button class="btn btn-sm btn-dark py-0" onclick="sendMail()" style="font-size:0.8rem;">Erstellen</button>
+                </div>
+                <div class="card-body dropzone bg-light overflow-auto mail-body" data-target-type="mail">
+                    ${appState.mailList.length === 0 ? '<div class="text-center text-muted small mt-3">Schützen hierher ziehen<br>(Kopie)</div>' : ''}
+                    ${appState.mailList.map(s => renderMailItem(s)).join('')}
+                </div>
+                <div class="card-footer small text-muted text-center py-1">
+                    ${appState.mailList.length} Empfänger
                 </div>
             </div>
 
-            <!-- Sidebar -->
-            <div class="col-lg-4 col-md-5 d-flex flex-column gap-3">
-                
-                <!-- Pool -->
-                <div class="card shadow-sm border-secondary flex-grow-1" style="max-height: 50vh; display:flex; flex-direction:column;">
-                    <div class="card-header bg-secondary text-white py-2">
-                        <i class="fas fa-users"></i> Schützen-Pool
-                        <input type="text" class="form-control form-control-sm mt-1" placeholder="Filter..." onkeyup="filterPool(this.value)">
-                    </div>
-                    <div class="card-body p-2 dropzone bg-light overflow-auto" data-target-type="pool" style="flex:1; min-height:100px;">
-                        ${appState.pool.map(s => renderPlayerItem(s)).join('')}
-                    </div>
-                    <div class="card-footer small text-muted text-center py-1">
-                        ${appState.pool.length} verfügbar
-                    </div>
+            <!-- POOL -->
+            <div class="card shadow-sm border-secondary sidebar-card">
+                <div class="card-header bg-secondary text-white py-2">
+                    <i class="fas fa-users"></i> Schützen-Pool
+                    <input type="text" class="form-control form-control-sm mt-1" placeholder="Suchen..." onkeyup="filterPool(this.value)">
                 </div>
-
-                <!-- Mail -->
-                <div class="card shadow-sm border-warning" style="height: 30vh; display:flex; flex-direction:column;">
-                    <div class="card-header bg-warning text-dark py-2 d-flex justify-content-between align-items-center">
-                        <span><i class="fas fa-envelope"></i> Mail Versand</span>
-                        <button class="btn btn-sm btn-dark py-0" onclick="sendMail()" style="font-size:0.8rem;">Erstellen</button>
-                    </div>
-                    <div class="card-body p-2 dropzone bg-light overflow-auto" data-target-type="mail" style="flex:1; border: 2px dashed #ccc; min-height:80px;">
-                        ${appState.mailList.length === 0 ? '<div class="text-center text-muted small mt-4">Schützen hierher ziehen<br>(Kopie)</div>' : ''}
-                        ${appState.mailList.map(s => renderMailItem(s)).join('')}
-                    </div>
-                    <div class="card-footer small text-muted text-center py-1">
-                        ${appState.mailList.length} Empfänger
-                    </div>
+                <div class="card-body dropzone bg-light overflow-auto pool-body" data-target-type="pool">
+                    ${appState.pool.map(s => renderPlayerItem(s)).join('')}
+                    ${appState.pool.length === 0 ? '<div class="text-muted text-center small mt-3">Alle Schützen eingeteilt</div>' : ''}
                 </div>
-
+                <div class="card-footer small text-muted text-center py-1">
+                    ${appState.pool.length} verfügbar
+                </div>
             </div>
+
         </div>
     `;
 
-  
-
+    container.innerHTML = `
+      <div class="col-5 col-md-5 col-lg-4 order-1 mobile-sticky">
+        ${sidebarHtml}
+      </div>
+      <div class="col-7 col-md-7 col-lg-8 order-2">
+        <div class="row g-3" id="teams-area">
+          ${teamsHtml}
+        </div>
+      </div>
+    `;
 }
 
 function renderTeamCard(team, config) {
-    const zonesHtml = config.zones.map((zone, index) => {
+    const zonesHtml = config.zones.map((zone) => {
         const shooters = team.shooters.filter(s => {
             if (config.zones.length === 1) return true;
             return s.zone === zone.key;
         });
-        
-        const zoneBg = zone.key === 'liegend' ? '#e3f2fd' : (zone.key === 'kniend' ? '#f3e5f5' : '#fff');
+
+        const limit = zone.limit;
+        const filled = shooters.length;
+        const remaining = Math.max(0, limit - filled);
+        const isFull = filled >= limit;
+
+        let zoneBg = zone.key === 'liegend' ? '#e3f2fd' : (zone.key === 'kniend' ? '#f3e5f5' : '#fff');
+        if (isFull) zoneBg = '#f8f9fa';
+
+        let contentHtml = shooters.map(s => renderPlayerItem(s, team.name)).join('');
+
+        for (let i = 0; i < remaining; i++) {
+            contentHtml += `
+                <div class="card mb-1 ghost-slot">
+                    <div class="card-body p-1 px-2 text-center small text-muted fst-italic">
+                        <i class="fas fa-plus-circle opacity-50"></i> ${escapeHtml(zone.label)}
+                    </div>
+                </div>`;
+        }
+
+        const headerColor = isFull ? 'text-success' : 'text-secondary';
+        const headerIcon = isFull ? '<i class="fas fa-check-circle"></i>' : '';
 
         return `
-            <div class="team-zone p-2 mb-1 border rounded dropzone" 
-                 style="background:${zoneBg}; min-height: 80px; transition: background 0.2s;"
-                 data-team="${team.name}" data-zone="${zone.key}" data-limit="${zone.limit}" data-target-type="team">
-                
-                ${config.zones.length > 1 ? `<div class="d-flex justify-content-between small fw-bold text-muted mb-1 pointer-events-none"><span>${zone.label}</span><span>${shooters.length}/${zone.limit}</span></div>` : ''}
-                
-                ${shooters.map(s => renderPlayerItem(s, team.name)).join('')}
+            <div class="team-zone p-2 mb-2 border rounded dropzone ${isFull ? 'zone-full' : ''}"
+                style="background:${zoneBg}; min-height: 60px;"
+                data-team="${escapeHtml(team.name)}"
+                data-zone="${escapeHtml(zone.key)}"
+                data-limit="${limit}"
+                data-target-type="team">
+
+                ${config.zones.length > 1 ? `
+                    <div class="d-flex justify-content-between small fw-bold ${headerColor} mb-2 pe-none">
+                        <span>${escapeHtml(zone.label)}</span>
+                        <span>${headerIcon} ${filled}/${limit}</span>
+                    </div>`
+                : ''}
+
+                <div>${contentHtml}</div>
             </div>
         `;
     }).join('');
 
+    const totalShooters = team.shooters.length;
+    const totalSlots = config.zones.reduce((sum, z) => sum + z.limit, 0);
+    const teamComplete = totalShooters >= totalSlots;
+
     return `
         <div class="col-xl-6 col-12">
-            <div class="card shadow-sm h-100 border-0">
+            <div class="card shadow-sm h-100 border-0 ${teamComplete ? 'border-start border-success border-4' : ''}">
                 <div class="card-header d-flex justify-content-between align-items-center bg-white pt-3 pb-1 border-bottom-0">
-                    <h5 class="m-0 fw-bold text-primary">${team.name}</h5>
-                    <span class="badge bg-light text-dark border">${team.shooters.length}</span>
+                    <h5 class="m-0 fw-bold text-primary text-truncate">${escapeHtml(team.name)}</h5>
+                    <span class="badge ${teamComplete ? 'bg-success' : 'bg-light text-dark border'}">${totalShooters}/${totalSlots}</span>
                 </div>
                 <div class="card-body p-2">
                     ${zonesHtml}
                 </div>
                 <div class="text-end p-2 pt-0">
-                     <small class="text-muted" onclick="removeTeamFromState('${team.name}')" style="cursor:pointer;">Team löschen</small>
+                    <small class="text-danger text-decoration-underline" onclick="removeTeamFromState('${escapeJs(team.name)}')" style="cursor:pointer; font-size: 0.75rem;">Team entfernen</small>
                 </div>
             </div>
         </div>
     `;
 }
 
-function renderPlayerItem(player, teamName = null) {
+function renderPlayerItem(player) {
+    // player.id = NUMERIC ID (stringified)
+    // player.name = "Nachname Vorname"
     return `
-        <div class="card mb-1 draggable-player border-0 shadow-sm" 
-             draggable="true" 
-             data-id="${player.id}" 
-             style="cursor:grab; border-left: 3px solid var(--primary) !important;">
-            <div class="card-body p-1 px-2 pointer-events-none"> <!-- Pointer Events none verhindert drop auf kind -->
-                <div class="text-truncate small fw-bold pointer-events-none">${player.name}</div>
+        <div class="card mb-1 draggable-player border-0 shadow-sm"
+            draggable="true"
+            data-id="${escapeHtml(String(player.id))}"
+            style="border-left: 3px solid var(--primary) !important;">
+            
+            <div class="card-body p-1 px-2 pointer-events-none">
+                <div class="player-row pointer-events-none">
+                    <span class="player-name small fw-bold text-truncate pointer-events-none">${escapeHtml(player.name)}</span>
+                </div>
             </div>
         </div>
     `;
@@ -250,148 +502,138 @@ function renderMailItem(player) {
     return `
         <div class="card mb-1 border-0 shadow-sm bg-white">
             <div class="card-body p-1 px-2 d-flex justify-content-between align-items-center">
-                <div class="text-truncate small" style="max-width:80%">${player.name}</div>
-                <i class="fas fa-times text-danger" style="cursor:pointer;" onclick="removeFromMail('${player.id}')"></i>
+                <div class="text-truncate small" style="max-width:80%">${escapeHtml(player.name)}</div>
+                <i class="fas fa-times text-danger" style="cursor:pointer;" onclick="removeFromMail('${escapeJs(String(player.id))}')"></i>
             </div>
         </div>
     `;
 }
 
-// === DRAG & DROP LOGIK (ROBUST) ===
 
-/* ======================================================
-   DRAG & DROP ENGINE (DESKTOP + MOBILE STABIL)
-====================================================== */
-
+// =========================================================
+//  DRAG & DROP ENGINE (iOS/Android/Desktop robust) - global events
+// =========================================================
 function initDragAndDrop() {
+    let dragSrcEl = null;
+    let dragId = null;
+    let touchClone = null;
 
-    /* ===========================
-       DESKTOP (Event Delegation)
-    =========================== */
-
-    document.addEventListener('dragstart', function(e) {
+    // --- DESKTOP ---
+    document.addEventListener('dragstart', (e) => {
         const el = e.target.closest('.draggable-player');
         if (!el) return;
-
-        e.dataTransfer.setData('text/plain', String(el.dataset.id));
-        e.dataTransfer.effectAllowed = 'copyMove';
-        el.style.opacity = '0.5';
+        dragSrcEl = el;
+        dragId = el.dataset.id;
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', dragId);
+        setTimeout(() => el.style.opacity = '0.4', 0);
     });
 
-    document.addEventListener('dragend', function(e) {
+    document.addEventListener('dragend', (e) => {
         const el = e.target.closest('.draggable-player');
-        if (!el) return;
-        el.style.opacity = '1';
+        if (el) el.style.opacity = '1';
+        removeDropHighlights();
+        dragSrcEl = null;
     });
 
-    document.addEventListener('dragover', function(e) {
-        const zone = e.target.closest('.dropzone');
-        if (!zone) return;
-
+    document.addEventListener('dragover', (e) => {
         e.preventDefault();
-        zone.classList.add('bg-success-subtle');
+        const zone = e.target.closest('.dropzone');
+        if (zone) zone.classList.add('drag-over');
     });
 
-    document.addEventListener('dragleave', function(e) {
+    document.addEventListener('dragleave', (e) => {
         const zone = e.target.closest('.dropzone');
-        if (!zone) return;
-
-        zone.classList.remove('bg-success-subtle');
+        if (zone) zone.classList.remove('drag-over');
     });
 
-    document.addEventListener('drop', function(e) {
-        const zone = e.target.closest('.dropzone');
-        if (!zone) return;
-
+    document.addEventListener('drop', (e) => {
         e.preventDefault();
-        zone.classList.remove('bg-success-subtle');
-
-        const playerId = e.dataTransfer.getData('text/plain');
-        if (!playerId) return;
-
-        handleDrop(playerId, zone);
+        const zone = e.target.closest('.dropzone');
+        if (zone && dragId) {
+            handleDrop(dragId, zone);
+        }
+        removeDropHighlights();
     });
 
-
-
-    /* ===========================
-       MOBILE TOUCH SUPPORT
-    =========================== */
-
-    let currentDrag = null;
-
-    document.addEventListener('touchstart', function(e) {
+    // --- MOBILE TOUCH ---
+    document.addEventListener('touchstart', (e) => {
         const el = e.target.closest('.draggable-player');
         if (!el) return;
 
-        currentDrag = el;
-        el.style.opacity = '0.6';
-    }, { passive: true });
+        dragId = el.dataset.id;
+        dragSrcEl = el;
 
-    document.addEventListener('touchmove', function(e) {
-        if (!currentDrag) return;
+        touchClone = el.cloneNode(true);
+        touchClone.classList.add('drag-clone');
+        document.body.appendChild(touchClone);
 
+        const touch = e.touches[0];
+        moveClone(touch.clientX, touch.clientY);
+
+        el.style.opacity = '0.4';
+    }, { passive: false });
+
+    document.addEventListener('touchmove', (e) => {
+        if (!dragId || !touchClone) return;
         e.preventDefault();
 
         const touch = e.touches[0];
+        moveClone(touch.clientX, touch.clientY);
 
-        // Element kurz verstecken
-        currentDrag.style.display = "none";
+        removeDropHighlights();
         const elemBelow = document.elementFromPoint(touch.clientX, touch.clientY);
-        currentDrag.style.display = "";
-
-        document.querySelectorAll('.dropzone')
-            .forEach(z => z.classList.remove('bg-success-subtle'));
-
-        const dropzone = elemBelow?.closest('.dropzone');
-        if (dropzone) {
-            dropzone.classList.add('bg-success-subtle');
-        }
+        const zone = elemBelow ? elemBelow.closest('.dropzone') : null;
+        if (zone) zone.classList.add('drag-over');
 
     }, { passive: false });
 
-    document.addEventListener('touchend', function(e) {
-        if (!currentDrag) return;
+    document.addEventListener('touchend', (e) => {
+        if (!dragId) return;
 
         const touch = e.changedTouches[0];
-
-        currentDrag.style.display = "none";
         const elemBelow = document.elementFromPoint(touch.clientX, touch.clientY);
-        currentDrag.style.display = "";
+        const zone = elemBelow ? elemBelow.closest('.dropzone') : null;
 
-        document.querySelectorAll('.dropzone')
-            .forEach(z => z.classList.remove('bg-success-subtle'));
-
-        const dropzone = elemBelow?.closest('.dropzone');
-
-        if (dropzone) {
-            handleDrop(currentDrag.dataset.id, dropzone);
+        if (zone) {
+            handleDrop(dragId, zone);
         }
 
-        currentDrag.style.opacity = '1';
-        currentDrag = null;
+        if (touchClone) touchClone.remove();
+        if (dragSrcEl) dragSrcEl.style.opacity = '1';
+        removeDropHighlights();
 
-    }, { passive: false });
+        dragId = null;
+        touchClone = null;
+        dragSrcEl = null;
+    });
+
+    function moveClone(x, y) {
+        if (touchClone) {
+            touchClone.style.left = (x - 20) + 'px';
+            touchClone.style.top = (y - 20) + 'px';
+        }
+    }
+
+    function removeDropHighlights() {
+        document.querySelectorAll('.dropzone').forEach(z => z.classList.remove('drag-over'));
+    }
 }
 
 
-/* ======================================================
-   DROP HANDLER (ROBUST + ID SAFE)
-====================================================== */
-
-
-
+// =========================================================
+//  LOGIK
+// =========================================================
 function handleDrop(playerId, targetZone) {
-
     const targetType = targetZone.dataset.targetType;
 
-    // MAIL (Kopie)
+    // MAIL (Copy)
     if (targetType === "mail") {
         copyToMail(playerId);
         return;
     }
 
-    // POOL
+    // POOL (Move back)
     if (targetType === "pool") {
         movePlayerInState(playerId, null, null);
         renderContestUI();
@@ -400,51 +642,45 @@ function handleDrop(playerId, targetZone) {
 
     // TEAM
     if (targetType === "team") {
-
-        const limit = parseInt(targetZone.dataset.limit);
+        const limit = parseInt(targetZone.dataset.limit, 10);
         const teamName = targetZone.dataset.team;
         const zoneKey = targetZone.dataset.zone;
 
         const team = appState.teams.find(t => t.name === teamName);
         if (!team) return;
 
-        const currentCount = team.shooters
-            .filter(s => s.zone === zoneKey && s.id !== playerId).length;
-
-        if (currentCount >= limit) {
-            alert("Zone ist voll!");
-            return;
-        }
+        const currentCount = team.shooters.filter(s => s.zone === zoneKey && String(s.id) !== String(playerId)).length;
+        if (currentCount >= limit) return;
 
         movePlayerInState(playerId, teamName, zoneKey);
         renderContestUI();
     }
 }
 
-// === LOGIK ===
-
 function movePlayerInState(id, targetTeam, targetZone) {
     appState.isDirty = true;
     let player = null;
-    
-    // Suchen
-    const poolIdx = appState.pool.findIndex(p => p.id === id);
-    if (poolIdx > -1) player = appState.pool.splice(poolIdx, 1)[0];
-    else {
-        for(let t of appState.teams) {
-            const idx = t.shooters.findIndex(s => s.id === id);
-            if(idx > -1) { player = t.shooters.splice(idx, 1)[0]; break; }
+
+    const sid = String(id);
+
+    const poolIdx = appState.pool.findIndex(p => String(p.id) === sid);
+    if (poolIdx > -1) {
+        player = appState.pool.splice(poolIdx, 1)[0];
+    } else {
+        for (let t of appState.teams) {
+            const idx = t.shooters.findIndex(s => String(s.id) === sid);
+            if (idx > -1) { player = t.shooters.splice(idx, 1)[0]; break; }
         }
     }
 
-    if(!player) return;
+    if (!player) return;
 
-    if (!targetTeam) { 
+    if (!targetTeam) {
         player.zone = null;
         appState.pool.push(player);
-    } else { 
+    } else {
         const team = appState.teams.find(t => t.name === targetTeam);
-        if(team) {
+        if (team) {
             player.zone = targetZone;
             team.shooters.push(player);
         }
@@ -452,112 +688,227 @@ function movePlayerInState(id, targetTeam, targetZone) {
 }
 
 function copyToMail(id) {
-    let player = appState.pool.find(p => p.id === id);
+    const sid = String(id);
+
+    let player = appState.pool.find(p => String(p.id) === sid);
     if (!player) {
-        for(let t of appState.teams) {
-            player = t.shooters.find(s => s.id === id);
-            if(player) break;
+        for (let t of appState.teams) {
+            player = t.shooters.find(s => String(s.id) === sid);
+            if (player) break;
         }
     }
-    if (player && !appState.mailList.find(m => m.id === id)) {
+
+    if (player && !appState.mailList.find(m => String(m.id) === sid)) {
         appState.mailList.push({ ...player });
         renderContestUI();
     }
 }
 
 function removeFromMail(id) {
-    appState.mailList = appState.mailList.filter(m => m.id !== id);
+    const sid = String(id);
+    appState.mailList = appState.mailList.filter(m => String(m.id) !== sid);
     renderContestUI();
 }
 
-// === UTILS ===
 
-function addTeamToState() {
+// =========================================================
+//  UTILS
+// =========================================================
+function addTeamToState(silent = false) {
     const config = CONTEST_CONFIG[appState.activeModule];
+
     let nextNum = 1;
     const existingNums = appState.teams.map(t => {
         const match = t.name.match(/(\d+)$/);
-        return match ? parseInt(match[1]) : 0;
+        return match ? parseInt(match[1], 10) : 0;
     });
     while (existingNums.includes(nextNum)) nextNum++;
+
     appState.teams.push({ name: `${config.baseTeamName} ${nextNum}`, shooters: [] });
-    renderContestUI();
+    if (!silent) renderContestUI();
 }
 
 function removeTeamFromState(teamName) {
-    if(!confirm(`Team "${teamName}" löschen?`)) return;
+    if (!confirm(`Team "${teamName}" wirklich löschen?`)) return;
     const idx = appState.teams.findIndex(t => t.name === teamName);
     if (idx === -1) return;
-    appState.teams[idx].shooters.forEach(s => appState.pool.push(s));
+
+    appState.teams[idx].shooters.forEach(s => {
+        s.zone = null;
+        appState.pool.push(s);
+    });
+
     appState.teams.splice(idx, 1);
     renderContestUI();
 }
 
 function filterPool(val) {
-    val = val.toLowerCase();
+    val = String(val || "").toLowerCase();
     document.querySelectorAll('.dropzone[data-target-type="pool"] .draggable-player').forEach(el => {
         el.parentElement.style.display = el.innerText.toLowerCase().includes(val) ? 'block' : 'none';
     });
 }
 
-function printContest() {
-    const config = CONTEST_CONFIG[appState.activeModule];
-    let html = `<html><head><title>Druck</title><style>
-        body{font-family:sans-serif;padding:20px} .team{border:1px solid #ccc;margin-bottom:15px;padding:10px;page-break-inside:avoid}
-        .head{font-weight:bold;font-size:1.1em;border-bottom:1px solid #eee;margin-bottom:5px}
-    </style></head><body><h1>${config.title}</h1>`;
-    
-    appState.teams.forEach(t => {
-        html += `<div class="team"><div class="head">${t.name}</div>`;
-        t.shooters.forEach(s => html += `<div>${s.name} ${s.zone==='kniend'?'(kn)':''}</div>`);
-        html += `</div>`;
-    });
-    html += `<script>window.print()</script></body></html>`;
-    const win = window.open('','_blank');
-    win.document.write(html);
-    win.document.close();
-}
-
 function sendMail() {
+    const config = CONTEST_CONFIG[appState.activeModule];
     const mails = appState.mailList.map(m => m.email).filter(e => e && e.includes('@'));
-    if(!mails.length) return alert("Keine Emails oder Schützen haben keine Email hinterlegt!");
-    window.location.href = `mailto:?bcc=${mails.join(',')}&subject=Aufgebot`;
+    if (!mails.length) return alert("Keine gültigen E-Mails gefunden!");
+
+    window.location.href = `mailto:?bcc=${encodeURIComponent(mails.join(','))}&subject=${encodeURIComponent("Aufgebot " + config.title)}`;
 }
 
-// === SAVE ===
-async function saveContest() {
-    const btn = document.querySelector('button[onclick="saveContest()"]');
-    const originalText = btn.innerText;
-    btn.disabled = true; btn.innerText = "Sende...";
 
+// =========================================================
+//  SAVE (POST -> Worker -> GAS)
+//  GAS erwartet: { sheetName, data:[{id, team, stellung}] }
+//  - Wir senden zusätzlich "name" mit, damit GAS in Spalte A schreiben kann.
+// =========================================================
+async function saveContest() {
     const config = CONTEST_CONFIG[appState.activeModule];
+    const btn = document.getElementById('btn-save-manager');
+    const originalText = btn ? btn.innerText : "Speichern";
+    if (btn) { btn.disabled = true; btn.innerText = "Speichere..."; }
+
+    // Export aus appState
     const exportData = [];
-    
+
     appState.teams.forEach(team => {
-        team.shooters.forEach(p => {
-            let item = {
-                id: p.name, 
-                team: team.name, 
-                stellung: p.zone === "liegend" ? "Liegend" : (p.zone === "kniend" ? "Kniend" : "")
-            };
-            exportData.push(item);
+        team.shooters.forEach(s => {
+            exportData.push({
+                id: String(s.id),                 // NUMERIC ID
+                name: String(s.name || ""),        // "Nachname Vorname" (Spalte A)
+                team: String(team.name || ""),     // Teamname
+                stellung: (appState.activeModule === "gruppe")
+                    ? (s.zone === "kniend" ? "Kniend" : "Liegend")
+                    : ""
+            });
         });
     });
 
     try {
-        await apiFetch('grenzland', 'action=saveGrenzlandData', {
+        const res = await apiFetch('manager', 'action=saveManagerData', {
             method: 'POST',
-            body: JSON.stringify({ data: exportData, sheetName: config.sheetName })
+            body: JSON.stringify({
+                sheetName: config.sheetName,
+                data: exportData
+            })
         });
-        appState.isDirty = false;
-        btn.innerText = "✅ OK";
-        setTimeout(() => { btn.innerText = originalText; btn.disabled = false; }, 1500);
-    } catch(e) { 
-        alert("Fehler: " + e); btn.disabled = false; btn.innerText = originalText;
-    }
-  
 
+        const txt = await res.text();
+        let data;
+        try { data = JSON.parse(txt); }
+        catch { throw new Error("Speichern: Backend-Antwort ist kein JSON"); }
+
+        if (data.error) throw new Error(data.error);
+
+        appState.isDirty = false;
+
+        if (btn) {
+            btn.innerText = "✅ OK";
+            setTimeout(() => {
+                btn.innerText = originalText;
+                btn.disabled = false;
+            }, 1200);
+        }
+
+    } catch (e) {
+        alert("Fehler beim Speichern: " + e.message);
+        if (btn) { btn.disabled = false; btn.innerText = originalText; }
+    }
 }
-  document.addEventListener('DOMContentLoaded', function() {
-    initDragAndDrop();
-});
+
+
+// =========================================================
+//  PDF EXPORT (aus Standalone übernommen)
+// =========================================================
+async function exportPDF() {
+    if (!window.jspdf || !window.jspdf.jsPDF) {
+        alert("jsPDF nicht geladen. Bitte index.html prüfen (CDN Scripts).");
+        return;
+    }
+
+    const { jsPDF } = window.jspdf;
+    const config = CONTEST_CONFIG[appState.activeModule];
+
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const margin = 15;
+    let yPos = 20;
+
+    doc.setFontSize(18);
+    doc.setTextColor(13, 110, 253);
+    doc.text(config.title, margin, yPos);
+
+    yPos += 10;
+    doc.setFontSize(10);
+    doc.setTextColor(100);
+    const dateStr = new Date().toLocaleDateString('de-CH', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    doc.text(`Generiert am: ${dateStr}`, margin, yPos);
+
+    yPos += 15;
+
+    appState.teams.forEach((team) => {
+        if (yPos > 250) {
+            doc.addPage();
+            yPos = 20;
+        }
+
+        doc.setFillColor(240, 242, 245);
+        doc.rect(margin, yPos, pageWidth - (margin * 2), 8, 'F');
+        doc.setFontSize(12);
+        doc.setTextColor(0);
+        doc.setFont("helvetica", "bold");
+        doc.text(team.name, margin + 2, yPos + 6);
+        yPos += 14;
+
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(11);
+
+        if (team.shooters.length === 0) {
+            doc.setTextColor(150);
+            doc.text("- Keine Schützen -", margin + 5, yPos);
+            yPos += 8;
+        } else {
+            const sorted = [...team.shooters].sort((a, b) => (a.zone || "").localeCompare(b.zone || ""));
+
+            sorted.forEach(s => {
+                const zoneLabel = (appState.activeModule === "gruppe")
+                    ? (s.zone ? `(${s.zone.charAt(0).toUpperCase() + s.zone.slice(1)})` : "")
+                    : "";
+
+                doc.setTextColor(0);
+                doc.text(`• ${s.name}`, margin + 5, yPos);
+
+                if (zoneLabel) {
+                    doc.setTextColor(100);
+                    doc.setFontSize(9);
+                    doc.text(zoneLabel, pageWidth - margin - 30, yPos);
+                    doc.setFontSize(11);
+                }
+
+                yPos += 7;
+            });
+        }
+
+        yPos += 5;
+    });
+
+    doc.save(`${config.title.replace(/[^a-z0-9]/gi, '_')}_${dateStr}.pdf`);
+}
+
+
+// =========================================================
+//  SMALL HELPERS
+// =========================================================
+function escapeHtml(str) {
+    return String(str || "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+}
+
+function escapeJs(str) {
+    return String(str || "").replaceAll("\\", "\\\\").replaceAll("'", "\\'");
+}
