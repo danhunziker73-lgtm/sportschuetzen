@@ -48,7 +48,8 @@ function navTo(viewId) {
     // 3. Module laden (Routing Logik)
     if (viewId === 'inventar' && typeof loadInventarData === 'function') loadInventarData();
     if (viewId === 'termine' && typeof loadTermineData === 'function') loadTermineData();
-    
+    if (viewId === 'resultate' && typeof loadResultateData === 'function') loadResultateData();
+
     // WICHTIG: Für den Manager rufen wir die neue generische Funktion auf
     if (viewId === 'manager' && typeof loadContestData === 'function') {
         loadContestData(); // Lädt Standard (Grenzland) oder letzten State
