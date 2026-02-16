@@ -462,18 +462,22 @@
             `;
         }
 
-        function renderPlayerItem(player, teamName = null) {
-            return `
-                <div class="card mb-1 draggable-player border-0 shadow-sm"
-                    draggable="true"
-                    data-id="${player.id}"
-                    style="border-left: 3px solid var(--primary) !important;">
-                    <div class="card-body p-1 px-2 pointer-events-none">
-                        <div class="text-truncate small fw-bold pointer-events-none">${player.name}</div>
-                    </div>
+      function renderPlayerItem(player, teamName = null) {
+    return `
+        <div class="card mb-1 draggable-player border-0 shadow-sm"
+            draggable="true"
+            data-id="${player.id}"
+            style="border-left: 3px solid var(--primary) !important;">
+            
+            <div class="card-body p-1 px-2 pointer-events-none">
+                <div class="player-row pointer-events-none">
+                    <span class="player-name small fw-bold text-truncate pointer-events-none">${player.name}</span>
                 </div>
-            `;
-        }
+            </div>
+        </div>
+    `;
+}
+
 
         function renderMailItem(player) {
             return `
