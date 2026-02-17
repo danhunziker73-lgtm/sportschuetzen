@@ -19,6 +19,7 @@ function ensureTermineStylesOnce() {
       border-radius: 12px;
     }
 
+    #termine-container .row-provisorisch { background: #fff3cd; } /* orange/gelblich */
     #termine-container .row-warn { background: #fff8e1; }       /* fehlendes Datum etc. */
     #termine-container .row-abgesagt { opacity: .6; text-decoration: line-through; }
 
@@ -426,9 +427,11 @@ function renderTermineList() {
 
   tbody.innerHTML = adminState.termine.map((t, i) => {
     const status = String(t.status || '').toLowerCase();
-    const rowClass = status === 'abgesagt'
-      ? 'row-abgesagt'
-      : (!t.datum ? 'row-warn' : '');
+
+let rowClass = '';
+if (status === 'abgesagt') rowClass = 'row-abgesagt';
+else if (status === 'provisorisch') rowClass = 'row-provisorisch';
+else if (!t.datum) rowClass = 'row-warn';
 
     return `
       <tr class="${rowClass}">
@@ -468,6 +471,14 @@ function renderTermineList() {
   }).join('');
 }
 
+function sortTermineForSave() {
+  adminState.termine.sort((a, b) => {
+    if (!a.datum && !b.datum) return 0;
+    if (!a.datum) return 1;
+    if (!b.datum) return -1;
+    return new Date(a.datum) - new Date(b.datum);
+  });
+}
 
 
 
@@ -572,30 +583,20 @@ function addTerminRow() {
 function onTerminDateChange(idx, newDate) {
   adminState.termine[idx].datum = newDate;
 
-  // Nur wenn Datum gesetzt wurde (nicht leer)
   if (newDate) {
-    // Zeiten nur setzen, wenn der User sie noch nicht gesetzt hat
     if (!adminState.termine[idx].startzeit) adminState.termine[idx].startzeit = "19:00";
     if (!adminState.termine[idx].endzeit)   adminState.termine[idx].endzeit   = "22:00";
 
-    // Optional (empfohlen): weitere Defaults nur wenn leer
-    if (!adminState.termine[idx].status) adminState.termine[idx].status = "provisorisch";
+    if (!adminState.termine[idx].status)    adminState.termine[idx].status    = "provisorisch";
     if (!adminState.termine[idx].kategorie) adminState.termine[idx].kategorie = "Jahresprogramm";
 
-    if (!adminState.termine[idx].anlasstitel && (adminState.dropdowns?.anlaesse?.length)) {
-      adminState.termine[idx].anlasstitel = adminState.dropdowns.anlaesse[0] || "";
-    }
-    if (!adminState.termine[idx].ort && (adminState.dropdowns?.orteMitMaps?.length)) {
-      adminState.termine[idx].ort = adminState.dropdowns.orteMitMaps[0]?.[0] || "";
-      const found = adminState.dropdowns.orteMitMaps.find(o => o[0] === adminState.termine[idx].ort);
-      if (found) adminState.termine[idx].austragungsorte_map = found[1];
-    }
+    // WICHTIG: KEIN Auto-Anlass / Auto-Ort mehr:
+    // adminState.termine[idx].anlasstitel = ...
+    // adminState.termine[idx].ort = ...
   }
 
-  // Re-rendern, damit Sortierung greift und die Felder sichtbar aktualisieren
-  renderTermineList();
+  renderTermineList(); // ok, weil wir ja NICHT mehr sortieren im Render
 }
-
 
 
 function generateTerminId() {
@@ -619,7 +620,7 @@ function updateTerminOrt(idx, ortName) {
 
 async function saveAdminData() {
     if(!confirm("Alle Änderungen speichern?")) return;
-    
+      sortTermineForSave();
     // Logik aus deinem alten Script übernehmen (Log generieren etc.)
     const user = localStorage.getItem('portal_user') || "Admin";
     
