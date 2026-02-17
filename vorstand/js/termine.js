@@ -206,6 +206,18 @@ function renderTermineUI(container) {
 
 // --- RENDERING SUB-FUNCTIONS ---
 
+function getMembersForMailDropdown() {
+  const arr = (adminState.members || [])
+    .map(m => ({
+      name: getMemberDisplayName(m),
+      email: getMemberEmail(m)
+    }))
+    .filter(x => x.email);
+
+  arr.sort((a,b) => a.name.localeCompare(b.name, 'de', { sensitivity: 'base' }));
+  return arr;
+}
+
 function renderGVList() {
   const list = document.getElementById('gv-list');
   if (!list || !adminState.platzhalter) return;
@@ -214,18 +226,23 @@ function renderGVList() {
     const l = String(label || '').toLowerCase();
     if (l.includes('datum') && l.includes('gv') && l.includes('vorjahr')) return 'tt.mm.jjjj';
     if (l.includes('datum') && l.includes('abmeldung')) return 'tt.mm.jjjj';
+    if (l.includes('mahndatum')) return 'tt.mm.jjjj';
     if (l.includes('datum') && l.includes('gv')) return 'tt.mm.jjjj';
     if (l.includes('zeit') && l.includes('gv')) return 'hh:mm';
     return '';
   };
 
   const isBudget = (label) => String(label || '').toLowerCase().includes('budget');
+  const isMailField = (label) => String(label || '').toLowerCase().includes('mail');
+
+  const members = getMembersForMailDropdown();
 
   list.innerHTML = adminState.platzhalter.map((p, i) => {
     const label = p.bezeichnung_app || p.platzhaltername || '';
     const ph = pickPlaceholder(label);
     const value = p.inhalt || '';
 
+    // Budget → Textarea
     if (isBudget(label)) {
       return `
         <div class="mb-3">
@@ -237,6 +254,38 @@ function renderGVList() {
       `;
     }
 
+    // Mail-Feld → Tag-Box + Dropdown (wie App_Info)
+    if (isMailField(label)) {
+      const mails = value.split(';').map(x => x.trim()).filter(Boolean);
+
+      return `
+        <div class="mb-3 border-bottom pb-3">
+          <label class="form-label small fw-bold mb-1">${escapeHtml(label)}</label>
+
+          <div class="tag-box mb-2">
+            ${
+              mails.length
+                ? mails.map(m => `
+                    <span class="tag">${escapeHtml(m)}
+                      <span class="x" onclick="removeGVMail(${i}, '${escapeJs(m)}')">×</span>
+                    </span>
+                  `).join('')
+                : `<span class="text-muted small">Keine Empfänger</span>`
+            }
+          </div>
+
+          <select class="form-select form-select-sm"
+            onchange="addGVMail(${i}, this.value); this.value=''">
+            <option value="">+ Empfänger hinzufügen</option>
+            ${members.map(mm =>
+              `<option value="${escapeHtml(mm.email)}">${escapeHtml(mm.name)} (${escapeHtml(mm.email)})</option>`
+            ).join('')}
+          </select>
+        </div>
+      `;
+    }
+
+    // Standard → Input mit Placeholder
     return `
       <div class="mb-2">
         <label class="form-label small fw-bold mb-0">${escapeHtml(label)}</label>
@@ -247,6 +296,27 @@ function renderGVList() {
       </div>
     `;
   }).join('');
+}
+
+function addGVMail(idx, email) {
+  email = (email || '').trim();
+  if (!email) return;
+
+  const current = (adminState.platzhalter[idx].inhalt || '')
+    .split(';').map(x=>x.trim()).filter(Boolean);
+
+  if (!current.includes(email)) current.push(email);
+  adminState.platzhalter[idx].inhalt = current.join('; ');
+
+  renderGVList();
+}
+
+function removeGVMail(idx, email) {
+  const current = (adminState.platzhalter[idx].inhalt || '')
+    .split(';').map(x=>x.trim()).filter(Boolean);
+
+  adminState.platzhalter[idx].inhalt = current.filter(x => x !== email).join('; ');
+  renderGVList();
 }
 
 
@@ -342,16 +412,17 @@ function escapeJs(s) {
 
 
 
-
-
 function renderTermineList() {
   const tbody = document.getElementById('termine-body');
   if (!tbody || !adminState.termine) return;
 
-  // Sortieren (Datum)
-  adminState.termine.sort((a, b) =>
-    (a.datum && b.datum) ? new Date(a.datum) - new Date(b.datum) : -1
-  );
+  // Sortieren: Zeilen ohne Datum ans Ende, sonst nach Datum aufsteigend
+  adminState.termine.sort((a, b) => {
+    if (!a.datum && !b.datum) return 0;
+    if (!a.datum) return 1;   // a ohne Datum → nach hinten
+    if (!b.datum) return -1;  // b ohne Datum → nach hinten
+    return new Date(a.datum) - new Date(b.datum);
+  });
 
   tbody.innerHTML = adminState.termine.map((t, i) => {
     const status = String(t.status || '').toLowerCase();
@@ -362,55 +433,42 @@ function renderTermineList() {
     return `
       <tr class="${rowClass}">
         <td><input type="date" class="form-control form-control-sm" value="${formatDate(t.datum)}"
-          onchange="adminState.termine[${i}].datum=this.value"></td>
-
+          onchange="adminState.termine[${i}].datum=this.value; renderTermineList();"></td>
         <td><input type="time" class="form-control form-control-sm" value="${formatTime(t.startzeit)}"
           onchange="adminState.termine[${i}].startzeit=this.value"></td>
-
         <td><input type="time" class="form-control form-control-sm" value="${formatTime(t.endzeit)}"
           onchange="adminState.termine[${i}].endzeit=this.value"></td>
-
         <td>
-          <select class="form-select form-select-sm"
-            onchange="adminState.termine[${i}].anlasstitel=this.value">
-            ${(adminState.dropdowns.anlaesse || []).map(a =>
-              `<option value="${a}" ${a===t.anlasstitel?'selected':''}>${a}</option>`
-            ).join('')}
+          <select class="form-select form-select-sm" onchange="adminState.termine[${i}].anlasstitel=this.value">
+            <option value="">-- Anlass --</option>
+            ${(adminState.dropdowns.anlaesse||[]).map(a => `<option value="${escapeHtml(a)}" ${a===t.anlasstitel?'selected':''}>${escapeHtml(a)}</option>`).join('')}
           </select>
         </td>
-
         <td>
-          <select class="form-select form-select-sm"
-            onchange="updateTerminOrt(${i}, this.value)">
-            ${(adminState.dropdowns.orteMitMaps || []).map(o =>
-              `<option value="${o[0]}" ${o[0]===t.ort?'selected':''}>${o[0]}</option>`
-            ).join('')}
+          <select class="form-select form-select-sm" onchange="updateTerminOrt(${i}, this.value)">
+            <option value="">-- Ort --</option>
+            ${(adminState.dropdowns.orteMitMaps||[]).map(o => `<option value="${escapeHtml(o[0])}" ${o[0]===t.ort?'selected':''}>${escapeHtml(o[0])}</option>`).join('')}
           </select>
         </td>
-
         <td>
-          <select class="form-select form-select-sm"
-            onchange="adminState.termine[${i}].kategorie=this.value">
-            ${(adminState.dropdowns.kategorien || []).map(k =>
-              `<option value="${k}" ${k===t.kategorie?'selected':''}>${k}</option>`
-            ).join('')}
+          <select class="form-select form-select-sm" onchange="adminState.termine[${i}].kategorie=this.value">
+            <option value="">-- Kat --</option>
+            ${(adminState.dropdowns.kategorien||[]).map(k => `<option value="${escapeHtml(k)}" ${k===t.kategorie?'selected':''}>${escapeHtml(k)}</option>`).join('')}
           </select>
         </td>
-
         <td>
-          <select class="form-select form-select-sm"
-            onchange="adminState.termine[${i}].status=this.value">
-            ${['fix','provisorisch','abgesagt'].map(s =>
-              `<option value="${s}" ${s===t.status?'selected':''}>${s}</option>`
-            ).join('')}
+          <select class="form-select form-select-sm" onchange="adminState.termine[${i}].status=this.value">
+            <option value="">-- Status --</option>
+            ${['fix','provisorisch','abgesagt'].map(s => `<option value="${s}" ${s===t.status?'selected':''}>${s}</option>`).join('')}
           </select>
         </td>
-
         <td><button class="btn btn-link text-danger p-0" onclick="removeTermin(${i})">🗑️</button></td>
       </tr>
     `;
   }).join('');
 }
+
+
 
 
 function renderAnmeldungenList() {
