@@ -3,23 +3,106 @@
 let adminState = null;
 let originalAdminState = null;
 
-async function loadTermineData() {
-    const container = document.getElementById('termine-container');
-    container.innerHTML = '<div class="text-center p-5"><div class="spinner-border text-primary"></div><p>Lade Admin-Daten...</p></div>';
+function ensureTermineStylesOnce() {
+  if (document.getElementById('termine-inline-style')) return;
+  const s = document.createElement('style');
+  s.id = 'termine-inline-style';
+  s.textContent = `
+    /* Alles scoped aufs Termine-Modul */
+    #termine-container { position: relative; }
 
-    try {
-        // Daten vom Worker holen (Modul 'termine', Action 'loadAdminData')
-        // Achtung: In deinem Worker-Code heißt die Action 'loadAdminData', das Modul 'termine' zeigt auf das gleiche Script.
-        const res = await apiFetch('termine', 'action=loadAdminData');
-        adminState = await res.json();
-        originalAdminState = JSON.parse(JSON.stringify(adminState)); // Deep Copy für Vergleiche
-
-        renderTermineUI(container);
-
-    } catch (e) {
-        container.innerHTML = `<div class="alert alert-danger">Fehler beim Laden: ${e.message}</div>`;
+    #termine-container .termine-overlay {
+      position: absolute; inset: 0;
+      background: rgba(255,255,255,.85);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 2000;
+      border-radius: 12px;
     }
+
+    #termine-container .row-warn { background: #fff8e1; }       /* fehlendes Datum etc. */
+    #termine-container .row-abgesagt { opacity: .6; text-decoration: line-through; }
+
+    /* Tag UI für Mailadresse */
+    #termine-container .tag-box {
+      display: flex; flex-wrap: wrap; gap: 6px;
+      padding: 6px; border: 1px solid rgba(0,0,0,.12);
+      border-radius: 8px; background: #fff;
+      min-height: 40px;
+    }
+    #termine-container .tag {
+      background: #e9f2ff; color: #0d6efd;
+      padding: 2px 8px; border-radius: 999px;
+      font-size: .85rem; display: inline-flex; gap: 8px; align-items: center;
+      border: 1px solid rgba(13,110,253,.15);
+    }
+    #termine-container .tag .x {
+      color: #dc3545; cursor: pointer; font-weight: 700;
+      line-height: 1;
+    }
+  `;
+  document.head.appendChild(s);
 }
+
+function showTermineOverlay(show, text) {
+  const container = document.getElementById('termine-container');
+  if (!container) return;
+
+  let overlay = container.querySelector('.termine-overlay');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.className = 'termine-overlay';
+    overlay.style.display = 'none';
+    overlay.innerHTML = `
+      <div class="text-center p-4 bg-white border rounded shadow-sm">
+        <div class="spinner-border text-primary"></div>
+        <div class="mt-2 small text-muted" id="termine-overlay-text">Lade…</div>
+      </div>
+    `;
+    container.appendChild(overlay);
+  }
+
+  const t = overlay.querySelector('#termine-overlay-text');
+  if (t) t.innerText = text || 'Lade…';
+
+  overlay.style.display = show ? 'flex' : 'none';
+}
+
+async function loadTermineData() {
+  ensureTermineStylesOnce();
+
+  const container = document.getElementById('termine-container');
+  container.innerHTML = `
+    <div id="termine-shell">
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <div class="small text-muted" id="last-sync">Zuletzt aktualisiert: -</div>
+        <div class="d-flex gap-2">
+          <button class="btn btn-outline-secondary btn-sm" onclick="loadTermineData()">🔄 Laden</button>
+          <button class="btn btn-success btn-sm fw-bold" onclick="saveAdminData()">💾 Speichern</button>
+        </div>
+      </div>
+      <div id="termine-ui"></div>
+    </div>
+  `;
+
+  showTermineOverlay(true, 'Synchronisiere Admin-Daten…');
+
+  try {
+    const res = await apiFetch('termine', 'action=loadAdminData');
+    adminState = await res.json();
+    originalAdminState = JSON.parse(JSON.stringify(adminState));
+
+    renderTermineUI(document.getElementById('termine-ui'));
+
+    const last = document.getElementById('last-sync');
+    if (last) last.innerText = 'Zuletzt aktualisiert: ' + new Date().toLocaleString();
+
+  } catch (e) {
+    container.innerHTML = `<div class="alert alert-danger">Fehler beim Laden: ${e.message}</div>`;
+  } finally {
+    showTermineOverlay(false);
+  }
+}
+
 
 function renderTermineUI(container) {
     container.innerHTML = `
@@ -28,6 +111,8 @@ function renderTermineUI(container) {
             <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-kalender">📅 Termine</a></li>
             <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-praesenz">📝 Präsenz</a></li>
             <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-protokoll">📜 Log</a></li>
+            <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-stammdaten">🛠️ Stammdaten</a></li>
+
         </ul>
 
         <div class="tab-content">
@@ -84,6 +169,25 @@ function renderTermineUI(container) {
                     </div>
                 </div>
             </div>
+    <div class="tab-pane fade" id="tab-stammdaten">
+  <div class="row g-3">
+    <div class="col-md-6">
+      <div class="card p-3">
+        <h5 class="card-title">Anlass-Typen</h5>
+        <div id="edit-anlaesse"></div>
+        <button class="btn btn-outline-primary btn-sm w-100 mt-2" onclick="addAnlass()">+ Typ hinzufügen</button>
+      </div>
+    </div>
+    <div class="col-md-6">
+      <div class="card p-3">
+        <h5 class="card-title">Orte & Maps</h5>
+        <div id="edit-orte"></div>
+        <button class="btn btn-outline-primary btn-sm w-100 mt-2" onclick="addOrt()">+ Ort hinzufügen</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 
             <!-- TAB: PROTOKOLL -->
             <div class="tab-pane fade" id="tab-protokoll">
@@ -98,6 +202,8 @@ function renderTermineUI(container) {
     renderTermineList();
     renderAnmeldungenList();
     renderProtokollList();
+    renderDropdownEditor();
+
 }
 
 // --- RENDERING SUB-FUNCTIONS ---
@@ -118,16 +224,69 @@ function renderGVList() {
 }
 
 function renderAppInfoList() {
-     const list = document.getElementById('app-info-list');
-    if(!list || !adminState.app_info) return;
+  const list = document.getElementById('app-info-list');
+  if (!list || !adminState.app_info) return;
 
-    list.innerHTML = adminState.app_info.map((info, i) => `
-        <div class="mb-2 border-bottom pb-2">
-            <label class="form-label small fw-bold mb-0">${info.bezeichnung}</label>
-            <input type="text" class="form-control form-control-sm mb-1" value="${info.mailadresse||''}" 
-            onchange="adminState.app_info[${i}].mailadresse=this.value" placeholder="Mails mit ; trennen">
-        </div>`).join('');
+  list.innerHTML = adminState.app_info.map((info, i) => {
+    const mails = (info.mailadresse || "")
+      .split(';')
+      .map(x => x.trim())
+      .filter(Boolean);
+
+    const memberEmails = (adminState.members || [])
+      .map(m => (m.e_mail || m.email || m.mailadresse || '').trim())
+      .filter(Boolean)
+      .sort((a,b)=>a.localeCompare(b));
+
+    return `
+      <div class="mb-3 border-bottom pb-3">
+        <label class="form-label small fw-bold mb-1">${info.bezeichnung || ''}</label>
+
+        <div class="tag-box mb-2">
+          ${mails.length ? mails.map(m => `
+            <span class="tag">${escapeHtml(m)} <span class="x" onclick="removeMail(${i}, '${escapeJs(m)}')">×</span></span>
+          `).join('') : `<span class="text-muted small">Keine Empfänger</span>`}
+        </div>
+
+        <select class="form-select form-select-sm mb-2" onchange="addMail(${i}, this.value); this.value=''">
+          <option value="">+ Empfänger hinzufügen</option>
+          ${memberEmails.map(em => `<option value="${escapeHtml(em)}">${escapeHtml(em)}</option>`).join('')}
+        </select>
+
+        <input type="text" class="form-control form-control-sm"
+          value="${escapeHtml(info.bemerkung || '')}"
+          placeholder="Bemerkung"
+          onchange="adminState.app_info[${i}].bemerkung=this.value">
+      </div>
+    `;
+  }).join('');
 }
+
+function addMail(idx, email) {
+  email = (email || '').trim();
+  if (!email) return;
+
+  const current = (adminState.app_info[idx].mailadresse || '')
+    .split(';').map(x=>x.trim()).filter(Boolean);
+
+  if (!current.includes(email)) current.push(email);
+  adminState.app_info[idx].mailadresse = current.join('; ');
+
+  renderAppInfoList();
+}
+
+function removeMail(idx, email) {
+  const current = (adminState.app_info[idx].mailadresse || '')
+    .split(';').map(x=>x.trim()).filter(Boolean);
+
+  adminState.app_info[idx].mailadresse = current.filter(x => x !== email).join('; ');
+  renderAppInfoList();
+}
+
+function escapeJs(s) {
+  return String(s).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+}
+
 
 function renderTermineList() {
     const tbody = document.getElementById('termine-body');
@@ -138,6 +297,13 @@ function renderTermineList() {
 
     tbody.innerHTML = adminState.termine.map((t, i) => `
         <tr>
+
+        const status = (t.status || '').toLowerCase();
+const rowClass = status === 'abgesagt' ? 'row-abgesagt' : (!t.datum ? 'row-warn' : '');
+return `<tr class="${rowClass}"> ... </tr>`;
+
+
+        
             <td><input type="date" class="form-control form-control-sm" value="${formatDate(t.datum)}" onchange="adminState.termine[${i}].datum=this.value"></td>
             <td><input type="time" class="form-control form-control-sm" value="${formatTime(t.startzeit)}" onchange="adminState.termine[${i}].startzeit=this.value"></td>
             <td><input type="time" class="form-control form-control-sm" value="${formatTime(t.endzeit)}" onchange="adminState.termine[${i}].endzeit=this.value"></td>
@@ -183,6 +349,63 @@ function renderProtokollList() {
      if(!div || !adminState.protokoll) return;
      div.innerHTML = adminState.protokoll.map(p => `<div><strong>${p.benutzer}</strong>: ${p.details} <span class="float-end">${p.zeitstempel ? p.zeitstempel.split('T')[0] : ''}</span></div><hr class="my-1">`).join('');
 }
+function renderDropdownEditor() {
+  if (!adminState.dropdowns) adminState.dropdowns = { anlaesse: [], orteMitMaps: [] };
+
+  const a = document.getElementById('edit-anlaesse');
+  const o = document.getElementById('edit-orte');
+
+  if (a) {
+    const arr = adminState.dropdowns.anlaesse || [];
+    a.innerHTML = arr.map((val, i) => `
+      <div class="d-flex gap-2 mb-2">
+        <input type="text" class="form-control form-control-sm"
+          value="${escapeHtml(val || '')}"
+          onchange="adminState.dropdowns.anlaesse[${i}]=this.value">
+        <button class="btn btn-outline-danger btn-sm" onclick="removeAnlass(${i})">✕</button>
+      </div>
+    `).join('');
+  }
+
+  if (o) {
+    const arr = adminState.dropdowns.orteMitMaps || [];
+    o.innerHTML = arr.map((pair, i) => `
+      <div class="d-flex gap-2 mb-2">
+        <input type="text" class="form-control form-control-sm"
+          placeholder="Ort"
+          value="${escapeHtml((pair && pair[0]) || '')}"
+          onchange="adminState.dropdowns.orteMitMaps[${i}][0]=this.value">
+        <input type="text" class="form-control form-control-sm"
+          placeholder="Map Link"
+          value="${escapeHtml((pair && pair[1]) || '')}"
+          onchange="adminState.dropdowns.orteMitMaps[${i}][1]=this.value">
+        <button class="btn btn-outline-danger btn-sm" onclick="removeOrt(${i})">✕</button>
+      </div>
+    `).join('');
+  }
+}
+
+function addAnlass() {
+  adminState.dropdowns.anlaesse = adminState.dropdowns.anlaesse || [];
+  adminState.dropdowns.anlaesse.push('');
+  renderDropdownEditor();
+}
+
+function removeAnlass(i) {
+  adminState.dropdowns.anlaesse.splice(i, 1);
+  renderDropdownEditor();
+}
+
+function addOrt() {
+  adminState.dropdowns.orteMitMaps = adminState.dropdowns.orteMitMaps || [];
+  adminState.dropdowns.orteMitMaps.push(['','']);
+  renderDropdownEditor();
+}
+
+function removeOrt(i) {
+  adminState.dropdowns.orteMitMaps.splice(i, 1);
+  renderDropdownEditor();
+}
 
 // --- ACTIONS ---
 
@@ -220,14 +443,16 @@ async function saveAdminData() {
     const user = localStorage.getItem('portal_user') || "Admin";
     
     // Payload vorbereiten
-    const payload = {
-        action: "saveAdminData",
-        user: user,
-        termine: adminState.termine,
-        platzhalter: adminState.platzhalter,
-        app_info: adminState.app_info,
-        // ... weitere Felder nach Bedarf
-    };
+  const payload = {
+  action: "saveAdminData",
+  user: user,
+  termine: adminState.termine,
+  platzhalter: adminState.platzhalter,
+  app_info: adminState.app_info,
+  dropdowns: adminState.dropdowns,
+  logDetails: buildChangeLogDetails()
+};
+
 
     try {
         await apiFetch('termine', '', {
@@ -239,6 +464,15 @@ async function saveAdminData() {
     } catch(e) {
         alert("Fehler beim Speichern: " + e);
     }
+}
+function buildChangeLogDetails() {
+  if (!originalAdminState) return "Daten aktualisiert";
+  const changed = [];
+  if (JSON.stringify(adminState.termine) !== JSON.stringify(originalAdminState.termine)) changed.push("Termine");
+  if (JSON.stringify(adminState.platzhalter) !== JSON.stringify(originalAdminState.platzhalter)) changed.push("GV Daten");
+  if (JSON.stringify(adminState.app_info) !== JSON.stringify(originalAdminState.app_info)) changed.push("App_Info");
+  if (JSON.stringify(adminState.dropdowns) !== JSON.stringify(originalAdminState.dropdowns)) changed.push("Stammdaten");
+  return changed.length ? ("Geändert: " + changed.join(", ")) : "Speichern ohne Änderungen";
 }
 
 async function runAdminTool(toolName) {
