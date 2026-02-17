@@ -75,10 +75,8 @@ async function loadTermineData() {
     <div id="termine-shell">
       <div class="d-flex justify-content-between align-items-center mb-2">
         <div class="small text-muted" id="last-sync">Zuletzt aktualisiert: -</div>
-        <div class="d-flex gap-2">
-          <button class="btn btn-outline-secondary btn-sm" onclick="loadTermineData()">🔄 Laden</button>
-          <button class="btn btn-success btn-sm fw-bold" onclick="saveAdminData()">💾 Speichern</button>
-        </div>
+    
+      
       </div>
       <div id="termine-ui"></div>
     </div>
