@@ -207,23 +207,79 @@ function renderTermineUI(container) {
 // --- RENDERING SUB-FUNCTIONS ---
 
 function renderGVList() {
-    const list = document.getElementById('gv-list');
-    if(!list || !adminState.platzhalter) return;
+  const list = document.getElementById('gv-list');
+  if (!list || !adminState.platzhalter) return;
 
-    list.innerHTML = adminState.platzhalter.map((p, i) => {
-        const label = p.bezeichnung_app || p.platzhaltername;
-        // Einfache Input-Felder für Text/Datum
-        return `<div class="mb-2">
-            <label class="form-label small fw-bold mb-0">${label}</label>
-            <input type="text" class="form-control form-control-sm" value="${p.inhalt||''}" 
-            onchange="adminState.platzhalter[${i}].inhalt=this.value">
-        </div>`;
-    }).join('');
+  const pickPlaceholder = (label) => {
+    const l = String(label || '').toLowerCase();
+    if (l.includes('datum') && l.includes('gv') && l.includes('vorjahr')) return 'tt.mm.jjjj';
+    if (l.includes('datum') && l.includes('abmeldung')) return 'tt.mm.jjjj';
+    if (l.includes('datum') && l.includes('gv')) return 'tt.mm.jjjj';
+    if (l.includes('zeit') && l.includes('gv')) return 'hh:mm';
+    return '';
+  };
+
+  const isBudget = (label) => String(label || '').toLowerCase().includes('budget');
+
+  list.innerHTML = adminState.platzhalter.map((p, i) => {
+    const label = p.bezeichnung_app || p.platzhaltername || '';
+    const ph = pickPlaceholder(label);
+    const value = p.inhalt || '';
+
+    if (isBudget(label)) {
+      return `
+        <div class="mb-3">
+          <label class="form-label small fw-bold mb-1">${escapeHtml(label)}</label>
+          <textarea class="form-control form-control-sm" rows="5"
+            placeholder="Mehrzeiliger Text…"
+            onchange="adminState.platzhalter[${i}].inhalt=this.value">${escapeHtml(value)}</textarea>
+        </div>
+      `;
+    }
+
+    return `
+      <div class="mb-2">
+        <label class="form-label small fw-bold mb-0">${escapeHtml(label)}</label>
+        <input type="text" class="form-control form-control-sm"
+          value="${escapeHtml(value)}"
+          placeholder="${escapeHtml(ph)}"
+          onchange="adminState.platzhalter[${i}].inhalt=this.value">
+      </div>
+    `;
+  }).join('');
+}
+
+
+function getMemberEmail(m) {
+  // passt sich an typische Header-Namen an
+  return String(m.e_mail || m.email || m.mailadresse || m.mail || '').trim();
+}
+
+function getMemberDisplayName(m) {
+  const nn = String(m.nachname || '').trim();
+  const vn = String(m.vorname || '').trim();
+  const full = `${nn} ${vn}`.trim();
+  return full || String(m.name || '').trim() || getMemberEmail(m);
+}
+
+function getMembersForMailDropdown() {
+  const arr = (adminState.members || [])
+    .map(m => ({
+      name: getMemberDisplayName(m),
+      email: getMemberEmail(m)
+    }))
+    .filter(x => x.email); // nur mit Mail
+
+  // nach Nachname Vorname sortieren (wie angezeigt)
+  arr.sort((a,b) => a.name.localeCompare(b.name, 'de', { sensitivity: 'base' }));
+  return arr;
 }
 
 function renderAppInfoList() {
   const list = document.getElementById('app-info-list');
   if (!list || !adminState.app_info) return;
+
+  const members = getMembersForMailDropdown();
 
   list.innerHTML = adminState.app_info.map((info, i) => {
     const mails = (info.mailadresse || "")
@@ -231,30 +287,29 @@ function renderAppInfoList() {
       .map(x => x.trim())
       .filter(Boolean);
 
-    const memberEmails = (adminState.members || [])
-      .map(m => (m.e_mail || m.email || m.mailadresse || '').trim())
-      .filter(Boolean)
-      .sort((a,b)=>a.localeCompare(b));
-
     return `
       <div class="mb-3 border-bottom pb-3">
-        <label class="form-label small fw-bold mb-1">${info.bezeichnung || ''}</label>
+        <label class="form-label small fw-bold mb-1">${escapeHtml(info.bezeichnung || '')}</label>
 
         <div class="tag-box mb-2">
-          ${mails.length ? mails.map(m => `
-            <span class="tag">${escapeHtml(m)} <span class="x" onclick="removeMail(${i}, '${escapeJs(m)}')">×</span></span>
-          `).join('') : `<span class="text-muted small">Keine Empfänger</span>`}
+          ${
+            mails.length
+              ? mails.map(m => `
+                  <span class="tag">${escapeHtml(m)}
+                    <span class="x" onclick="removeMail(${i}, '${escapeJs(m)}')">×</span>
+                  </span>
+                `).join('')
+              : `<span class="text-muted small">Keine Empfänger</span>`
+          }
         </div>
 
-        <select class="form-select form-select-sm mb-2" onchange="addMail(${i}, this.value); this.value=''">
+        <select class="form-select form-select-sm"
+          onchange="addMail(${i}, this.value); this.value=''">
           <option value="">+ Empfänger hinzufügen</option>
-          ${memberEmails.map(em => `<option value="${escapeHtml(em)}">${escapeHtml(em)}</option>`).join('')}
+          ${members.map(mm =>
+            `<option value="${escapeHtml(mm.email)}">${escapeHtml(mm.name)} (${escapeHtml(mm.email)})</option>`
+          ).join('')}
         </select>
-
-        <input type="text" class="form-control form-control-sm"
-          value="${escapeHtml(info.bemerkung || '')}"
-          placeholder="Bemerkung"
-          onchange="adminState.app_info[${i}].bemerkung=this.value">
       </div>
     `;
   }).join('');
@@ -284,6 +339,9 @@ function removeMail(idx, email) {
 function escapeJs(s) {
   return String(s).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
 }
+
+
+
 
 
 function renderTermineList() {
@@ -379,7 +437,10 @@ function renderDropdownEditor() {
   const o = document.getElementById('edit-orte');
 
   if (a) {
-    const arr = adminState.dropdowns.anlaesse || [];
+    const arr = (adminState.dropdowns.anlaesse || []).filter(x => String(x || '').trim() !== '');
+    // wir schreiben gefiltert zurück, damit der Editor “sauber” bleibt
+    adminState.dropdowns.anlaesse = arr;
+
     a.innerHTML = arr.map((val, i) => `
       <div class="d-flex gap-2 mb-2">
         <input type="text" class="form-control form-control-sm"
@@ -391,7 +452,12 @@ function renderDropdownEditor() {
   }
 
   if (o) {
-    const arr = adminState.dropdowns.orteMitMaps || [];
+    const arrRaw = adminState.dropdowns.orteMitMaps || [];
+    const arr = arrRaw
+      .filter(pair => pair && String(pair[0] || '').trim() !== ''); // nur Ort nicht leer
+
+    adminState.dropdowns.orteMitMaps = arr;
+
     o.innerHTML = arr.map((pair, i) => `
       <div class="d-flex gap-2 mb-2">
         <input type="text" class="form-control form-control-sm"
@@ -433,18 +499,26 @@ function removeOrt(i) {
 // --- ACTIONS ---
 
 function addTerminRow() {
-    // Neuen leeren Termin hinzufügen
-    adminState.termine.push({
-        datum: new Date().toISOString().split('T')[0],
-        startzeit: "19:00",
-        endzeit: "22:00",
-        anlasstitel: adminState.dropdowns.anlaesse[0] || "",
-        ort: adminState.dropdowns.orteMitMaps[0][0] || "",
-        kategorie: "Jahresprogramm",
-        status: "provisorisch"
-    });
-    renderTermineList();
+  adminState.termine.push({
+    id: generateTerminId(),          // <-- neu
+    datum: new Date().toISOString().split('T')[0],
+    startzeit: "19:00",
+    endzeit: "22:00",
+    anlasstitel: (adminState.dropdowns.anlaesse && adminState.dropdowns.anlaesse[0]) ? adminState.dropdowns.anlaesse[0] : "",
+    ort: (adminState.dropdowns.orteMitMaps && adminState.dropdowns.orteMitMaps[0]) ? adminState.dropdowns.orteMitMaps[0][0] : "",
+    kategorie: "Jahresprogramm",
+    status: "provisorisch"
+  });
+  renderTermineList();
 }
+
+
+
+function generateTerminId() {
+  // eindeutig genug: Zeit + Random, als String
+  return 't_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8);
+}
+
 
 function removeTermin(index) {
     if(confirm("Termin wirklich löschen?")) {
