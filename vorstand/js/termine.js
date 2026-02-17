@@ -44,6 +44,7 @@ function ensureTermineStylesOnce() {
   document.head.appendChild(s);
 }
 
+
 function showTermineOverlay(show, text) {
   const container = document.getElementById('termine-container');
   if (!container) return;
@@ -199,24 +200,87 @@ function renderTermineUI(container) {
     renderGVList();
     renderAppInfoList();
     renderTermineList();
+    bindTermineEventsOnce()
     renderAnmeldungenList();
     renderProtokollList();
     renderDropdownEditor();
 
 }
+function renderTermineList() {
+  const tbody = document.getElementById('termine-body');
+  if (!tbody || !adminState.termine) return;
+
+  tbody.innerHTML = adminState.termine.map((t) => {
+    const status = String(t.status || '').toLowerCase();
+
+    let rowClass = '';
+    if (status === 'abgesagt') rowClass = 'row-abgesagt';
+    else if (status === 'provisorisch') rowClass = 'row-provisorisch';
+    else if (!t.datum) rowClass = 'row-warn';
+
+    return `
+      <tr data-id="${escapeHtml(String(t.id))}" class="${rowClass}">
+        <td><input data-field="datum" type="date" class="form-control form-control-sm" value="${formatDate(t.datum)}"></td>
+        <td><input data-field="startzeit" type="time" class="form-control form-control-sm" value="${formatTime(t.startzeit)}"></td>
+        <td><input data-field="endzeit" type="time" class="form-control form-control-sm" value="${formatTime(t.endzeit)}"></td>
+
+        <td>
+          <select data-field="anlasstitel" class="form-select form-select-sm">
+            <option value="">-- Anlass --</option>
+            ${(adminState.dropdowns.anlaesse||[]).map(a =>
+              `<option value="${escapeHtml(a)}" ${a===t.anlasstitel?'selected':''}>${escapeHtml(a)}</option>`
+            ).join('')}
+          </select>
+        </td>
+
+        <td>
+          <select data-field="ort" class="form-select form-select-sm">
+            <option value="">-- Ort --</option>
+            ${(adminState.dropdowns.orteMitMaps||[]).map(o =>
+              `<option value="${escapeHtml(o[0])}" ${o[0]===t.ort?'selected':''}>${escapeHtml(o[0])}</option>`
+            ).join('')}
+          </select>
+        </td>
+
+        <td>
+          <select data-field="kategorie" class="form-select form-select-sm">
+            <option value="">-- Kat --</option>
+            ${(adminState.dropdowns.kategorien||[]).map(k =>
+              `<option value="${escapeHtml(k)}" ${k===t.kategorie?'selected':''}>${escapeHtml(k)}</option>`
+            ).join('')}
+          </select>
+        </td>
+
+        <td>
+          <select data-field="status" class="form-select form-select-sm">
+            <option value="">-- Status --</option>
+            ${['fix','provisorisch','abgesagt'].map(s =>
+              `<option value="${s}" ${s===t.status?'selected':''}>${s}</option>`
+            ).join('')}
+          </select>
+        </td>
+
+        <td><button type="button" class="btn btn-link text-danger p-0" data-action="remove">🗑️</button></td>
+      </tr>
+    `;
+  }).join('');
+}
 
 // --- RENDERING SUB-FUNCTIONS ---
 
-function getMembersForMailDropdown() {
-  const arr = (adminState.members || [])
-    .map(m => ({
-      name: getMemberDisplayName(m),
-      email: getMemberEmail(m)
-    }))
-    .filter(x => x.email);
 
-  arr.sort((a,b) => a.name.localeCompare(b.name, 'de', { sensitivity: 'base' }));
-  return arr;
+function applyDefaultsOnDateSetById(id) {
+  const idx = adminState.termine.findIndex(t => String(t.id) === String(id));
+  if (idx < 0) return;
+
+  const t = adminState.termine[idx];
+  if (!t.datum) return;
+
+  if (!t.startzeit) t.startzeit = "19:00";
+  if (!t.endzeit)   t.endzeit   = "22:00";
+
+  if (!t.status)    t.status    = "provisorisch";
+  if (!t.kategorie) t.kategorie = "Jahresprogramm";
 }
 
 function renderGVList() {
@@ -413,72 +477,6 @@ function escapeJs(s) {
 
 
 
-function renderTermineList() {
-  const tbody = document.getElementById('termine-body');
-  if (!tbody || !adminState.termine) return;
-
-  // Sortieren: Zeilen ohne Datum ans Ende, sonst nach Datum aufsteigend
-  adminState.termine.sort((a, b) => {
-    if (!a.datum && !b.datum) return 0;
-    if (!a.datum) return 1;   // a ohne Datum → nach hinten
-    if (!b.datum) return -1;  // b ohne Datum → nach hinten
-    return new Date(a.datum) - new Date(b.datum);
-  });
-
-  tbody.innerHTML = adminState.termine.map((t, i) => {
-    const status = String(t.status || '').toLowerCase();
-
-let rowClass = '';
-if (status === 'abgesagt') rowClass = 'row-abgesagt';
-else if (status === 'provisorisch') rowClass = 'row-provisorisch';
-else if (!t.datum) rowClass = 'row-warn';
-
-    return `
-      <tr class="${rowClass}">
-        <td><input type="date" class="form-control form-control-sm" value="${formatDate(t.datum)}"
-          onchange="onTerminDateChange(${i}, this.value)"></td>
-        <td><input type="time" class="form-control form-control-sm" value="${formatTime(t.startzeit)}"
-          onchange="adminState.termine[${i}].startzeit=this.value"></td>
-        <td><input type="time" class="form-control form-control-sm" value="${formatTime(t.endzeit)}"
-          onchange="adminState.termine[${i}].endzeit=this.value"></td>
-        <td>
-          <select class="form-select form-select-sm" onchange="adminState.termine[${i}].anlasstitel=this.value">
-            <option value="">-- Anlass --</option>
-            ${(adminState.dropdowns.anlaesse||[]).map(a => `<option value="${escapeHtml(a)}" ${a===t.anlasstitel?'selected':''}>${escapeHtml(a)}</option>`).join('')}
-          </select>
-        </td>
-        <td>
-          <select class="form-select form-select-sm" onchange="updateTerminOrt(${i}, this.value)">
-            <option value="">-- Ort --</option>
-            ${(adminState.dropdowns.orteMitMaps||[]).map(o => `<option value="${escapeHtml(o[0])}" ${o[0]===t.ort?'selected':''}>${escapeHtml(o[0])}</option>`).join('')}
-          </select>
-        </td>
-        <td>
-          <select class="form-select form-select-sm" onchange="adminState.termine[${i}].kategorie=this.value">
-            <option value="">-- Kat --</option>
-            ${(adminState.dropdowns.kategorien||[]).map(k => `<option value="${escapeHtml(k)}" ${k===t.kategorie?'selected':''}>${escapeHtml(k)}</option>`).join('')}
-          </select>
-        </td>
-        <td>
-          <select class="form-select form-select-sm" onchange="adminState.termine[${i}].status=this.value">
-            <option value="">-- Status --</option>
-            ${['fix','provisorisch','abgesagt'].map(s => `<option value="${s}" ${s===t.status?'selected':''}>${s}</option>`).join('')}
-          </select>
-        </td>
-        <td><button class="btn btn-link text-danger p-0" onclick="removeTermin(${i})">🗑️</button></td>
-      </tr>
-    `;
-  }).join('');
-}
-
-function sortTermineForSave() {
-  adminState.termine.sort((a, b) => {
-    if (!a.datum && !b.datum) return 0;
-    if (!a.datum) return 1;
-    if (!b.datum) return -1;
-    return new Date(a.datum) - new Date(b.datum);
-  });
-}
 
 
 
@@ -580,23 +578,7 @@ function addTerminRow() {
   renderTermineList();
 }
 
-function onTerminDateChange(idx, newDate) {
-  adminState.termine[idx].datum = newDate;
 
-  if (newDate) {
-    if (!adminState.termine[idx].startzeit) adminState.termine[idx].startzeit = "19:00";
-    if (!adminState.termine[idx].endzeit)   adminState.termine[idx].endzeit   = "22:00";
-
-    if (!adminState.termine[idx].status)    adminState.termine[idx].status    = "provisorisch";
-    if (!adminState.termine[idx].kategorie) adminState.termine[idx].kategorie = "Jahresprogramm";
-
-    // WICHTIG: KEIN Auto-Anlass / Auto-Ort mehr:
-    // adminState.termine[idx].anlasstitel = ...
-    // adminState.termine[idx].ort = ...
-  }
-
-  renderTermineList(); // ok, weil wir ja NICHT mehr sortieren im Render
-}
 
 
 function generateTerminId() {
@@ -605,18 +587,15 @@ function generateTerminId() {
 }
 
 
-function removeTermin(index) {
-    if(confirm("Termin wirklich löschen?")) {
-        adminState.termine.splice(index, 1);
-        renderTermineList();
-    }
+function sortTermineForSave() {
+  adminState.termine.sort((a, b) => {
+    if (!a.datum && !b.datum) return 0;
+    if (!a.datum) return 1;
+    if (!b.datum) return -1;
+    return new Date(a.datum) - new Date(b.datum);
+  });
 }
 
-function updateTerminOrt(idx, ortName) {
-    adminState.termine[idx].ort = ortName;
-    const found = adminState.dropdowns.orteMitMaps.find(o => o[0] === ortName);
-    if(found) adminState.termine[idx].austragungsorte_map = found[1];
-}
 
 async function saveAdminData() {
     if(!confirm("Alle Änderungen speichern?")) return;
@@ -676,3 +655,70 @@ async function runAdminTool(toolName) {
 // Utils
 function formatDate(v) { if(!v) return ""; try { return v.includes('T') ? v.split('T')[0] : v; } catch(e){return v;} }
 function formatTime(v) { if(!v) return ""; return v.length > 5 ? v.substring(0,5) : v; }
+
+
+let termineEventsBound = false;
+
+function bindTermineEventsOnce() {
+  if (termineEventsBound) return;
+  termineEventsBound = true;
+
+  const tbody = document.getElementById('termine-body');
+  if (!tbody) return;
+
+  // Änderungen (input/select)
+  tbody.addEventListener('change', (e) => {
+    const el = e.target;
+    if (!el) return;
+
+    const tr = el.closest('tr[data-id]');
+    if (!tr) return;
+
+    const id = tr.dataset.id;
+    const field = el.dataset.field;
+    if (!field) return;
+
+    setTerminFieldById(id, field, el.value);
+    if (field === 'ort') {
+  applyOrtMapById(id, el.value);
+}
+
+    if (field === 'datum') {
+      applyDefaultsOnDateSetById(id);
+      // KEIN sortieren hier -> kein "hüpfen"
+    }
+
+    renderTermineList();
+  });
+
+  // Delete Button
+  tbody.addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-action="remove"]');
+    if (!btn) return;
+
+    const tr = btn.closest('tr[data-id]');
+    if (!tr) return;
+
+    removeTerminById(tr.dataset.id);
+  });
+}
+function applyOrtMapById(id, ortName) {
+  const idx = adminState.termine.findIndex(t => String(t.id) === String(id));
+  if (idx < 0) return;
+
+  const found = (adminState.dropdowns.orteMitMaps || []).find(o => o[0] === ortName);
+  adminState.termine[idx].austragungsorte_map = found ? (found[1] || '') : '';
+}
+
+function setTerminFieldById(id, field, value) {
+  const idx = adminState.termine.findIndex(t => String(t.id) === String(id));
+  if (idx < 0) return;
+  adminState.termine[idx][field] = value;
+}
+
+function removeTerminById(id) {
+  if (!confirm("Termin wirklich löschen?")) return;
+  adminState.termine = adminState.termine.filter(t => String(t.id) !== String(id));
+  renderTermineList();
+}
+
