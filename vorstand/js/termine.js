@@ -433,7 +433,7 @@ function renderTermineList() {
     return `
       <tr class="${rowClass}">
         <td><input type="date" class="form-control form-control-sm" value="${formatDate(t.datum)}"
-          onchange="adminState.termine[${i}].datum=this.value; renderTermineList();"></td>
+          onchange="onTerminDateChange(${i}, this.value)"></td>
         <td><input type="time" class="form-control form-control-sm" value="${formatTime(t.startzeit)}"
           onchange="adminState.termine[${i}].startzeit=this.value"></td>
         <td><input type="time" class="form-control form-control-sm" value="${formatTime(t.endzeit)}"
@@ -555,18 +555,44 @@ function removeOrt(i) {
 }
 
 // --- ACTIONS ---
-
 function addTerminRow() {
   adminState.termine.push({
-    id: generateTerminId(),          // <-- neu
-    datum: new Date().toISOString().split('T')[0],
-    startzeit: "19:00",
-    endzeit: "22:00",
-    anlasstitel: (adminState.dropdowns.anlaesse && adminState.dropdowns.anlaesse[0]) ? adminState.dropdowns.anlaesse[0] : "",
-    ort: (adminState.dropdowns.orteMitMaps && adminState.dropdowns.orteMitMaps[0]) ? adminState.dropdowns.orteMitMaps[0][0] : "",
-    kategorie: "Jahresprogramm",
-    status: "provisorisch"
+    id: generateTerminId(),
+    datum: "",
+    startzeit: "",
+    endzeit: "",
+    anlasstitel: "",
+    ort: "",
+    kategorie: "",
+    status: ""
   });
+  renderTermineList();
+}
+
+function onTerminDateChange(idx, newDate) {
+  adminState.termine[idx].datum = newDate;
+
+  // Nur wenn Datum gesetzt wurde (nicht leer)
+  if (newDate) {
+    // Zeiten nur setzen, wenn der User sie noch nicht gesetzt hat
+    if (!adminState.termine[idx].startzeit) adminState.termine[idx].startzeit = "19:00";
+    if (!adminState.termine[idx].endzeit)   adminState.termine[idx].endzeit   = "22:00";
+
+    // Optional (empfohlen): weitere Defaults nur wenn leer
+    if (!adminState.termine[idx].status) adminState.termine[idx].status = "provisorisch";
+    if (!adminState.termine[idx].kategorie) adminState.termine[idx].kategorie = "Jahresprogramm";
+
+    if (!adminState.termine[idx].anlasstitel && (adminState.dropdowns?.anlaesse?.length)) {
+      adminState.termine[idx].anlasstitel = adminState.dropdowns.anlaesse[0] || "";
+    }
+    if (!adminState.termine[idx].ort && (adminState.dropdowns?.orteMitMaps?.length)) {
+      adminState.termine[idx].ort = adminState.dropdowns.orteMitMaps[0]?.[0] || "";
+      const found = adminState.dropdowns.orteMitMaps.find(o => o[0] === adminState.termine[idx].ort);
+      if (found) adminState.termine[idx].austragungsorte_map = found[1];
+    }
+  }
+
+  // Re-rendern, damit Sortierung greift und die Felder sichtbar aktualisieren
   renderTermineList();
 }
 
