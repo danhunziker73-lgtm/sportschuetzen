@@ -289,48 +289,73 @@ function escapeJs(s) {
 
 
 function renderTermineList() {
-    const tbody = document.getElementById('termine-body');
-    if(!tbody || !adminState.termine) return;
+  const tbody = document.getElementById('termine-body');
+  if (!tbody || !adminState.termine) return;
 
-    // Sortieren (Datum)
-    adminState.termine.sort((a,b) => (a.datum && b.datum) ? new Date(a.datum) - new Date(b.datum) : -1);
+  // Sortieren (Datum)
+  adminState.termine.sort((a, b) =>
+    (a.datum && b.datum) ? new Date(a.datum) - new Date(b.datum) : -1
+  );
 
-    tbody.innerHTML = adminState.termine.map((t, i) => `
-        <tr>
+  tbody.innerHTML = adminState.termine.map((t, i) => {
+    const status = String(t.status || '').toLowerCase();
+    const rowClass = status === 'abgesagt'
+      ? 'row-abgesagt'
+      : (!t.datum ? 'row-warn' : '');
 
-        const status = (t.status || '').toLowerCase();
-const rowClass = status === 'abgesagt' ? 'row-abgesagt' : (!t.datum ? 'row-warn' : '');
-return `<tr class="${rowClass}"> ... </tr>`;
+    return `
+      <tr class="${rowClass}">
+        <td><input type="date" class="form-control form-control-sm" value="${formatDate(t.datum)}"
+          onchange="adminState.termine[${i}].datum=this.value"></td>
 
+        <td><input type="time" class="form-control form-control-sm" value="${formatTime(t.startzeit)}"
+          onchange="adminState.termine[${i}].startzeit=this.value"></td>
 
-        
-            <td><input type="date" class="form-control form-control-sm" value="${formatDate(t.datum)}" onchange="adminState.termine[${i}].datum=this.value"></td>
-            <td><input type="time" class="form-control form-control-sm" value="${formatTime(t.startzeit)}" onchange="adminState.termine[${i}].startzeit=this.value"></td>
-            <td><input type="time" class="form-control form-control-sm" value="${formatTime(t.endzeit)}" onchange="adminState.termine[${i}].endzeit=this.value"></td>
-            <td>
-                <select class="form-select form-select-sm" onchange="adminState.termine[${i}].anlasstitel=this.value">
-                    ${(adminState.dropdowns.anlaesse||[]).map(a => `<option value="${a}" ${a===t.anlasstitel?'selected':''}>${a}</option>`).join('')}
-                </select>
-            </td>
-            <td>
-                <select class="form-select form-select-sm" onchange="updateTerminOrt(${i}, this.value)">
-                    ${(adminState.dropdowns.orteMitMaps||[]).map(o => `<option value="${o[0]}" ${o[0]===t.ort?'selected':''}>${o[0]}</option>`).join('')}
-                </select>
-            </td>
-            <td>
-                <select class="form-select form-select-sm" onchange="adminState.termine[${i}].kategorie=this.value">
-                    ${(adminState.dropdowns.kategorien||[]).map(k => `<option value="${k}" ${k===t.kategorie?'selected':''}>${k}</option>`).join('')}
-                </select>
-            </td>
-             <td>
-                <select class="form-select form-select-sm" onchange="adminState.termine[${i}].status=this.value">
-                    ${['fix', 'provisorisch', 'abgesagt'].map(s => `<option value="${s}" ${s===t.status?'selected':''}>${s}</option>`).join('')}
-                </select>
-            </td>
-            <td><button class="btn btn-link text-danger p-0" onclick="removeTermin(${i})">🗑️</button></td>
-        </tr>
-    `).join('');
+        <td><input type="time" class="form-control form-control-sm" value="${formatTime(t.endzeit)}"
+          onchange="adminState.termine[${i}].endzeit=this.value"></td>
+
+        <td>
+          <select class="form-select form-select-sm"
+            onchange="adminState.termine[${i}].anlasstitel=this.value">
+            ${(adminState.dropdowns.anlaesse || []).map(a =>
+              `<option value="${a}" ${a===t.anlasstitel?'selected':''}>${a}</option>`
+            ).join('')}
+          </select>
+        </td>
+
+        <td>
+          <select class="form-select form-select-sm"
+            onchange="updateTerminOrt(${i}, this.value)">
+            ${(adminState.dropdowns.orteMitMaps || []).map(o =>
+              `<option value="${o[0]}" ${o[0]===t.ort?'selected':''}>${o[0]}</option>`
+            ).join('')}
+          </select>
+        </td>
+
+        <td>
+          <select class="form-select form-select-sm"
+            onchange="adminState.termine[${i}].kategorie=this.value">
+            ${(adminState.dropdowns.kategorien || []).map(k =>
+              `<option value="${k}" ${k===t.kategorie?'selected':''}>${k}</option>`
+            ).join('')}
+          </select>
+        </td>
+
+        <td>
+          <select class="form-select form-select-sm"
+            onchange="adminState.termine[${i}].status=this.value">
+            ${['fix','provisorisch','abgesagt'].map(s =>
+              `<option value="${s}" ${s===t.status?'selected':''}>${s}</option>`
+            ).join('')}
+          </select>
+        </td>
+
+        <td><button class="btn btn-link text-danger p-0" onclick="removeTermin(${i})">🗑️</button></td>
+      </tr>
+    `;
+  }).join('');
 }
+
 
 function renderAnmeldungenList() {
     const tbody = document.getElementById('anmelde-body');
