@@ -1,121 +1,163 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-    <meta charset="UTF-8">
-    <title>Sportschützen Muhen App</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="theme-color" content="#0f3a5d">
+<meta charset="UTF-8">
+<title>Sportschützen Muhen App</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0f3a5d">
 
-    <link rel="manifest" href="/sportschuetzen/manifest.json">
-    <link rel="apple-touch-icon" sizes="180x180" href="/sportschuetzen/icons/apple-touch-icon.png">
-    
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-title" content="Sportschützen Muhen">
-    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="manifest" href="/sportschuetzen/manifest.json">
+<link rel="apple-touch-icon" sizes="180x180" href="/sportschuetzen/icons/apple-touch-icon.png">
 
-    <link rel="icon" type="image/png" sizes="192x192" href="/sportschuetzen/icons/icon-192.png">
-    <link rel="icon" type="image/png" sizes="512x512" href="/sportschuetzen/icons/icon-512.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Sportschützen Muhen">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 
-    <!-- OneSignal SDK (NUR EINMAL!) -->
-    <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+<link rel="icon" type="image/png" sizes="192x192" href="/sportschuetzen/icons/icon-192.png">
+<link rel="icon" type="image/png" sizes="512x512" href="/sportschuetzen/icons/icon-512.png">
 
-    <script>
-    /************************************************
-     * OneSignal + PID Handling (STABILE VERSION)
-     ************************************************/
-    window.OneSignalDeferred = window.OneSignalDeferred || [];
-    OneSignalDeferred.push(async function (OneSignal) {
+<!-- OneSignal SDK (nur EINMAL!) -->
+<script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
 
-        const log = (...args) => console.log("[OneSignal]", ...args);
+<script>
+/************************************************
+ * OneSignal Init + PID Handling (stabil)
+ ************************************************/
+window.OneSignalDeferred = window.OneSignalDeferred || [];
+OneSignalDeferred.push(async function (OneSignal) {
 
-        try {
-            await OneSignal.init({
-                appId: "975091f5-948b-48d4-9e61-b7f4d43a1021",
-                serviceWorkerPath: "OneSignalSDKWorker.js",
-                serviceWorkerParam: { scope: "/sportschuetzen/" },
-                autoRegister: false,
-                notifyButton: { enable: false }
-            });
+    try {
+        await OneSignal.init({
+            appId: "975091f5-948b-48d4-9e61-b7f4d43a1021",
+            serviceWorkerParam: { scope: "/sportschuetzen/" },
+            serviceWorkerPath: "OneSignalSDKWorker.js",
+            autoRegister: false,
+            notifyButton: { enable: true }
+        });
 
-            log("Init fertig");
+        console.log("OneSignal Init fertig");
 
-            // --- PID Handling ---
-            const urlParams = new URLSearchParams(window.location.search);
-            let pid = urlParams.get("pid");
+        // ---- PID Handling ----
+        const params = new URLSearchParams(window.location.search);
+        let pid = params.get("pid") || localStorage.getItem("sportschuetzen_pid");
 
-            if (!pid) {
-                pid = localStorage.getItem("sportschuetzen_pid");
-                if (!pid) {
-                    log("Keine PID vorhanden");
-                    return;
-                }
-                log("PID aus localStorage:", pid);
-            } else {
-                localStorage.setItem("sportschuetzen_pid", pid);
-                log("PID aus URL gespeichert:", pid);
-            }
+        if (!pid) {
+            console.log("Keine PID vorhanden");
+            return;
+        }
 
-            const targetPid = String(pid);
+        localStorage.setItem("sportschuetzen_pid", pid);
 
-            if (OneSignal.User.externalId !== targetPid) {
-                await OneSignal.login(targetPid);
-                log("Login mit External ID:", targetPid);
-            }
+        if (OneSignal.User.externalId !== pid) {
+            await OneSignal.login(String(pid));
+            console.log("Login mit PID:", pid);
+        }
 
-            const permission = OneSignal.Notifications.permission;
-            log("Permission:", permission);
+        const permission = OneSignal.Notifications.permission;
 
-            if (permission === "default") {
-                const granted = await OneSignal.Notifications.requestPermission();
-                log("Permission Ergebnis:", granted);
-            }
+        if (permission === "default") {
+            await OneSignal.Notifications.requestPermission();
+        }
 
-        } catch (err) {
-            console.error("OneSignal Fehler:", err);
+    } catch (err) {
+        console.error("OneSignal Fehler:", err);
+    }
+});
+
+/************************************************
+ * ZENTRALE APP-RESUME LOGIK
+ ************************************************/
+(function () {
+
+    let lastResume = 0;
+    const MIN_INTERVAL = 1500;
+
+    function fireResume(source) {
+        const now = Date.now();
+        if (now - lastResume < MIN_INTERVAL) return;
+        lastResume = now;
+
+        console.log("📲 App Resume:", source);
+
+        // Event für Hauptseite
+        document.dispatchEvent(new CustomEvent("app:resume"));
+
+        // Resume an alle iFrames senden
+        document.querySelectorAll("iframe").forEach(iframe => {
+            iframe.contentWindow?.postMessage(
+                { type: "app:resume", source, ts: now },
+                "*"
+            );
+        });
+    }
+
+    document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "visible") {
+            fireResume("visibility");
         }
     });
 
-    /************************************************
-     * ZENTRALE APP RESUME LOGIK
-     ************************************************/
-    (function () {
-
-        let lastResume = 0;
-        const MIN_INTERVAL = 1500;
-
-        function fireResume(source) {
-            const now = Date.now();
-            if (now - lastResume < MIN_INTERVAL) return;
-            lastResume = now;
-
-            console.log("App Resume:", source);
-
-            document.querySelectorAll("iframe").forEach(iframe => {
-                iframe.contentWindow?.postMessage(
-                    { type: "app:resume", source, ts: now },
-                    "*"
-                );
-            });
+    window.addEventListener("pageshow", e => {
+        if (e.persisted) {
+            fireResume("pageshow");
         }
+    });
 
-        document.addEventListener("visibilitychange", () => {
-            if (document.visibilityState === "visible") {
-                fireResume("visibility");
-            }
-        });
+    window.addEventListener("focus", () => {
+        fireResume("focus");
+    });
 
-        window.addEventListener("pageshow", e => {
-            if (e.persisted) fireResume("pageshow");
-        });
+})();
+</script>
 
-        window.addEventListener("focus", () => {
-            fireResume("focus");
-        });
-
-    })();
-    </script>
-
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
 </head>
+
 <body>
+
+<div id="pull-spinner"><div class="spinner-icon"></div></div>
+<header><h1 id="main-title">Termine</h1></header>
+
+<main>
+<section id="page-home" class="page active-page">
+    <div class="card" style="text-align:center;">
+        <img src="https://raw.githubusercontent.com/danhunziker73-lgtm/sportschuetzen/main/icons/icon-512.png" style="height:100px; margin-bottom:10px;">
+        <h2>Sportschützen Muhen</h2>
+        <p>Willkommen</p>
+    </div>
+
+    <div class="card">
+        <h3>Termine</h3>
+
+        <div class="filter-container">
+            <button class="filter-btn active" onclick="filterTermine('all', this)">Alle</button>
+            <button class="filter-btn" onclick="filterTermine('verein', this)">🎯 Verein</button>
+            <button class="filter-btn" onclick="filterTermine('extern', this)">🏠 Haus</button>
+        </div>
+
+        <div id="termine" class="termine-list">Lade Termine...</div>
+    </div>
+</section>
+
+<section id="page-jm" class="page"><iframe src="app/app_jm.html"></iframe></section>
+<section id="page-gruppe" class="page"><iframe src="app/app_gruppe.html"></iframe></section>
+<section id="page-mannschaft" class="page"><iframe src="app/app_mannschaft.html"></iframe></section>
+
+<section id="page-upload" class="page">
+    <iframe src="upload.html"></iframe>
+</section>
+</main>
+
+<nav class="bottom-nav">
+<button class="nav-item" onclick="nav('page-jm', 'Jahresmeisterschaft', this)"><span>🏆</span>JM</button>
+<button class="nav-item" onclick="nav('page-gruppe', 'Gruppe & Grenzland', this)"><span>👥</span>G&G</button>
+<button class="nav-item nav-home active" onclick="nav('page-home', 'Termine', this)"><span>🏠</span></button>
+<button class="nav-item" onclick="nav('page-mannschaft', 'Mannschaft', this)"><span>🎯</span>Mannschaft</button>
+<button class="nav-item" onclick="nav('page-upload', 'Upload', this)"><span>📤</span>Upload</button>
+</nav>
+
+<script src="app.js" defer></script>
+
+</body>
+</html>
