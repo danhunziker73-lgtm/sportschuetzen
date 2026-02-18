@@ -104,13 +104,38 @@
                     <h3>Willkommen zurück! 👋</h3>
                     <p class="text-muted">Wähle einen Bereich im Menü aus.</p>
                     <div class="row g-3 mt-2">
-                        <div class="col-md-4"><div class="card p-3 shadow-sm border-0 h-100" onclick="navTo('inventar')" style="cursor:pointer"><h5>🔫 Inventar</h5><p class="small text-muted">Ausgabe & Rückgabe verwalten</p></div></div>
-                        <div class="col-md-4"><div class="card p-3 shadow-sm border-0 h-100" onclick="navTo('termine')" style="cursor:pointer"><h5>📅 Termine</h5><p class="small text-muted">Jahresprogramm & GV</p></div></div>
-                        <div class="col-md-4"><div class="card p-3 shadow-sm border-0 h-100" onclick="navTo('manager')" style="cursor:pointer"><h5>🛡️ Manager</h5><p class="small text-muted">Teams verwalten</p></div></div>
-                         <div class="col-md-4"><div class="card p-3 shadow-sm border-0 h-100" onclick="navTo('resultate')" style="cursor:pointer"><h5> Resultate</h5><p class="small text-muted">Teams verwalten</p></div></div>
-                 
-                    </div>
-                </div>
+                       <div class="col-md-4 role-protected" data-roles="admin,vorstand,materialwart">
+  <div class="card p-3 shadow-sm border-0 h-100"
+       onclick="navTo('inventar')" style="cursor:pointer">
+    <h5>🔫 Inventar</h5>
+    <p class="small text-muted">Ausgabe & Rückgabe verwalten</p>
+  </div>
+</div>
+
+<div class="col-md-4 role-protected" data-roles="admin,vorstand,aktuar">
+  <div class="card p-3 shadow-sm border-0 h-100"
+       onclick="navTo('termine')" style="cursor:pointer">
+    <h5>📅 Termine</h5>
+    <p class="small text-muted">Jahresprogramm & GV</p>
+  </div>
+</div>
+
+<div class="col-md-4 role-protected" data-roles="admin,vorstand,aktuar,schuetzenmeister">
+  <div class="card p-3 shadow-sm border-0 h-100"
+       onclick="navTo('manager')" style="cursor:pointer">
+    <h5>🛡️ Manager</h5>
+    <p class="small text-muted">Teams verwalten</p>
+  </div>
+</div>
+
+<div class="col-md-4 role-protected" data-roles="admin,vorstand,aktuar">
+  <div class="card p-3 shadow-sm border-0 h-100"
+       onclick="navTo('resultate')" style="cursor:pointer">
+    <h5>🏆 Resultate</h5>
+    <p class="small text-muted">Teams verwalten</p>
+  </div>
+</div>
+
 
                 <div id="view-inventar" class="module-view">
                     <div class="d-flex justify-content-between align-items-center mb-3">
