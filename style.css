@@ -64,8 +64,9 @@ header h1 { margin: 0; font-size: 1.2rem; font-weight: 700; }
 /* --- PAGES --- */
 .page {
     display: none;
-    padding: 0;
+    padding: 15px;
 }
+
 
 .card {
     background: white;
@@ -90,8 +91,10 @@ header h1 { margin: 0; font-size: 1.2rem; font-weight: 700; }
 } */
 
 .page iframe {
+    width: 100%;
+    min-height: calc(100vh - 175px);
     border: none;
-    display: block;
+    border-radius: 16px;
     background: white;
 }
 
