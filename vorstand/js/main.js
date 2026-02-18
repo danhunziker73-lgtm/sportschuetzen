@@ -19,22 +19,18 @@ function showApp() {
     document.getElementById('user-info').innerText = `${currentUser} (${userRole})`;
     document.getElementById('user-badge-mobile').innerText = userRole;
 
-    // RBAC
-   // RBAC (Sidebar + Dashboard-Kacheln)
-const role = String(userRole || 'gast').trim().toLowerCase();
+    // RBAC (Sidebar + Dashboard-Kacheln) – robust
+    const role = String(userRole || 'gast').trim().toLowerCase();
 
-document.querySelectorAll('.role-protected').forEach(el => {
-  const allowed = String(el.dataset.roles || '')
-    .split(',')
-    .map(r => r.trim().toLowerCase())
-    .filter(Boolean);
+    document.querySelectorAll('.role-protected').forEach(el => {
+        const allowed = String(el.dataset.roles || '')
+            .split(',')
+            .map(r => r.trim().toLowerCase())
+            .filter(Boolean);
 
-  const permitted = (role === 'admin') || allowed.includes(role);
-
-  // toggle => kann auch wieder einblenden
-  el.classList.toggle('d-none', !permitted);
-});
-
+        const permitted = (role === 'admin') || allowed.includes(role);
+        el.classList.toggle('d-none', !permitted);
+    });
 }
 
 function navTo(viewId) {
@@ -63,7 +59,7 @@ function navTo(viewId) {
     if (viewId === 'manager' && typeof loadContestData === 'function') {
         loadContestData(); // Lädt Standard (Grenzland) oder letzten State
     }
-} // <--- Diese Klammer fehlte!
+}
 
 function toggleSidebar() {
     document.getElementById('sidebar').classList.toggle('show');
