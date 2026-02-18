@@ -5,55 +5,39 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Standblatt Upload</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="../style.css">
+
 
 <style>
-
-    html, body {
+html, body {
     margin: 0;
     padding: 0;
-    overflow: hidden; /* Verhindert den Scrollbalken im Iframe-Inhalt */
     height: 100%;
+    background: #ffffff;
 }
 
 .card {
-    margin: 0 !important;
+    margin: 15px !important;
     padding: 15px !important;
     box-shadow: none !important;
-    border: none !important; /* Entfernt Ränder, die Platz fressen könnten */
+    border: none !important;
 }
-    
-    .form-group {
+
+h2 {
+    font-size: 1.2rem;
     margin-bottom: 15px;
 }
 
-label {
-    display: block;
-    font-size: 0.75rem;
-    font-weight: 600;
-    margin-bottom: 6px;
-    color: #64748b;
+.upload-area {
+    padding: 1rem !important;
 }
 
-input, select {
-    width: 100%;
-    padding: 10px;
-    border-radius: 10px;
-    border: 1px solid #d1d5db;
-    font-size: 0.9rem;
+#preview {
+    max-height: 120px;
+    display: none;
 }
-
-    body {
-    padding: 5px;
-    background: #ffffff;
-     overflow: hidden; /* Verhindert Scrollen innerhalb des Bodys */    
-}
-
-
-    h2 { font-size: 1.2rem; margin-bottom: 15px; }
-    .upload-area { padding: 1rem !important; }
-    #preview { max-height: 120px; } /* Begrenzt die Vorschau, damit der Button sichtbar bleibt */
 </style>
+
 
 
     
