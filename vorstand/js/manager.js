@@ -9,6 +9,8 @@
 const CONTEST_CONFIG = {
     "grenzland": {
         title: "🛡️ Grenzland Cup",
+        pdfTitle: "Grenzland Cup",
+        fileBase: "Grenzland_Cup",
         sheetName: "aktuell_Grenzland",
         baseTeamName: "Muhen",
         defaultTeams: 4,
@@ -16,6 +18,8 @@ const CONTEST_CONFIG = {
     },
     "mannschaft": {
         title: "👥 Mannschafts-Meisterschaft",
+        pdfTitle: "Mannschafts-Meisterschaft",
+        fileBase: "Mannschaft",
         sheetName: "aktuell_Mannschaft",
         baseTeamName: "Muhen",
         defaultTeams: 1,
@@ -23,6 +27,8 @@ const CONTEST_CONFIG = {
     },
     "gruppe": {
         title: "🎯 Gruppen-Meisterschaft (SGM)",
+        pdfTitle: "Gruppen-Meisterschaft (SGM)",
+        fileBase: "Gruppe_SGM",
         sheetName: "aktuell_Gruppe",
         baseTeamName: "Muhen",
         defaultTeams: 2,
@@ -233,9 +239,15 @@ function ensureManagerShell() {
             </div>
 
             <div class="d-flex gap-2">
-                <button class="btn btn-outline-dark btn-sm" onclick="exportPDF()" title="PDF Export">
+                <button class="btn btn-outline-dark btn-sm" onclick="exportPDF()" title="PDF Export (aktuelles Modul)">
                     <i class="fas fa-file-pdf text-danger"></i> <span class="d-none d-sm-inline">PDF</span>
                 </button>
+
+                <!-- NEU: Sammel-PDF -->
+                <button class="btn btn-outline-primary btn-sm" onclick="exportAllPDF()" title="Alle 3 Module in ein PDF">
+                    <i class="fas fa-layer-group"></i> <span class="d-none d-sm-inline">Alle PDFs</span>
+                </button>
+
                 <button id="btn-save-manager" class="btn btn-success btn-sm fw-bold" onclick="saveContest()">
                     <i class="fas fa-save"></i> <span class="d-none d-sm-inline">Speichern</span>
                 </button>
@@ -758,9 +770,9 @@ function sendMail() {
 
   if (!mails.length) return alert("Keine gültigen E-Mails gefunden!");
 
-  const bcc = mails.join(","); // nicht encoden, damit Clients es sauber übernehmen
-  const subject = encodeURIComponent("Aufgebot " + config.title);
-    console.log("BCC:", bcc);
+  const bcc = mails.join(",");
+  const subject = encodeURIComponent("Aufgebot " + (config.pdfTitle || config.title));
+  console.log("BCC:", bcc);
 
   window.location.href = `mailto:?bcc=${bcc}&subject=${subject}`;
 }
@@ -783,9 +795,9 @@ async function saveContest() {
     appState.teams.forEach(team => {
         team.shooters.forEach(s => {
             exportData.push({
-                id: String(s.id),                 // NUMERIC ID
-                name: String(s.name || ""),        // "Nachname Vorname" (Spalte A)
-                team: String(team.name || ""),     // Teamname
+                id: String(s.id),
+                name: String(s.name || ""),
+                team: String(team.name || ""),
                 stellung: (appState.activeModule === "gruppe")
                     ? (s.zone === "kniend" ? "Kniend" : "Liegend")
                     : ""
@@ -827,8 +839,205 @@ async function saveContest() {
 
 
 // =========================================================
-//  PDF EXPORT (aus Standalone übernommen)
+//  PDF EXPORT (2 Spalten + Sammel-PDF)
 // =========================================================
+function toSafeFilename(str) {
+    return String(str || "")
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^a-z0-9]+/gi, "_")
+        .replace(/^_+|_+$/g, "");
+}
+
+function getDateStr() {
+    return new Date().toLocaleDateString('de-CH', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+    });
+}
+
+function truncateToWidth(doc, text, maxWidth) {
+    const s = String(text || "");
+    if (doc.getTextWidth(s) <= maxWidth) return s;
+
+    let out = s;
+    while (out.length > 0 && doc.getTextWidth(out + "...") > maxWidth) {
+        out = out.slice(0, -1);
+    }
+    return out.length ? (out + "...") : "";
+}
+
+function estimateTeamHeight(team, config) {
+    // Grobe, aber stabile Schätzung (für 2-Spalten Layout)
+    const headerH = 14;     // Teamheader+Spacing
+    const lineH = 7;        // Schützenzeile
+    const zoneHeaderH = (config.zones.length > 1) ? 6 : 0;
+
+    let lines = 0;
+    config.zones.forEach(z => {
+        const shooters = team.shooters.filter(s => config.zones.length === 1 ? true : s.zone === z.key);
+        lines += shooters.length;
+        if (config.zones.length > 1) lines += 1; // Zonenheader
+        // Ghost-Slots NICHT in PDF (sonst unnötig lang)
+    });
+
+    const minLines = Math.max(lines, 1);
+    return headerH + (minLines * lineH) + 6;
+}
+
+function renderContestToPdf(doc, config, opts = {}) {
+    const pdfTitle = config.pdfTitle || config.title;
+    const dateStr = opts.dateStr || getDateStr();
+    const twoCol = opts.twoCol !== false; // default: true
+
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const margin = 15;
+
+    // Header
+    let yPos = 20;
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(16);
+    doc.setTextColor(13, 110, 253);
+
+    const titleLines = doc.splitTextToSize(String(pdfTitle), pageWidth - margin * 2);
+    doc.text(titleLines, margin, yPos);
+    yPos += (titleLines.length * 7);
+
+    yPos += 4;
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.setTextColor(100);
+    doc.text(`Generiert am: ${dateStr}`, margin, yPos);
+
+    yPos += 12;
+
+    // Teams
+    const gap = 10;
+    const colW = twoCol ? (pageWidth - (margin * 2) - gap) / 2 : (pageWidth - (margin * 2));
+
+    let col = 0;
+    let rowMaxH = 0;
+
+    const drawTeam = (team, x, y, w) => {
+        // Team Header Box
+        doc.setFillColor(240, 242, 245);
+        doc.rect(x, y, w, 8, 'F');
+
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(11);
+        doc.setTextColor(0);
+
+        const nameText = truncateToWidth(doc, team.name, w - 6);
+        doc.text(nameText, x + 2, y + 6);
+
+        let yy = y + 14;
+
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(10);
+
+        // Content (ohne Ghost-Slots)
+        let any = false;
+
+        if (!team.shooters || team.shooters.length === 0) {
+            doc.setTextColor(150);
+            doc.text("- Keine Schützen -", x + 2, yy);
+            yy += 7;
+            any = true;
+        } else {
+            config.zones.forEach(zone => {
+                const shooters = team.shooters.filter(s => config.zones.length === 1 ? true : s.zone === zone.key);
+
+                if (config.zones.length > 1) {
+                    doc.setTextColor(80);
+                    doc.setFont("helvetica", "bold");
+                    doc.setFontSize(9);
+                    doc.text(`${zone.label}:`, x + 2, yy);
+                    doc.setFont("helvetica", "normal");
+                    doc.setFontSize(10);
+                    yy += 6;
+                }
+
+                shooters.forEach(s => {
+                    doc.setTextColor(0);
+
+                    // Kein Bullet "•" (macht oft Encoding-Probleme) -> "-"
+                    const line = "- " + String(s.name || "");
+                    const lineText = truncateToWidth(doc, line, w - 6);
+                    doc.text(lineText, x + 2, yy);
+
+                    yy += 7;
+                    any = true;
+                });
+            });
+        }
+
+        if (!any) {
+            doc.setTextColor(150);
+            doc.text("- Keine Daten -", x + 2, yy);
+            yy += 7;
+        }
+
+        return yy - y; // used height
+    };
+
+    const teams = appState.teams || [];
+    for (let i = 0; i < teams.length; i++) {
+        const team = teams[i];
+        const needed = estimateTeamHeight(team, config);
+
+        const x = twoCol
+            ? (margin + (col === 1 ? (colW + gap) : 0))
+            : margin;
+
+        // Seitenumbruch (bei 2-col: prüfen auf nächste "Zeile")
+        if (yPos + needed > (pageHeight - margin)) {
+            doc.addPage();
+            yPos = 20;
+
+            // Header pro Seite wiederholen (optional)
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(14);
+            doc.setTextColor(13, 110, 253);
+            doc.text(String(pdfTitle), margin, yPos);
+            yPos += 12;
+
+            doc.setFont("helvetica", "normal");
+            doc.setFontSize(10);
+            doc.setTextColor(100);
+            doc.text(`Generiert am: ${dateStr}`, margin, yPos);
+            yPos += 12;
+
+            col = 0;
+            rowMaxH = 0;
+        }
+
+        const usedH = drawTeam(team, x, yPos, colW);
+        rowMaxH = Math.max(rowMaxH, usedH);
+
+        if (twoCol) {
+            if (col === 0) {
+                col = 1; // zweite Spalte
+            } else {
+                // nächste Zeile
+                col = 0;
+                yPos += rowMaxH + 6;
+                rowMaxH = 0;
+            }
+        } else {
+            yPos += usedH + 6;
+        }
+    }
+
+    // Falls bei ungerader Teamzahl noch in Spalte 1 "hängst"
+    if (twoCol && col === 1) {
+        yPos += rowMaxH + 6;
+    }
+
+    return { doc, dateStr, title: pdfTitle };
+}
+
 function buildPdfDoc() {
     if (!window.jspdf || !window.jspdf.jsPDF) {
         throw new Error("jsPDF nicht geladen. Bitte index.html prüfen (CDN Scripts).");
@@ -836,111 +1045,88 @@ function buildPdfDoc() {
 
     const { jsPDF } = window.jspdf;
     const config = CONTEST_CONFIG[appState.activeModule];
-
     const doc = new jsPDF();
-    const pageWidth = doc.internal.pageSize.getWidth();
-    const margin = 15;
-    let yPos = 20;
 
-    // Titel
-    doc.setFontSize(18);
-    doc.setTextColor(13, 110, 253);
-    doc.text(config.title, margin, yPos);
-
-    // Datum
-    yPos += 10;
-    doc.setFontSize(10);
-    doc.setTextColor(100);
-    const dateStr = new Date().toLocaleDateString('de-CH', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric'
-    });
-    doc.text(`Generiert am: ${dateStr}`, margin, yPos);
-
-    yPos += 15;
-
-    // Teams
-    appState.teams.forEach((team) => {
-
-        if (yPos > 270) {
-            doc.addPage();
-            yPos = 20;
-        }
-
-        // Team Header
-        doc.setFillColor(240, 242, 245);
-        doc.rect(margin, yPos, pageWidth - (margin * 2), 8, 'F');
-
-        doc.setFontSize(12);
-        doc.setTextColor(0);
-        doc.setFont("helvetica", "bold");
-        doc.text(team.name, margin + 2, yPos + 6);
-        yPos += 14;
-
-        doc.setFont("helvetica", "normal");
-        doc.setFontSize(11);
-
-        // Keine Schützen
-        if (!team.shooters || team.shooters.length === 0) {
-            doc.setTextColor(150);
-            doc.text("- Keine Schützen -", margin + 5, yPos);
-            yPos += 8;
-        } else {
-
-            const sorted = [...team.shooters]
-                .sort((a, b) => (a.zone || "").localeCompare(b.zone || ""));
-
-            sorted.forEach((s) => {
-
-                if (yPos > 280) {
-                    doc.addPage();
-                    yPos = 20;
-                }
-
-                const zoneLabel =
-                    (appState.activeModule === "gruppe" && s.zone)
-                        ? `(${s.zone.charAt(0).toUpperCase() + s.zone.slice(1)})`
-                        : "";
-
-                doc.setTextColor(0);
-                doc.text(`• ${s.name}`, margin + 5, yPos);
-
-                if (zoneLabel) {
-                    doc.setTextColor(100);
-                    doc.setFontSize(9);
-                    doc.text(zoneLabel, pageWidth - margin - 30, yPos);
-                    doc.setFontSize(11);
-                }
-
-                yPos += 7;
-            });
-        }
-
-        yPos += 5;
-    });
-
-    return {
-        doc,
-        dateStr,
-        title: config.title
-    };
+    // default: 2 Spalten
+    const out = renderContestToPdf(doc, config, { twoCol: true });
+    return out;
 }
-
 
 async function exportPDF() {
     try {
-        const { doc, dateStr, title } = buildPdfDoc();
+        const config = CONTEST_CONFIG[appState.activeModule];
+        const { doc, dateStr } = buildPdfDoc();
 
-        const safeFileName = title.replace(/[^a-z0-9]/gi, '_');
-
-        doc.save(`${safeFileName}_${dateStr}.pdf`);
+        const base = config.fileBase || toSafeFilename(config.pdfTitle || config.title);
+        doc.save(`${base}_${dateStr}.pdf`);
 
     } catch (error) {
         alert(error.message);
         console.error(error);
     }
 }
+
+// NEU: Sammel-PDF (3 Seiten)
+async function fetchContestDataForPdf(moduleKey) {
+    const config = CONTEST_CONFIG[moduleKey];
+    const params = `action=getManagerData&sheetName=${encodeURIComponent(config.sheetName)}`;
+    const res = await apiFetch('manager', params);
+
+    const txt = await res.text();
+    let data;
+    try { data = JSON.parse(txt); }
+    catch { throw new Error("Backend-Antwort ist kein JSON"); }
+
+    if (data.error) throw new Error(data.error);
+
+    // Setzt appState.teams/pool passend
+    appState.activeModule = moduleKey;
+    processContestData(data, config);
+    return config;
+}
+
+async function exportAllPDF() {
+    try {
+        if (!window.jspdf || !window.jspdf.jsPDF) {
+            throw new Error("jsPDF nicht geladen. Bitte index.html prüfen (CDN Scripts).");
+        }
+
+        // State sichern (damit UI nachher wieder stimmt)
+        const prevState = (typeof structuredClone === "function")
+            ? structuredClone(appState)
+            : JSON.parse(JSON.stringify(appState));
+
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        const dateStr = getDateStr();
+
+        const modules = ["grenzland", "mannschaft", "gruppe"];
+
+        for (let i = 0; i < modules.length; i++) {
+            const key = modules[i];
+            if (i > 0) doc.addPage();
+
+            const config = await fetchContestDataForPdf(key);
+            renderContestToPdf(doc, config, { twoCol: true, dateStr });
+        }
+
+        // State zurück + UI neu rendern (nur wenn Manager aktiv)
+        appState = prevState;
+
+        const managerView = document.getElementById('view-manager');
+        if (managerView && managerView.classList.contains('active')) {
+            ensureManagerShell();
+            renderContestUI();
+        }
+
+        doc.save(`Aufgebote_alle_${dateStr}.pdf`);
+
+    } catch (e) {
+        alert("Fehler beim Erstellen des Sammel-PDF: " + (e.message || e));
+        console.error(e);
+    }
+}
+
 async function sendMailWithPdfVisible() {
   if (!window.jspdf?.jsPDF) return alert("jsPDF nicht geladen.");
 
@@ -951,13 +1137,15 @@ async function sendMailWithPdfVisible() {
 
   if (!mails.length) return alert("Keine gültigen E-Mails gefunden!");
 
-  const { doc, dateStr, title } = buildPdfDoc();
+  const { doc, dateStr } = buildPdfDoc();
   const blob = doc.output("blob");
-  const fileName = `${title.replace(/[^a-z0-9]/gi, '_')}_${dateStr}.pdf`;
+
+  const base = config.fileBase || toSafeFilename(config.pdfTitle || config.title);
+  const fileName = `${base}_${dateStr}.pdf`;
   const file = new File([blob], fileName, { type: "application/pdf" });
 
   // Preferred: Share Sheet (mit Anhang)
-  const shareData = { files: [file], title: "Aufgebot", text: `Aufgebot ${config.title}` };
+  const shareData = { files: [file], title: "Aufgebot", text: `Aufgebot ${config.pdfTitle || config.title}` };
 
   if (navigator.canShare && navigator.canShare(shareData)) {
     await navigator.share(shareData);
@@ -965,8 +1153,8 @@ async function sendMailWithPdfVisible() {
   }
 
   // Fallback: mailto ohne Anhang (Attachment geht dort nicht)
-  const subject = encodeURIComponent("Aufgebot " + config.title);
-  const cc = mails.join(","); // sichtbar für alle (CC)
+  const subject = encodeURIComponent("Aufgebot " + (config.pdfTitle || config.title));
+  const cc = mails.join(",");
   alert("Dein Browser unterstützt kein Datei-Teilen. PDF wird heruntergeladen; bitte manuell anhängen.");
   doc.save(fileName);
   window.location.href = `mailto:?cc=${cc}&subject=${subject}`;
