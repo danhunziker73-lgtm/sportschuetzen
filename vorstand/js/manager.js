@@ -1068,63 +1068,63 @@ async function exportPDF() {
 
 // NEU: Sammel-PDF (3 Seiten)
 async function fetchContestDataForPdf(moduleKey) {
-    const config = CONTEST_CONFIG[moduleKey];
-    const params = `action=getManagerData&sheetName=${encodeURIComponent(config.sheetName)}`;
-    const res = await apiFetch('manager', params);
+  const config = CONTEST_CONFIG[moduleKey];
+  const params = `action=getManagerData&sheetName=${encodeURIComponent(config.sheetName)}`;
 
-    const txt = await res.text();
-    let data;
-    try { data = JSON.parse(txt); }
-    catch { throw new Error("Backend-Antwort ist kein JSON"); }
+  const res = await apiFetch('manager', params);
 
-    if (data.error) throw new Error(data.error);
+  if (!res.ok) {
+    const errTxt = await res.text().catch(() => "");
+    throw new Error(`HTTP ${res.status} (${moduleKey}): ${errTxt.slice(0, 200)}`);
+  }
 
-    // Setzt appState.teams/pool passend
-    appState.activeModule = moduleKey;
-    processContestData(data, config);
-    return config;
+  const txt = await res.text();
+  let data;
+  try { data = JSON.parse(txt); }
+  catch { throw new Error(`Kein JSON (${moduleKey}): ${txt.slice(0, 200)}`); }
+
+  if (data.error) throw new Error(`${moduleKey}: ${data.error}`);
+
+  // appState für PDF füllen
+  appState.activeModule = moduleKey;
+  processContestData(data, config);
+  return config;
 }
 
-async function exportAllPDF() {
-    try {
-        if (!window.jspdf || !window.jspdf.jsPDF) {
-            throw new Error("jsPDF nicht geladen. Bitte index.html prüfen (CDN Scripts).");
-        }
+async function buildAllPdfDoc() {
+  if (!window.jspdf || !window.jspdf.jsPDF) {
+    throw new Error("jsPDF nicht geladen. Bitte index.html prüfen (CDN Scripts).");
+  }
 
-        // State sichern (damit UI nachher wieder stimmt)
-        const prevState = (typeof structuredClone === "function")
-            ? structuredClone(appState)
-            : JSON.parse(JSON.stringify(appState));
+  // State sichern
+  const prevState = (typeof structuredClone === "function")
+    ? structuredClone(appState)
+    : JSON.parse(JSON.stringify(appState));
 
-        const { jsPDF } = window.jspdf;
-        const doc = new jsPDF();
-        const dateStr = getDateStr();
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  const dateStr = getDateStr();
 
-        const modules = ["grenzland", "mannschaft", "gruppe"];
+  const modules = ["grenzland", "mannschaft", "gruppe"];
 
-        for (let i = 0; i < modules.length; i++) {
-            const key = modules[i];
-            if (i > 0) doc.addPage();
+  for (let i = 0; i < modules.length; i++) {
+    const key = modules[i];
+    if (i > 0) doc.addPage();
 
-            const config = await fetchContestDataForPdf(key);
-            renderContestToPdf(doc, config, { twoCol: true, dateStr });
-        }
+    const config = await fetchContestDataForPdf(key);
+    renderContestToPdf(doc, config, { twoCol: true, dateStr });
+  }
 
-        // State zurück + UI neu rendern (nur wenn Manager aktiv)
-        appState = prevState;
+  // State zurück + UI neu rendern wenn Manager offen
+  appState = prevState;
 
-        const managerView = document.getElementById('view-manager');
-        if (managerView && managerView.classList.contains('active')) {
-            ensureManagerShell();
-            renderContestUI();
-        }
+  const managerView = document.getElementById('view-manager');
+  if (managerView && managerView.classList.contains('active')) {
+    ensureManagerShell();
+    renderContestUI();
+  }
 
-        doc.save(`Aufgebote_alle_${dateStr}.pdf`);
-
-    } catch (e) {
-        alert("Fehler beim Erstellen des Sammel-PDF: " + (e.message || e));
-        console.error(e);
-    }
+  return { doc, dateStr };
 }
 
 async function sendMailWithPdfVisible() {
