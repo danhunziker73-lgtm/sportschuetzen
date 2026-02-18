@@ -20,12 +20,21 @@ function showApp() {
     document.getElementById('user-badge-mobile').innerText = userRole;
 
     // RBAC
-    document.querySelectorAll('.role-protected').forEach(el => {
-        const allowed = el.dataset.roles.split(',');
-        if (!allowed.includes(userRole) && userRole !== 'admin') {
-            el.classList.add('d-none');
-        }
-    });
+   // RBAC (Sidebar + Dashboard-Kacheln)
+const role = String(userRole || 'gast').trim().toLowerCase();
+
+document.querySelectorAll('.role-protected').forEach(el => {
+  const allowed = String(el.dataset.roles || '')
+    .split(',')
+    .map(r => r.trim().toLowerCase())
+    .filter(Boolean);
+
+  const permitted = (role === 'admin') || allowed.includes(role);
+
+  // toggle => kann auch wieder einblenden
+  el.classList.toggle('d-none', !permitted);
+});
+
 }
 
 function navTo(viewId) {
