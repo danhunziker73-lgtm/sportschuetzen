@@ -32,15 +32,22 @@ function showApp() {
         el.classList.toggle('d-none', !permitted);
     });
 }
-function navTo(viewId, el) {
-  document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
-  if (el) el.classList.add('active');
 
-    // 2. View wechseln
+function navTo(viewId, el) {
+    // 1. Nav-Links
+    document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+    if (el) el.classList.add('active');
+
+    // 2. Teardown vorheriger View (vor dem Wechsel)
+    if (viewId !== 'manager' && typeof teardownManager === 'function') {
+        teardownManager();
+    }
+
+    // 3. View wechseln
     document.querySelectorAll('.module-view').forEach(v => v.classList.remove('active'));
-    
+
     const targetView = document.getElementById('view-' + viewId);
-    if(targetView) {
+    if (targetView) {
         targetView.classList.add('active');
     } else {
         console.error("View nicht gefunden: view-" + viewId);
@@ -48,16 +55,13 @@ function navTo(viewId, el) {
 
     closeSidebarMobile();
 
-    // 3. Module laden (Routing Logik)
-    if (viewId === 'inventar' && typeof loadInventarData === 'function') loadInventarData();
-    if (viewId === 'termine' && typeof loadTermineData === 'function') loadTermineData();
-    if (viewId === 'resultate' && typeof loadResultateData === 'function') loadResultateData();
-
-    // WICHTIG: Für den Manager rufen wir die neue generische Funktion auf
-    if (viewId === 'manager' && typeof loadContestData === 'function') {
-        loadContestData(); // Lädt Standard (Grenzland) oder letzten State
-    }
+    // 4. Module laden (Routing Logik)
+    if (viewId === 'inventar'   && typeof loadInventarData   === 'function') loadInventarData();
+    if (viewId === 'termine'    && typeof loadTermineData    === 'function') loadTermineData();
+    if (viewId === 'resultate'  && typeof loadResultateData  === 'function') loadResultateData();
+    if (viewId === 'manager'    && typeof loadContestData    === 'function') loadContestData();
 }
+
 
 function toggleSidebar() {
     document.getElementById('sidebar').classList.toggle('show');
