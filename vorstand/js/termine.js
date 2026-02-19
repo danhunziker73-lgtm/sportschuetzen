@@ -102,6 +102,22 @@ async function loadTermineData() {
     showTermineOverlay(false);
   }
 }
+function formatTime(v) {
+  if (!v) return "";
+  const s = String(v).trim();
+
+  // falls "19:00:00" → "19:00"
+  if (/^\d{2}:\d{2}:\d{2}$/.test(s)) return s.slice(0, 5);
+
+  // falls "19:00" passt
+  if (/^\d{1,2}:\d{2}$/.test(s)) {
+    const [hh, mm] = s.split(':');
+    return `${String(parseInt(hh, 10)).padStart(2, '0')}:${mm}`;
+  }
+
+  // sonst einfach zurückgeben (oder "")
+  return s;
+}
 
 
 function renderTermineUI(container) {
