@@ -13,7 +13,7 @@ const CONTEST_CONFIG = {
         fileBase: "Grenzland_Cup",
         sheetName: "aktuell_Grenzland",
         baseTeamName: "Muhen",
-        defaultTeams: 4,
+        defaultTeams: 3,
         zones: [{ key: "main", label: "Schützen", limit: 4 }]
     },
     "mannschaft": {
@@ -22,7 +22,7 @@ const CONTEST_CONFIG = {
         fileBase: "Mannschaft",
         sheetName: "aktuell_Mannschaft",
         baseTeamName: "Muhen",
-        defaultTeams: 1,
+        defaultTeams: 3,
         zones: [{ key: "main", label: "Mannschaft (8)", limit: 8 }]
     },
     "gruppe": {
@@ -31,7 +31,7 @@ const CONTEST_CONFIG = {
         fileBase: "Gruppe_SGM",
         sheetName: "aktuell_Gruppe",
         baseTeamName: "Muhen",
-        defaultTeams: 2,
+        defaultTeams: 3,
         zones: [
             { key: "liegend", label: "Liegend (3)", limit: 3 },
             { key: "kniend", label: "Kniend (2)", limit: 2 }
