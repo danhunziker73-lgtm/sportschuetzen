@@ -15,9 +15,7 @@ let sigPadMitglied, sigPadVorstand;
 async function loadInventarData() {
     const container = document.getElementById('inventar-container');
     if (!container) return;
-    const label = document.getElementById('inv-verantwortlicher-label');
-if (label) label.innerText = currentUser;
-
+ 
     container.innerHTML = `
         <div class="text-center p-5">
             <div class="spinner-border text-primary"></div>
@@ -29,6 +27,8 @@ if (label) label.innerText = currentUser;
         inventarState = await res.json();
 
         renderInventarUI(container);
+   const label = document.getElementById('inv-verantwortlicher-label');
+if (label) label.innerText = currentUser;
 
         // SignaturePads initialisieren (nach DOM-Render)
         const canvasMitglied = document.getElementById('sig-mitglied');
@@ -304,27 +304,35 @@ function toggleBookingFields() {
     document.getElementById('container-zustand-rueckgabe').classList.toggle('d-none', isCheckout);
     document.getElementById('container-pfand-einnahme').classList.toggle('d-none', !isCheckout);
     document.getElementById('container-pfand-retour').classList.toggle('d-none', isCheckout);
+    updateSubOptions(); // ← NEU: Gegenstand-Liste je nach checkout/checkin filtern
 }
+
 
 function updateSubOptions() {
     if (!inventarState) return;
     const kat = document.getElementById('select-kategorie').value;
-    const keyMap = {
-        "gewehr": "gewehre",
-        "schluessel": "schluessel",
-        "kleidung": "kleidung",
-        "schiessbekleidung": "schiessbekleidung"
-    };
+    const action = document.getElementById('select-action').value;
+    const keyMap = { "gewehr":"gewehre", "schluessel":"schluessel",
+                     "kleidung":"kleidung", "schiessbekleidung":"schiessbekleidung" };
     const items = inventarState[keyMap[kat]] || [];
+
     document.getElementById('select-gegenstand').innerHTML = items.map(i => {
-        let info = (kat === 'gewehr')
-            ? `${i.Hersteller} ${i.Modell} (${i.Laufnummer})`
-            : (kat === 'schluessel')
-                ? `${i.Bezeichnung} (${i.Nummer})`
-                : `${i.Typ} (${i.Groesse})`;
-        return `<option value="${i.ID}">${info} ${i.Aktueller_Besitzer_ID ? '🔴' : '🟢'}</option>`;
+        const isOut = i.Aktueller_Besitzer_ID && i.Aktueller_Besitzer_ID.toString() !== "0";
+        // Ausgabe: nur verfügbare (🟢), Rückgabe: nur verliehene (🔴)
+        const disabled = (action === 'checkout' && isOut) || (action === 'checkin' && !isOut);
+        return `<option value="${i.ID}" ${disabled ? 'disabled style="color:#ccc"' : ''}>
+            ${getItemLabel(kat, i)} ${isOut ? '🔴' : '🟢'}
+        </option>`;
     }).join('');
 }
+
+// Hilfsfunktion Label:
+function getItemLabel(kat, i) {
+    if (kat === 'gewehr')    return `${i.Hersteller} ${i.Modell} (${i.Laufnummer})`;
+    if (kat === 'schluessel') return `${i.Bezeichnung} (${i.Nummer})`;
+    return `${i.Typ} (${i.Groesse})`;
+}
+
 
 
 // =========================================================
@@ -515,8 +523,8 @@ async function handleInventarSubmit(e) {
     setInventarBusy(true);
 
     const payload = {
-        action: "checkout",
-        type: document.getElementById('select-action').value,
+      action: document.getElementById('select-action').value,
+type:   document.getElementById('select-action').value,
         mitgliedId: document.getElementById('select-mitglied').value,
         kategorie: document.getElementById('select-kategorie').value,
         itemId: document.getElementById('select-gegenstand').value,
@@ -539,8 +547,9 @@ async function handleInventarSubmit(e) {
         e.target.reset();
         if (sigPadMitglied) sigPadMitglied.clear();
         if (sigPadVorstand) sigPadVorstand.clear();
-        await loadInventarData();
-        alert("✅ Buchung erfolgreich gespeichert!");
+       await loadInventarData();
+showInventarSection('liste'); // ← direkt Bestand zeigen zur Bestätigung
+alert("✅ Buchung erfolgreich gespeichert!");
     } catch (err) {
         alert("Fehler: " + err.message);
     }
