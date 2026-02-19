@@ -755,11 +755,12 @@ function removeTeamFromState(teamName) {
 }
 
 function filterPool(val) {
-    val = String(val || "").toLowerCase();
-    document.querySelectorAll('.dropzone[data-target-type="pool"] .draggable-player').forEach(el => {
-        el.parentElement.style.display = el.innerText.toLowerCase().includes(val) ? 'block' : 'none';
-    });
+  val = String(val || "").toLowerCase();
+  document.querySelectorAll('.dropzone[data-target-type="pool"] .draggable-player').forEach(el => {
+    el.style.display = el.innerText.toLowerCase().includes(val) ? 'block' : 'none';
+  });
 }
+
 
 function sendMail() {
   const config = CONTEST_CONFIG[appState.activeModule];
