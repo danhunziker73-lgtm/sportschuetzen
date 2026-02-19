@@ -1102,4 +1102,4 @@ function escapeJs(str) {
         .replaceAll("\\", "\\\\")
         .replaceAll("'", "\\'");
 }
-    </script>
+
