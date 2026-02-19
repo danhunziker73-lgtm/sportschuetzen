@@ -118,6 +118,13 @@ function formatTime(v) {
   // sonst einfach zurückgeben (oder "")
   return s;
 }
+function formatTime(v) {
+  if (!v) return "";
+  const s = String(v).trim();
+  // falls Backend doch mal Sekunden liefert: "19:00:00" → "19:00"
+  if (/^\d{2}:\d{2}:\d{2}$/.test(s)) return s.slice(0, 5);
+  return s; // "19:00" bleibt "19:00"
+}
 
 
 function renderTermineUI(container) {
