@@ -32,12 +32,10 @@ function showApp() {
         el.classList.toggle('d-none', !permitted);
     });
 }
+function navTo(viewId, el) {
+  document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+  if (el) el.classList.add('active');
 
-function navTo(viewId) {
-    // 1. Navigation updaten
-    document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
-    if(event && event.currentTarget) event.currentTarget.classList.add('active');
-    
     // 2. View wechseln
     document.querySelectorAll('.module-view').forEach(v => v.classList.remove('active'));
     
