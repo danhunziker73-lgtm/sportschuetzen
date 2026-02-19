@@ -1,0 +1,595 @@
+// =========================================================
+//  MODULE: INVENTAR
+//  - Standalone-Version als Basis
+//  - Integriert in Portal (apiFetch statt direktem fetch)
+//  - Primärschlüssel: ID
+// =========================================================
+
+let inventarState = null;
+let sigPadMitglied, sigPadVorstand;
+
+
+// =========================================================
+//  ENTRY: called from main.js navTo('inventar')
+// =========================================================
+async function loadInventarData() {
+    const container = document.getElementById('inventar-container');
+    if (!container) return;
+
+    container.innerHTML = `
+        <div class="text-center p-5">
+            <div class="spinner-border text-primary"></div>
+            <p class="mt-2 text-muted">Lade Inventar...</p>
+        </div>`;
+
+    try {
+        const res = await apiFetch('inventar', 'action=getInventarData');
+        inventarState = await res.json();
+
+        renderInventarUI(container);
+
+        // SignaturePads initialisieren (nach DOM-Render)
+        const canvasMitglied = document.getElementById('sig-mitglied');
+        const canvasVorstand = document.getElementById('sig-vorstand');
+        if (canvasMitglied) sigPadMitglied = new SignaturePad(canvasMitglied);
+        if (canvasVorstand) sigPadVorstand = new SignaturePad(canvasVorstand);
+
+        fillInventarDropdowns();
+        renderInventoryTable();
+        renderJournalTables();
+
+        // Letzten aktiven Tab wiederherstellen
+        const lastTab = localStorage.getItem('inventar-activeTab') || 'ausgabe';
+        showInventarSection(lastTab);
+
+    } catch (e) {
+        container.innerHTML = `<div class="alert alert-danger">Fehler beim Laden: ${e.message}</div>`;
+    }
+}
+
+
+// =========================================================
+//  TEARDOWN
+// =========================================================
+function teardownInventar() {
+    inventarState = null;
+    sigPadMitglied = null;
+    sigPadVorstand = null;
+}
+
+
+// =========================================================
+//  UI SHELL
+// =========================================================
+function renderInventarUI(container) {
+    container.innerHTML = `
+        <style>
+            #inventar-container .sig-container {
+                border: 1px solid #ccc;
+                background: white;
+                height: 160px;
+                border-radius: 8px;
+                overflow: hidden;
+            }
+            #inventar-container canvas {
+                width: 100% !important;
+                height: 100% !important;
+                touch-action: none;
+            }
+            #inventar-container .nav-btn {
+                font-weight: bold;
+                border-radius: 10px;
+                padding: 8px 16px;
+            }
+            #inventar-container .table-sm { font-size: 0.85rem; }
+        </style>
+
+        <!-- NAV TABS -->
+        <div class="d-flex flex-wrap gap-2 mb-4">
+            <button class="btn btn-primary nav-btn" id="inv-btn-ausgabe"
+                    onclick="showInventarSection('ausgabe')">📤 Buchung</button>
+            <button class="btn btn-outline-secondary nav-btn" id="inv-btn-liste"
+                    onclick="showInventarSection('liste')">📋 Bestand</button>
+            <button class="btn btn-outline-secondary nav-btn" id="inv-btn-journal"
+                    onclick="showInventarSection('journal')">📖 Journal</button>
+            <button class="btn btn-outline-dark nav-btn" id="inv-btn-admin"
+                    onclick="showInventarSection('admin')">⚙️ Admin</button>
+        </div>
+
+        <!-- SECTION: AUSGABE / BUCHUNG -->
+        <div id="inv-section-ausgabe" class="inv-section">
+            <div class="card border-0 shadow-sm p-4">
+                <form id="form-ausgabe" onsubmit="handleInventarSubmit(event)">
+                    <div class="row">
+                        <div class="col-md-6 border-end">
+                            <label class="form-label fw-bold">Aktion</label>
+                            <select id="select-action" class="form-select mb-3"
+                                    onchange="toggleBookingFields()">
+                                <option value="checkout">📤 Ausgabe</option>
+                                <option value="checkin">📥 Rückgabe</option>
+                            </select>
+
+                            <label class="form-label fw-bold">Mitglied</label>
+                            <select id="select-mitglied" class="form-select mb-3" required></select>
+
+                            <label class="form-label fw-bold">Kategorie</label>
+                            <select id="select-kategorie" class="form-select mb-3"
+                                    onchange="updateSubOptions()">
+                                <option value="gewehr">Gewehr</option>
+                                <option value="schluessel">Schlüssel</option>
+                                <option value="kleidung">Kleidung</option>
+                                <option value="schiessbekleidung">Schiessbekleidung</option>
+                            </select>
+
+                            <label class="form-label fw-bold">Gegenstand</label>
+                            <select id="select-gegenstand" class="form-select mb-3" required></select>
+
+                            <div id="container-zustand-abgabe">
+                                <label class="form-label fw-bold text-primary">Zustand bei Abgabe</label>
+                                <select id="select-zustand-abgabe" class="form-select mb-3"></select>
+                            </div>
+                            <div id="container-zustand-rueckgabe" class="d-none">
+                                <label class="form-label fw-bold text-danger">Zustand bei Rückgabe</label>
+                                <select id="select-zustand-rueckgabe" class="form-select mb-3"></select>
+                            </div>
+
+                            <label class="form-label fw-bold">Bemerkungen</label>
+                            <textarea id="trans-bemerkungen" class="form-control mb-3" rows="2"></textarea>
+
+                            <div class="row g-2">
+                                <div class="col-4">
+                                    <label class="form-label fw-bold small">Pfandbetrag</label>
+                                    <input type="number" id="pfand-betrag" class="form-control" placeholder="0.00">
+                                </div>
+                                <div class="col-4" id="container-pfand-einnahme">
+                                    <label class="form-label fw-bold small">Einnahme</label>
+                                    <select id="pfand-einnahme" class="form-select">
+                                        <option value="Nein">Nein</option>
+                                        <option value="Ja">Ja</option>
+                                    </select>
+                                </div>
+                                <div class="col-4 d-none" id="container-pfand-retour">
+                                    <label class="form-label fw-bold small">Retour bezahlt</label>
+                                    <select id="pfand-retour" class="form-select">
+                                        <option value="Nein">Nein</option>
+                                        <option value="Ja">Ja</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Unterschrift Mitglied</label>
+                            <div class="sig-container mb-2">
+                                <canvas id="sig-mitglied"></canvas>
+                            </div>
+                            <button type="button" class="btn btn-sm btn-link text-danger p-0 mb-3"
+                                    onclick="sigPadMitglied.clear()">Löschen</button>
+
+                            <label class="form-label fw-bold">Verantwortlicher Vorstand</label>
+                            <select id="select-verantwortlicher" class="form-select mb-2" required></select>
+                            <div class="sig-container mb-2">
+                                <canvas id="sig-vorstand"></canvas>
+                            </div>
+                            <button type="button" class="btn btn-sm btn-link text-danger p-0"
+                                    onclick="sigPadVorstand.clear()">Löschen</button>
+                        </div>
+                    </div>
+                    <button type="submit"
+                            class="btn btn-success w-100 mt-4 py-3 fw-bold inv-submit">
+                        Transaktion speichern
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- SECTION: BESTAND -->
+        <div id="inv-section-liste" class="inv-section d-none">
+            <div class="card border-0 shadow-sm p-4">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h4>Bestandsliste</h4>
+                    <select id="filter-liste" class="form-select w-auto"
+                            onchange="renderInventoryTable()">
+                        <option value="Inventar_Gewehre">Gewehre</option>
+                        <option value="Inventar_Schluessel">Schlüssel</option>
+                        <option value="Inventar_Kleidung">Kleidung</option>
+                        <option value="Inventar_Schiessbekleidung">Schiessbekleidung</option>
+                        <option value="Personendaten">Mitglieder</option>
+                    </select>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover table-sm align-middle"
+                           id="inventory-table"></table>
+                </div>
+            </div>
+        </div>
+
+        <!-- SECTION: JOURNAL -->
+        <div id="inv-section-journal" class="inv-section d-none">
+            <div class="card border-0 shadow-sm p-4 mb-4">
+                <h4>📖 Material-Bewegungen</h4>
+                <div class="table-responsive">
+                    <table class="table table-hover table-sm"
+                           id="table-transaktionen"></table>
+                </div>
+            </div>
+            <div class="card border-0 shadow-sm p-4">
+                <h4>🛡️ Admin-Protokoll</h4>
+                <div class="table-responsive">
+                    <table class="table table-hover table-sm text-muted"
+                           id="table-protokoll"></table>
+                </div>
+            </div>
+        </div>
+
+        <!-- SECTION: ADMIN -->
+        <div id="inv-section-admin" class="inv-section d-none">
+            <div class="card border-0 shadow-sm p-4">
+                <h4>Neuen Eintrag erfassen</h4>
+                <select id="admin-target" class="form-select mb-4"
+                        onchange="renderAdminFields(this.value)">
+                    <option value="">-- Typ wählen --</option>
+                    <option value="Personendaten">👤 Mitglied</option>
+                    <option value="Inventar_Gewehre">🔫 Gewehr</option>
+                    <option value="Inventar_Schluessel">🔑 Schlüssel</option>
+                    <option value="Inventar_Kleidung">👕 Kleidung</option>
+                    <option value="Inventar_Schiessbekleidung">🎯 Schiessbekleidung</option>
+                </select>
+                <form id="adminForm" onsubmit="saveNewInventarItem(event)">
+                    <div id="dynamic-fields" class="row"></div>
+                    <button type="submit"
+                            class="btn btn-success mt-4 d-none inv-submit"
+                            id="btn-admin-save">Speichern</button>
+                </form>
+            </div>
+        </div>
+    `;
+}
+
+
+// =========================================================
+//  NAV
+// =========================================================
+function showInventarSection(id) {
+    localStorage.setItem('inventar-activeTab', id);
+    document.querySelectorAll('.inv-section').forEach(s => s.classList.add('d-none'));
+    const el = document.getElementById('inv-section-' + id);
+    if (el) el.classList.remove('d-none');
+    document.querySelectorAll('.nav-btn').forEach(b => {
+        b.classList.remove('btn-primary');
+        b.classList.add('btn-outline-secondary');
+    });
+    const active = document.getElementById('inv-btn-' + id);
+    if (active) {
+        active.classList.remove('btn-outline-secondary');
+        active.classList.add('btn-primary');
+    }
+}
+
+
+// =========================================================
+//  DROPDOWNS
+// =========================================================
+function fillInventarDropdowns() {
+    if (!inventarState || !inventarState.mitglieder) return;
+
+    const sorted = [...inventarState.mitglieder]
+        .sort((a, b) => (a.Nachname || "").localeCompare(b.Nachname || ""));
+    const optionsHtml = '<option value="">-- wählen --</option>' +
+        sorted.map(m => `<option value="${m.ID}">${m.Nachname} ${m.Vorname}</option>`).join('');
+
+    document.getElementById('select-mitglied').innerHTML = optionsHtml;
+    document.getElementById('select-verantwortlicher').innerHTML = optionsHtml;
+
+    if (inventarState.config) {
+        const zOptions = '<option value="">-- wählen --</option>' +
+            inventarState.config
+                .map(c => c.Transaktion_Zustand)
+                .filter(v => v)
+                .map(v => `<option value="${v}">${v}</option>`)
+                .join('');
+        document.getElementById('select-zustand-abgabe').innerHTML = zOptions;
+        document.getElementById('select-zustand-rueckgabe').innerHTML = zOptions;
+    }
+    updateSubOptions();
+}
+
+function toggleBookingFields() {
+    const isCheckout = document.getElementById('select-action').value === 'checkout';
+    document.getElementById('container-zustand-abgabe').classList.toggle('d-none', !isCheckout);
+    document.getElementById('container-zustand-rueckgabe').classList.toggle('d-none', isCheckout);
+    document.getElementById('container-pfand-einnahme').classList.toggle('d-none', !isCheckout);
+    document.getElementById('container-pfand-retour').classList.toggle('d-none', isCheckout);
+}
+
+function updateSubOptions() {
+    if (!inventarState) return;
+    const kat = document.getElementById('select-kategorie').value;
+    const keyMap = {
+        "gewehr": "gewehre",
+        "schluessel": "schluessel",
+        "kleidung": "kleidung",
+        "schiessbekleidung": "schiessbekleidung"
+    };
+    const items = inventarState[keyMap[kat]] || [];
+    document.getElementById('select-gegenstand').innerHTML = items.map(i => {
+        let info = (kat === 'gewehr')
+            ? `${i.Hersteller} ${i.Modell} (${i.Laufnummer})`
+            : (kat === 'schluessel')
+                ? `${i.Bezeichnung} (${i.Nummer})`
+                : `${i.Typ} (${i.Groesse})`;
+        return `<option value="${i.ID}">${info} ${i.Aktueller_Besitzer_ID ? '🔴' : '🟢'}</option>`;
+    }).join('');
+}
+
+
+// =========================================================
+//  TABELLEN
+// =========================================================
+function getInventarNameFromId(id) {
+    if (!id || id === "" || id === 0 || id === "0") return "";
+    if (!inventarState || !inventarState.mitglieder) return id;
+    const m = inventarState.mitglieder.find(member => member.ID.toString() === id.toString());
+    return m ? `${m.Nachname} ${m.Vorname}` : id;
+}
+
+function renderInventoryTable() {
+    if (!inventarState) return;
+    const target = document.getElementById('filter-liste').value;
+    const keyMap = {
+        "Inventar_Gewehre": "gewehre",
+        "Inventar_Schluessel": "schluessel",
+        "Inventar_Kleidung": "kleidung",
+        "Inventar_Schiessbekleidung": "schiessbekleidung",
+        "Personendaten": "mitglieder"
+    };
+    const data = inventarState[keyMap[target]];
+    const table = document.getElementById('inventory-table');
+
+    if (!data || data.length === 0) {
+        table.innerHTML = "<thead><tr><th>Keine Daten vorhanden</th></tr></thead>";
+        return;
+    }
+
+    const allHeaders = Object.keys(data[0]);
+    const displayHeaders = allHeaders.filter(h => h !== "ID");
+
+    let html = `<thead><tr class="table-dark">`;
+    displayHeaders.forEach(h => html += `<th>${h.replace(/_/g, ' ')}</th>`);
+    html += `<th>Aktion</th></tr></thead><tbody>`;
+
+    html += data.map(row => {
+        const cells = displayHeaders.map(key => {
+            const val = row[key];
+            if (key.endsWith("_ID") || key === "Aktueller_Besitzer_ID") {
+                return `<td>${getInventarNameFromId(val) || '<span class="text-muted">-</span>'}</td>`;
+            }
+            if (key === "Status") {
+                if (val === "Im Lager") return `<td><span class="badge bg-success">Lager</span></td>`;
+                if (val === "Ausgegeben") return `<td><span class="badge bg-warning text-dark">Ausleihe</span></td>`;
+            }
+            if (key === "Zeitstempel" && val) {
+                try { return `<td>${new Date(val).toLocaleDateString('de-CH')}</td>`; }
+                catch (e) { return `<td>${val}</td>`; }
+            }
+            if (key.toLowerCase().includes("pfand") || key === "Depot") {
+                return `<td class="fw-bold">${val ? parseFloat(val).toFixed(2) : '0.00'}</td>`;
+            }
+            return `<td>${val || ''}</td>`;
+        }).join('');
+
+        return `<tr>${cells}<td>
+            <button class="btn btn-sm btn-danger"
+                    onclick="deleteInventarItem('${target}', '${row.ID}')">🗑️</button>
+        </td></tr>`;
+    }).join('');
+
+    table.innerHTML = html + "</tbody>";
+}
+
+function renderJournalTables() {
+    if (!inventarState) return;
+
+    // Transaktionen
+    const transTable = document.getElementById('table-transaktionen');
+    if (inventarState.transaktionen && inventarState.transaktionen.length > 0) {
+        let html = `<thead><tr class="table-dark">
+            <th>Datum</th><th>Mitglied</th><th>Aktion</th><th>ID</th><th>Bemerkung</th>
+        </tr></thead><tbody>`;
+        [...inventarState.transaktionen].reverse().slice(0, 30).forEach(t => {
+            const date = t.Zeitstempel
+                ? new Date(t.Zeitstempel).toLocaleDateString('de-CH') : '-';
+            html += `<tr>
+                <td>${date}</td>
+                <td>${getInventarNameFromId(t.Aktueller_Besitzer_ID)}</td>
+                <td>${t.Aktion === 'checkout' ? '📤' : '📥'}</td>
+                <td><small class="text-muted">${t.Inventar_ID}</small></td>
+                <td>${t.Bemerkungen || ''}</td>
+            </tr>`;
+        });
+        transTable.innerHTML = html + "</tbody>";
+    } else {
+        transTable.innerHTML = "<tr><td>Noch keine Transaktionen geloggt.</td></tr>";
+    }
+
+    // Protokoll
+    const logTable = document.getElementById('table-protokoll');
+    if (inventarState.protokoll && inventarState.protokoll.length > 0) {
+        let html = `<thead><tr class="table-secondary">
+            <th>Zeit</th><th>Aktion</th><th>Tabelle</th><th>Details</th>
+        </tr></thead><tbody>`;
+        [...inventarState.protokoll].reverse().slice(0, 20).forEach(p => {
+            const time = p.Zeitstempel
+                ? new Date(p.Zeitstempel).toLocaleString('de-CH', {
+                    hour: '2-digit', minute: '2-digit',
+                    day: '2-digit', month: '2-digit'
+                }) : '-';
+            html += `<tr>
+                <td><small>${time}</small></td>
+                <td><strong>${p.Aktion}</strong></td>
+                <td><small>${p.Tabelle}</small></td>
+                <td><small>${p.Details}</small></td>
+            </tr>`;
+        });
+        logTable.innerHTML = html + "</tbody>";
+    } else {
+        logTable.innerHTML = "<tr><td>Keine Admin-Aktionen protokolliert.</td></tr>";
+    }
+}
+
+
+// =========================================================
+//  ADMIN FELDER
+// =========================================================
+function renderAdminFields(target) {
+    const fieldsDiv = document.getElementById('dynamic-fields');
+    const saveBtn = document.getElementById('btn-admin-save');
+    if (!target || !inventarState) {
+        fieldsDiv.innerHTML = "";
+        saveBtn.classList.add('d-none');
+        return;
+    }
+    saveBtn.classList.remove('d-none');
+
+    const configs = {
+        "Personendaten": ["PersonNumber", "Vorname", "Nachname", "email", "BirthDate", "Status"],
+        "Inventar_Gewehre": ["Hersteller", "Modell", "Laufnummer", "Diopter", "Ringkorn",
+            "Zubehoer", "Spezielles", "Distanz", "Eigentümer_ID",
+            "Gespendet_ID", "Kauf_Spender_Jahr", "Verkaeufer_ID"],
+        "Inventar_Schluessel": ["Bezeichnung", "Nummer"],
+        "Inventar_Kleidung": ["Typ", "Groesse", "Kaufdatum"],
+        "Inventar_Schiessbekleidung": ["Typ", "Groesse", "Kaufdatum"]
+    };
+
+    const dropdownMapping = {
+        "Status": "MG_Status",
+        "Bezeichnung": "Schluessel_Bezeichnung",
+        "Distanz": "Gewehre_Distanz",
+        "Typ": target === "Inventar_Schiessbekleidung" ? "Schiessbekleidung_Typ" : "Kleidung_Typ",
+        "Groesse": "Kleidung_Schiessbekleidung_Groesse"
+    };
+
+    fieldsDiv.innerHTML = (configs[target] || []).map(field => {
+        if (field.endsWith("_ID")) {
+            const sorted = [...inventarState.mitglieder]
+                .sort((a, b) => (a.Nachname || "").localeCompare(b.Nachname || ""));
+            const options = sorted
+                .map(m => `<option value="${m.ID}">${m.Nachname} ${m.Vorname}</option>`)
+                .join('');
+            return `<div class="col-md-6 mb-3">
+                <label class="fw-bold">${field}</label>
+                <select name="${field}" class="form-select">
+                    <option value="">-- Mitglied wählen --</option>${options}
+                </select></div>`;
+        }
+        if (dropdownMapping[field]) {
+            const configKey = dropdownMapping[field];
+            const options = inventarState.config
+                .map(c => c[configKey]).filter(v => v)
+                .map(v => `<option value="${v}">${v}</option>`).join('');
+            return `<div class="col-md-6 mb-3">
+                <label class="fw-bold">${field}</label>
+                <select name="${field}" class="form-select">
+                    <option value="">-- wählen --</option>${options}
+                </select></div>`;
+        }
+        const type = (field.includes("datum") || field.includes("Date") || field.includes("Jahr"))
+            ? "date" : "text";
+        return `<div class="col-md-6 mb-3">
+            <label class="fw-bold">${field}</label>
+            <input type="${type}" name="${field}" class="form-control">
+        </div>`;
+    }).join('');
+}
+
+
+// =========================================================
+//  SUBMIT / SAVE / DELETE
+// =========================================================
+async function handleInventarSubmit(e) {
+    e.preventDefault();
+    setInventarBusy(true);
+
+    const payload = {
+        action: "checkout",
+        type: document.getElementById('select-action').value,
+        mitgliedId: document.getElementById('select-mitglied').value,
+        kategorie: document.getElementById('select-kategorie').value,
+        itemId: document.getElementById('select-gegenstand').value,
+        zustandAbgabe: document.getElementById('select-zustand-abgabe').value,
+        zustandRueckgabe: document.getElementById('select-zustand-rueckgabe').value,
+        bemerkungen: document.getElementById('trans-bemerkungen').value,
+        verantwortlicheId: document.getElementById('select-verantwortlicher').value,
+        pfandBetrag: document.getElementById('pfand-betrag').value,
+        pfandEinnahme: document.getElementById('pfand-einnahme').value,
+        pfandRetour: document.getElementById('pfand-retour').value,
+        sigMitglied: sigPadMitglied ? sigPadMitglied.toDataURL() : "",
+        sigVorstand: sigPadVorstand ? sigPadVorstand.toDataURL() : ""
+    };
+
+    try {
+        await apiFetch('inventar', '', {
+            method: 'POST',
+            body: JSON.stringify(payload)
+        });
+        e.target.reset();
+        if (sigPadMitglied) sigPadMitglied.clear();
+        if (sigPadVorstand) sigPadVorstand.clear();
+        await loadInventarData();
+        alert("✅ Buchung erfolgreich gespeichert!");
+    } catch (err) {
+        alert("Fehler: " + err.message);
+    }
+
+    setInventarBusy(false);
+}
+
+async function saveNewInventarItem(e) {
+    e.preventDefault();
+    setInventarBusy(true);
+
+    const target = document.getElementById('admin-target').value;
+    const fields = {};
+    new FormData(e.target).forEach((v, k) => fields[k] = v);
+
+    try {
+        await apiFetch('inventar', '', {
+            method: 'POST',
+            body: JSON.stringify({ action: "addNewItem", targetSheet: target, fields })
+        });
+        e.target.reset();
+        document.getElementById('admin-target').value = "";
+        renderAdminFields("");
+        await loadInventarData();
+        alert("✅ Gespeichert!");
+    } catch (err) {
+        alert("Fehler: " + err.message);
+    }
+
+    setInventarBusy(false);
+}
+
+async function deleteInventarItem(target, id) {
+    if (!confirm("Eintrag wirklich löschen?")) return;
+    setInventarBusy(true);
+
+    try {
+        await apiFetch('inventar', '', {
+            method: 'POST',
+            body: JSON.stringify({ action: "deleteItem", targetSheet: target, itemId: id })
+        });
+        await loadInventarData();
+    } catch (err) {
+        alert("Fehler: " + err.message);
+    }
+
+    setInventarBusy(false);
+}
+
+
+// =========================================================
+//  BUSY STATE (lokal, kein globales Overlay)
+// =========================================================
+function setInventarBusy(status) {
+    document.querySelectorAll('.inv-submit').forEach(b => b.disabled = status);
+}
