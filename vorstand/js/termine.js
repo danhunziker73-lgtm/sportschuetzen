@@ -228,11 +228,13 @@ function renderTermineList() {
     else if (status === 'provisorisch') rowClass = 'row-provisorisch';
     else if (!t.datum) rowClass = 'row-warn';
 
-    return `
-      <tr data-id="${escapeHtml(String(t.id))}" class="${rowClass}">
-        <td>   <input data-field="datum" type="date" class="form-control form-control-sm" value="${isoDate(t.datum)}">   
-        <td><input data-field="startzeit" type="time" class="form-control form-control-sm" value="${formatTime(t.startzeit)}"></td>
-        <td><input data-field="endzeit" type="time" class="form-control form-control-sm" value="${formatTime(t.endzeit)}"></td>
+   return `
+  <tr data-id="${escapeHtml(String(t.id))}" class="${rowClass}">
+    <td>
+      <input data-field="datum" type="date" class="form-control form-control-sm" value="${isoDate(t.datum)}">
+    </td>
+    <td><input data-field="startzeit" type="time" class="form-control form-control-sm" value="${formatTime(t.startzeit)}"></td>
+    <td><input data-field="endzeit" type="time" class="form-control form-control-sm" value="${formatTime(t.endzeit)}"></td>
 
         <td>
           <select data-field="anlasstitel" class="form-select form-select-sm">
@@ -591,9 +593,10 @@ function removeAnlass(i) {
 
 function addOrt() {
   adminState.dropdowns.orteMitMaps = adminState.dropdowns.orteMitMaps || [];
-  adminState.dropdowns.orteMitMaps.push(['','']);
+  adminState.dropdowns.orteMitMaps.push(['Neuer Ort', '']);
   renderDropdownEditor();
 }
+
 
 function removeOrt(i) {
   adminState.dropdowns.orteMitMaps.splice(i, 1);
