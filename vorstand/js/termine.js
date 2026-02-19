@@ -200,7 +200,7 @@ function renderTermineUI(container) {
     renderGVList();
     renderAppInfoList();
     renderTermineList();
-    bindTermineEventsOnce()
+    bindTermineEventsOnce();
     renderAnmeldungenList();
     renderProtokollList();
     renderDropdownEditor();
@@ -220,7 +220,7 @@ function renderTermineList() {
 
     return `
       <tr data-id="${escapeHtml(String(t.id))}" class="${rowClass}">
-        <td><input data-field="datum" type="date" class="form-control form-control-sm" value="${formatDate(t.datum)}"></td>
+        <td>   <input data-field="datum" type="date" class="form-control form-control-sm" value="${isoDate(t.datum)}">   <small class="d-block text-muted">${formatDate(t.datum)}</small> </td>
         <td><input data-field="startzeit" type="time" class="form-control form-control-sm" value="${formatTime(t.startzeit)}"></td>
         <td><input data-field="endzeit" type="time" class="form-control form-control-sm" value="${formatTime(t.endzeit)}"></td>
 
@@ -266,7 +266,28 @@ function renderTermineList() {
   }).join('');
 }
 
+  // NEU: Delete-Buttons nach Render binden
+  setTimeout(() => {
+    document.querySelectorAll('#termine-body button[data-action="remove"]').forEach(btn => {
+      btn.onclick = () => {
+        const tr = btn.closest('tr[data-id]');
+        if (tr) removeTerminById(tr.dataset.id);
+      };
+    });
+  }, 0);
+}
 // --- RENDERING SUB-FUNCTIONS ---
+function isoDate(v) {
+  if (!v) return "";
+  try {
+    // CH → ISO: 12.3.2026 → 2026-03-12 (für <input type="date">)
+    if (v.match(/^\d{1,2}\.\d{1,2}\.\d{4}$/)) {
+      const [day, month, year] = v.split('.');
+      return `${year}-${month.padStart(2,'0')}-${day.padStart(2,'0')}`;
+    }
+    return v.includes('T') ? v.split('T')[0] : v;
+  } catch(e) { return v; }
+}
 
 
 function applyDefaultsOnDateSetById(id) {
@@ -653,9 +674,23 @@ async function runAdminTool(toolName) {
 }
 
 // Utils
-function formatDate(v) { if(!v) return ""; try { return v.includes('T') ? v.split('T')[0] : v; } catch(e){return v;} }
-function formatTime(v) { if(!v) return ""; return v.length > 5 ? v.substring(0,5) : v; }
-
+function formatDate(v) {
+  if (!v) return "";
+  
+  try {
+    let dateStr = v.includes('T') ? v.split('T')[0] : v;
+    
+    // ISO → CH: 2026-03-12 → 12.3.2026
+    if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      const [year, month, day] = dateStr.split('-');
+      return `${day}.${month}.${year}`;
+    }
+    
+    return dateStr;
+  } catch(e) {
+    return v;
+  }
+}
 
 let termineEventsBound = false;
 
@@ -663,45 +698,82 @@ function bindTermineEventsOnce() {
   if (termineEventsBound) return;
   termineEventsBound = true;
 
+  const container = document.getElementById('termine-container');
+  if (!container) return;
+
+  // 1) TERMINE-Tabelle (wie bisher)
   const tbody = document.getElementById('termine-body');
-  if (!tbody) return;
+  if (tbody) {
+    tbody.addEventListener('change', (e) => {
+      const el = e.target;
+      if (!el.dataset.field) return;
 
-  // Änderungen (input/select)
-  tbody.addEventListener('change', (e) => {
-    const el = e.target;
-    if (!el) return;
+      const tr = el.closest('tr[data-id]');
+      if (!tr) return;
 
-    const tr = el.closest('tr[data-id]');
-    if (!tr) return;
+      const id = tr.dataset.id;
+      const field = el.dataset.field;
+      
+      setTerminFieldById(id, field, el.value);
+      if (field === 'datum') applyDefaultsOnDateSetById(id);
+      if (field === 'ort') applyOrtMapById(id, el.value);
+      
+      renderTermineList();
+    });
 
-    const id = tr.dataset.id;
-    const field = el.dataset.field;
-    if (!field) return;
+    tbody.addEventListener('click', (e) => {
+      const btn = e.target.closest('button[data-action="remove"]');
+      if (!btn) return;
+      
+      const tr = btn.closest('tr[data-id]');
+      if (!tr) return;
+      
+      removeTerminById(tr.dataset.id);
+    });
+  }
 
-    setTerminFieldById(id, field, el.value);
-    if (field === 'ort') {
-  applyOrtMapById(id, el.value);
-}
-
-    if (field === 'datum') {
-      applyDefaultsOnDateSetById(id);
-      // KEIN sortieren hier -> kein "hüpfen"
-    }
-
-    renderTermineList();
-  });
-
-  // Delete Button
-  tbody.addEventListener('click', (e) => {
-    const btn = e.target.closest('button[data-action="remove"]');
+  // 2) STAMMDATEN: Anlass-Typen + Orte Buttons
+  container.addEventListener('click', (e) => {
+    const btn = e.target.closest('button');
     if (!btn) return;
 
-    const tr = btn.closest('tr[data-id]');
-    if (!tr) return;
+    // + Anlass Typ
+    if (btn.textContent.includes('+ Typ hinzufügen') || btn.onclick?.toString().includes('addAnlass')) {
+      e.preventDefault();
+      addAnlass();
+      return;
+    }
 
-    removeTerminById(tr.dataset.id);
+    // + Ort
+    if (btn.textContent.includes('+ Ort hinzufügen') || btn.onclick?.toString().includes('addOrt')) {
+      e.preventDefault();
+      addOrt();
+      return;
+    }
+
+    // ✕ Anlass löschen
+    if (btn.textContent.includes('✕')) {
+      const input = btn.previousElementSibling;
+      if (input && input.closest('#edit-anlaesse')) {
+        const i = Array.from(input.parentElement.parentElement.children).indexOf(input.parentElement);
+        removeAnlass(i);
+      }
+    }
+
+    // ✕ Ort löschen
+    if (btn.textContent.includes('✕')) {
+      const inputs = btn.previousElementSibling ? [btn.previousElementSibling] : [];
+      const input2 = btn.previousElementSibling?.previousElementSibling;
+      if (input2) inputs.push(input2);
+      
+      if (inputs.some(el => el.closest('#edit-orte'))) {
+        const i = Array.from(btn.closest('div').children).indexOf(btn.closest('div'));
+        removeOrt(i);
+      }
+    }
   });
 }
+
 function applyOrtMapById(id, ortName) {
   const idx = adminState.termine.findIndex(t => String(t.id) === String(id));
   if (idx < 0) return;
