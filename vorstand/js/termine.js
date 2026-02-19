@@ -264,14 +264,7 @@ function renderTermineList() {
       </tr>
     `;
   }).join('');
- setTimeout(() => {
-    document.querySelectorAll('#termine-body button[data-action="remove"]').forEach(btn => {
-      btn.onclick = () => {
-        const tr = btn.closest('tr[data-id]');
-        if (tr) removeTerminById(tr.dataset.id);
-      };
-    });
-  }, 0);
+
 }
 // --- RENDERING SUB-FUNCTIONS ---
 function isoDate(v) {
@@ -515,16 +508,16 @@ function renderProtokollList() {
      if(!div || !adminState.protokoll) return;
      div.innerHTML = adminState.protokoll.map(p => `<div><strong>${p.benutzer}</strong>: ${p.details} <span class="float-end">${p.zeitstempel ? p.zeitstempel.split('T')[0] : ''}</span></div><hr class="my-1">`).join('');
 }
+
 function renderDropdownEditor() {
-  if (!adminState.dropdowns) adminState.dropdowns = { anlaesse: [], orteMitMaps: [] };
+  if (!adminState.dropdowns) adminState.dropdowns = { anlaesse: [], orteMitMaps: [], kategorien: [] };
 
   const a = document.getElementById('edit-anlaesse');
   const o = document.getElementById('edit-orte');
 
   if (a) {
-  const arr = (adminState.dropdowns.orteMitMaps || []);
-adminState.dropdowns.orteMitMaps = arr;
-
+    const arr = (adminState.dropdowns.anlaesse || []);
+    adminState.dropdowns.anlaesse = arr;
 
     a.innerHTML = arr.map((val, i) => `
       <div class="d-flex gap-2 mb-2">
@@ -537,10 +530,7 @@ adminState.dropdowns.orteMitMaps = arr;
   }
 
   if (o) {
-    const arrRaw = adminState.dropdowns.orteMitMaps || [];
-    const arr = arrRaw
-      .filter(pair => pair && String(pair[0] || '').trim() !== ''); // nur Ort nicht leer
-
+    const arr = (adminState.dropdowns.orteMitMaps || []);
     adminState.dropdowns.orteMitMaps = arr;
 
     o.innerHTML = arr.map((pair, i) => `
@@ -558,6 +548,7 @@ adminState.dropdowns.orteMitMaps = arr;
     `).join('');
   }
 }
+
 
 
 function cleanupDropdownsForSave() {
@@ -689,15 +680,12 @@ function formatDate(v) {
   if (!v) return "";
   try {
     let dateStr = String(v).includes('T') ? String(v).split('T')[0] : String(v);
-
     if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
       const [year, month, day] = dateStr.split('-');
-      return `${parseInt(day,10)}.${parseInt(month,10)}.${year}`; // ohne führende Nullen, CH-like
+      return `${parseInt(day,10)}.${parseInt(month,10)}.${year}`;
     }
     return dateStr;
-  } catch(e) {
-    return v;
-  }
+  } catch(e) { return v; }
 }
 
 let termineEventsBound = false;
@@ -706,70 +694,37 @@ function bindTermineEventsOnce() {
   if (termineEventsBound) return;
   termineEventsBound = true;
 
-  const container = document.getElementById('termine-container');
-  if (!container) return;
-
-  // 1) TERMINE-Tabelle (wie bisher)
   const tbody = document.getElementById('termine-body');
-  if (tbody) {
-    tbody.addEventListener('change', (e) => {
-      const el = e.target;
-      if (!el.dataset.field) return;
+  if (!tbody) return;
 
-      const tr = el.closest('tr[data-id]');
-      if (!tr) return;
+  // Änderungen (input/select)
+  tbody.addEventListener('change', (e) => {
+    const el = e.target;
+    if (!el || !el.dataset || !el.dataset.field) return;
 
-      const id = tr.dataset.id;
-      const field = el.dataset.field;
-      
-      setTerminFieldById(id, field, el.value);
-      if (field === 'datum') applyDefaultsOnDateSetById(id);
-      if (field === 'ort') applyOrtMapById(id, el.value);
-      
-      renderTermineList();
-    });
+    const tr = el.closest('tr[data-id]');
+    if (!tr) return;
 
+    const id = tr.dataset.id;
+    const field = el.dataset.field;
 
+    setTerminFieldById(id, field, el.value);
 
-  // 2) STAMMDATEN: Anlass-Typen + Orte Buttons
-  container.addEventListener('click', (e) => {
-    const btn = e.target.closest('button');
+    if (field === 'datum') applyDefaultsOnDateSetById(id);
+    if (field === 'ort') applyOrtMapById(id, el.value);
+
+    renderTermineList();
+  });
+
+  // Löschen
+  tbody.addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-action="remove"]');
     if (!btn) return;
 
-    // + Anlass Typ
-    if (btn.textContent.includes('+ Typ hinzufügen') || btn.onclick?.toString().includes('addAnlass')) {
-      e.preventDefault();
-      addAnlass();
-      return;
-    }
+    const tr = btn.closest('tr[data-id]');
+    if (!tr) return;
 
-    // + Ort
-    if (btn.textContent.includes('+ Ort hinzufügen') || btn.onclick?.toString().includes('addOrt')) {
-      e.preventDefault();
-      addOrt();
-      return;
-    }
-
-    // ✕ Anlass löschen
-    if (btn.textContent.includes('✕')) {
-      const input = btn.previousElementSibling;
-      if (input && input.closest('#edit-anlaesse')) {
-        const i = Array.from(input.parentElement.parentElement.children).indexOf(input.parentElement);
-        removeAnlass(i);
-      }
-    }
-
-    // ✕ Ort löschen
-    if (btn.textContent.includes('✕')) {
-      const inputs = btn.previousElementSibling ? [btn.previousElementSibling] : [];
-      const input2 = btn.previousElementSibling?.previousElementSibling;
-      if (input2) inputs.push(input2);
-      
-      if (inputs.some(el => el.closest('#edit-orte'))) {
-        const i = Array.from(btn.closest('div').children).indexOf(btn.closest('div'));
-        removeOrt(i);
-      }
-    }
+    removeTerminById(tr.dataset.id);
   });
 }
 
