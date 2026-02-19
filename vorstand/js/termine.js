@@ -264,10 +264,7 @@ function renderTermineList() {
       </tr>
     `;
   }).join('');
-}
-
-  // NEU: Delete-Buttons nach Render binden
-  setTimeout(() => {
+ setTimeout(() => {
     document.querySelectorAll('#termine-body button[data-action="remove"]').forEach(btn => {
       btn.onclick = () => {
         const tr = btn.closest('tr[data-id]');
@@ -280,12 +277,12 @@ function renderTermineList() {
 function isoDate(v) {
   if (!v) return "";
   try {
-    // CH → ISO: 12.3.2026 → 2026-03-12 (für <input type="date">)
-    if (v.match(/^\d{1,2}\.\d{1,2}\.\d{4}$/)) {
-      const [day, month, year] = v.split('.');
+    if (String(v).match(/^\d{1,2}\.\d{1,2}\.\d{4}$/)) {
+      const [day, month, year] = String(v).split('.');
       return `${year}-${month.padStart(2,'0')}-${day.padStart(2,'0')}`;
     }
-    return v.includes('T') ? v.split('T')[0] : v;
+    const s = String(v);
+    return s.includes('T') ? s.split('T')[0] : s;
   } catch(e) { return v; }
 }
 
@@ -525,9 +522,9 @@ function renderDropdownEditor() {
   const o = document.getElementById('edit-orte');
 
   if (a) {
-    const arr = (adminState.dropdowns.anlaesse || []).filter(x => String(x || '').trim() !== '');
-    // wir schreiben gefiltert zurück, damit der Editor “sauber” bleibt
-    adminState.dropdowns.anlaesse = arr;
+  const arr = (adminState.dropdowns.orteMitMaps || []);
+adminState.dropdowns.orteMitMaps = arr;
+
 
     a.innerHTML = arr.map((val, i) => `
       <div class="d-flex gap-2 mb-2">
@@ -561,6 +558,18 @@ function renderDropdownEditor() {
     `).join('');
   }
 }
+
+
+function cleanupDropdownsForSave() {
+  adminState.dropdowns.anlaesse = (adminState.dropdowns.anlaesse || [])
+    .map(x => String(x||'').trim())
+    .filter(Boolean);
+
+  adminState.dropdowns.orteMitMaps = (adminState.dropdowns.orteMitMaps || [])
+    .map(p => [String(p?.[0]||'').trim(), String(p?.[1]||'').trim()])
+    .filter(p => p[0]);
+}
+
 
 function addAnlass() {
   adminState.dropdowns.anlaesse = adminState.dropdowns.anlaesse || [];
@@ -621,9 +630,11 @@ function sortTermineForSave() {
 async function saveAdminData() {
     if(!confirm("Alle Änderungen speichern?")) return;
       sortTermineForSave();
+     cleanupDropdownsForSave();
     // Logik aus deinem alten Script übernehmen (Log generieren etc.)
     const user = localStorage.getItem('portal_user') || "Admin";
-    
+   
+
     // Payload vorbereiten
   const payload = {
   action: "saveAdminData",
@@ -676,16 +687,13 @@ async function runAdminTool(toolName) {
 // Utils
 function formatDate(v) {
   if (!v) return "";
-  
   try {
-    let dateStr = v.includes('T') ? v.split('T')[0] : v;
-    
-    // ISO → CH: 2026-03-12 → 12.3.2026
+    let dateStr = String(v).includes('T') ? String(v).split('T')[0] : String(v);
+
     if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
       const [year, month, day] = dateStr.split('-');
-      return `${day}.${month}.${year}`;
+      return `${parseInt(day,10)}.${parseInt(month,10)}.${year}`; // ohne führende Nullen, CH-like
     }
-    
     return dateStr;
   } catch(e) {
     return v;
@@ -721,16 +729,7 @@ function bindTermineEventsOnce() {
       renderTermineList();
     });
 
-    tbody.addEventListener('click', (e) => {
-      const btn = e.target.closest('button[data-action="remove"]');
-      if (!btn) return;
-      
-      const tr = btn.closest('tr[data-id]');
-      if (!tr) return;
-      
-      removeTerminById(tr.dataset.id);
-    });
-  }
+
 
   // 2) STAMMDATEN: Anlass-Typen + Orte Buttons
   container.addEventListener('click', (e) => {
