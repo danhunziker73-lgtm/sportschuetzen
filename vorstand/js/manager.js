@@ -746,7 +746,7 @@ async function sendMailViaBackend() {
     }
 
     const btn = document.querySelector('.card-header [onclick="sendMailViaBackend()"]');
-    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sende...'; }
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-paper-plane"></i> Senden'; }
 
     try {
         // PDF generieren
@@ -773,14 +773,14 @@ async function sendMailViaBackend() {
 
         if (data.error) throw new Error(data.error);
 
-        alert(`✅ Mail erfolgreich an ${mails.length} Empfänger gesendet!`);
+        alert(`✅ Entwurf erstellt! Bitte in Gmail öffnen, prüfen und senden.\n(${mails.length} Empfänger als BCC)`);
 
     } catch (e) {
         alert("Fehler beim Mail-Versand: " + e.message);
     } finally {
         if (btn) {
             btn.disabled = false;
-            btn.innerHTML = '<i class="fas fa-paper-plane"></i> Senden';
+            btn.innerHTML = '<i class="fas fa-pen"></i> Entwurf';
         }
     }
 }
