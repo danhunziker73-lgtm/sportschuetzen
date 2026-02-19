@@ -542,28 +542,26 @@ function renderDropdownEditor() {
   }
 
 if (o) {
-const arr = (adminState.dropdowns.orteMitMaps || [])
-  .map(p => [String(p?.[0]||''), String(p?.[1]||'')]); // KEIN filter hier
+  const arr = (adminState.dropdowns.orteMitMaps || [])
+    .map(p => [String(p?.[0] || ''), String(p?.[1] || '')]); // kein Filter im UI
 
-adminState.dropdowns.orteMitMaps = arr;
+  adminState.dropdowns.orteMitMaps = arr;
 
-o.innerHTML = arr.map((pair, i) => `
-  <div class="d-flex gap-2 mb-2">
-    <input type="text" class="form-control form-control-sm"
-      placeholder="Ort"
-      value="${escapeHtml(pair[0] || '')}"
-      onchange="adminState.dropdowns.orteMitMaps[${i}][0]=this.value">
-    <input type="text" class="form-control form-control-sm"
-      placeholder="Map Link"
-      value="${escapeHtml(pair[1] || '')}"
-      onchange="adminState.dropdowns.orteMitMaps[${i}][1]=this.value">
-    <button class="btn btn-outline-danger btn-sm" onclick="removeOrt(${i})">✕</button>
-  </div>
-`).join('');
-
-
+  o.innerHTML = arr.map((pair, i) => `
+    <div class="d-flex gap-2 mb-2">
+      <input type="text" class="form-control form-control-sm"
+        placeholder="Ort"
+        value="${escapeHtml(pair[0] || '')}"
+        onchange="adminState.dropdowns.orteMitMaps[${i}][0]=this.value">
+      <input type="text" class="form-control form-control-sm"
+        placeholder="Map Link"
+        value="${escapeHtml(pair[1] || '')}"
+        onchange="adminState.dropdowns.orteMitMaps[${i}][1]=this.value">
+      <button class="btn btn-outline-danger btn-sm" onclick="removeOrt(${i})">✕</button>
+    </div>
+  `).join('');
 }
-}
+
 
 
 
