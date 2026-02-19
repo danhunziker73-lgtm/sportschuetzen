@@ -102,18 +102,6 @@ async function loadTermineData() {
     showTermineOverlay(false);
   }
 }
-function formatTime(v) {
-  if (!v) return "";
-  const s = String(v).trim();
-
-  // falls "19:00:00" → "19:00"
-  if (/^\d{2}:\d{2}:\d{2}$/.test(s)) return s.slice(0, 5);
-
-  // falls "19:00" passt
-  if (/^\d{1,2}:\d{2}$/.test(s)) {
-    const [hh, mm] = s.split(':');
-    return `${String(parseInt(hh, 10)).padStart(2, '0')}:${mm}`;
-  }
 
   // sonst einfach zurückgeben (oder "")
   return s;
@@ -243,7 +231,7 @@ function renderTermineList() {
 
     return `
       <tr data-id="${escapeHtml(String(t.id))}" class="${rowClass}">
-        <td>   <input data-field="datum" type="date" class="form-control form-control-sm" value="${isoDate(t.datum)}">   <small class="d-block text-muted">${formatDate(t.datum)}</small> </td>
+        <td>   <input data-field="datum" type="date" class="form-control form-control-sm" value="${isoDate(t.datum)}">   
         <td><input data-field="startzeit" type="time" class="form-control form-control-sm" value="${formatTime(t.startzeit)}"></td>
         <td><input data-field="endzeit" type="time" class="form-control form-control-sm" value="${formatTime(t.endzeit)}"></td>
 
@@ -552,24 +540,30 @@ function renderDropdownEditor() {
     `).join('');
   }
 
-  if (o) {
-    const arr = (adminState.dropdowns.orteMitMaps || []);
-    adminState.dropdowns.orteMitMaps = arr;
+if (o) {
+  const arr = (adminState.dropdowns.orteMitMaps || [])
+    .map(p => [String(p?.[0]||'').trim(), String(p?.[1]||'').trim()])
+    .filter(p => p[0]); // nur wenn Ort vorhanden
 
-    o.innerHTML = arr.map((pair, i) => `
-      <div class="d-flex gap-2 mb-2">
-        <input type="text" class="form-control form-control-sm"
-          placeholder="Ort"
-          value="${escapeHtml((pair && pair[0]) || '')}"
-          onchange="adminState.dropdowns.orteMitMaps[${i}][0]=this.value">
-        <input type="text" class="form-control form-control-sm"
-          placeholder="Map Link"
-          value="${escapeHtml((pair && pair[1]) || '')}"
-          onchange="adminState.dropdowns.orteMitMaps[${i}][1]=this.value">
-        <button class="btn btn-outline-danger btn-sm" onclick="removeOrt(${i})">✕</button>
-      </div>
-    `).join('');
-  }
+
+  // Wichtig: wenn du im UI filterst, musst du auch im State sauber setzen,
+  // sonst bleiben "unsichtbare" Leerzeilen ewig drin.
+  adminState.dropdowns.orteMitMaps = arr;
+
+  o.innerHTML = arr.map((pair, i) => `
+    <div class="d-flex gap-2 mb-2">
+      <input type="text" class="form-control form-control-sm"
+        placeholder="Ort"
+        value="${escapeHtml(pair[0])}"
+        onchange="adminState.dropdowns.orteMitMaps[${i}][0]=this.value">
+      <input type="text" class="form-control form-control-sm"
+        placeholder="Map Link"
+        value="${escapeHtml(pair[1])}"
+        onchange="adminState.dropdowns.orteMitMaps[${i}][1]=this.value">
+      <button class="btn btn-outline-danger btn-sm" onclick="removeOrt(${i})">✕</button>
+    </div>
+  `).join('');
+}
 }
 
 
@@ -717,13 +711,16 @@ function bindTermineEventsOnce() {
   if (termineEventsBound) return;
   termineEventsBound = true;
 
-  const tbody = document.getElementById('termine-body');
-  if (!tbody) return;
+  const root = document.getElementById('termine-container');
+  if (!root) return;
 
-  // Änderungen (input/select)
-  tbody.addEventListener('change', (e) => {
+  // CHANGE (Inputs/Selects in Termine-Tabelle)
+  root.addEventListener('change', (e) => {
     const el = e.target;
     if (!el || !el.dataset || !el.dataset.field) return;
+
+    // nur reagieren, wenn es aus der Termine-Tabelle kommt
+    if (!el.closest('#termine-body')) return;
 
     const tr = el.closest('tr[data-id]');
     if (!tr) return;
@@ -739,10 +736,12 @@ function bindTermineEventsOnce() {
     renderTermineList();
   });
 
-  // Löschen
-  tbody.addEventListener('click', (e) => {
+  // CLICK (Löschen)
+  root.addEventListener('click', (e) => {
     const btn = e.target.closest('button[data-action="remove"]');
     if (!btn) return;
+
+    if (!btn.closest('#termine-body')) return;
 
     const tr = btn.closest('tr[data-id]');
     if (!tr) return;
@@ -750,6 +749,7 @@ function bindTermineEventsOnce() {
     removeTerminById(tr.dataset.id);
   });
 }
+
 
 function applyOrtMapById(id, ortName) {
   const idx = adminState.termine.findIndex(t => String(t.id) === String(id));
