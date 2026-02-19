@@ -15,6 +15,8 @@ let sigPadMitglied, sigPadVorstand;
 async function loadInventarData() {
     const container = document.getElementById('inventar-container');
     if (!container) return;
+    const label = document.getElementById('inv-verantwortlicher-label');
+if (label) label.innerText = currentUser;
 
     container.innerHTML = `
         <div class="text-center p-5">
@@ -166,8 +168,10 @@ function renderInventarUI(container) {
                             <button type="button" class="btn btn-sm btn-link text-danger p-0 mb-3"
                                     onclick="sigPadMitglied.clear()">Löschen</button>
 
-                            <label class="form-label fw-bold">Verantwortlicher Vorstand</label>
-                            <select id="select-verantwortlicher" class="form-select mb-2" required></select>
+                          <div class="alert alert-light border py-2 mb-3 small">
+    <i class="fas fa-user-check text-success"></i>
+    Verantwortlich: <strong id="inv-verantwortlicher-label"></strong>
+</div>
                             <div class="sig-container mb-2">
                                 <canvas id="sig-vorstand"></canvas>
                             </div>
@@ -279,7 +283,7 @@ function fillInventarDropdowns() {
         sorted.map(m => `<option value="${m.ID}">${m.Nachname} ${m.Vorname}</option>`).join('');
 
     document.getElementById('select-mitglied').innerHTML = optionsHtml;
-    document.getElementById('select-verantwortlicher').innerHTML = optionsHtml;
+ 
 
     if (inventarState.config) {
         const zOptions = '<option value="">-- wählen --</option>' +
@@ -519,7 +523,7 @@ async function handleInventarSubmit(e) {
         zustandAbgabe: document.getElementById('select-zustand-abgabe').value,
         zustandRueckgabe: document.getElementById('select-zustand-rueckgabe').value,
         bemerkungen: document.getElementById('trans-bemerkungen').value,
-        verantwortlicheId: document.getElementById('select-verantwortlicher').value,
+        verantwortlicheId: currentUser,  // aus main.js / auth.js bereits global verfügbar
         pfandBetrag: document.getElementById('pfand-betrag').value,
         pfandEinnahme: document.getElementById('pfand-einnahme').value,
         pfandRetour: document.getElementById('pfand-retour').value,
