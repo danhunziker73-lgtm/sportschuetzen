@@ -38,10 +38,9 @@ function navTo(viewId, el) {
     document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
     if (el) el.classList.add('active');
 
-    // 2. Teardown vorheriger View (vor dem Wechsel)
-    if (viewId !== 'manager' && typeof teardownManager === 'function') {
-        teardownManager();
-    }
+    // 2. Teardowns (VOR dem View-Wechsel)
+    if (viewId !== 'manager'  && typeof teardownManager  === 'function') teardownManager();
+    if (viewId !== 'inventar' && typeof teardownInventar === 'function') teardownInventar();
 
     // 3. View wechseln
     document.querySelectorAll('.module-view').forEach(v => v.classList.remove('active'));
@@ -55,11 +54,14 @@ function navTo(viewId, el) {
 
     closeSidebarMobile();
 
-    // 4. Module laden (Routing Logik)
-    if (viewId === 'inventar'   && typeof loadInventarData   === 'function') loadInventarData();
-    if (viewId === 'termine'    && typeof loadTermineData    === 'function') loadTermineData();
-    if (viewId === 'resultate'  && typeof loadResultateData  === 'function') loadResultateData();
-    if (viewId === 'manager'    && typeof loadContestData    === 'function') loadContestData();
+    // 4. Module laden
+    if (viewId === 'inventar'  && typeof loadInventarData  === 'function') loadInventarData();
+    if (viewId === 'termine'   && typeof loadTermineData   === 'function') loadTermineData();
+    if (viewId === 'resultate' && typeof loadResultateData === 'function') loadResultateData();
+    if (viewId === 'manager'   && typeof loadContestData   === 'function') loadContestData();
+}
+
+
 }
 
 
