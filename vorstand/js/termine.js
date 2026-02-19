@@ -103,9 +103,7 @@ async function loadTermineData() {
   }
 }
 
-  // sonst einfach zurückgeben (oder "")
-  return s;
-}
+ }
 function formatTime(v) {
   if (!v) return "";
   const s = String(v).trim();
@@ -113,6 +111,7 @@ function formatTime(v) {
   if (/^\d{2}:\d{2}:\d{2}$/.test(s)) return s.slice(0, 5);
   return s; // "19:00" bleibt "19:00"
 }
+
 
 
 function renderTermineUI(container) {
