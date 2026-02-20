@@ -14,7 +14,6 @@ let sigPadMitglied, sigPadVorstand;
 // =========================================================
 function formatCH(val) {
     if (!val || val === "" || val === 0) return '-';
-    // Versuche als Datum zu parsen
     const d = new Date(val);
     if (!isNaN(d.getTime())) {
         return d.toLocaleDateString('de-CH', {
@@ -379,24 +378,27 @@ function getItemLabel(kat, item) {
     return `${item.Typ || ''} (${item.Groesse || '-'})`.trim();
 }
 
-// ⬇ FIX: Gegenstand-Label aus Transaktions-Zeile auflösen
+
+// =========================================================
+//  FIX: getItemLabelFromTrans
+//  Echtes Feld: t.Inventar_ID (kann Zahl sein!), t.Kategorie
+// =========================================================
 function getItemLabelFromTrans(t) {
     if (!t || !t.Inventar_ID) return '-';
     const kat = (t.Kategorie || "").toLowerCase();
     const keyMap = {
-        "gewehr": "gewehre",
-        "schluessel": "schluessel",
-        "kleidung": "kleidung",
+        "gewehr":            "gewehre",
+        "schluessel":        "schluessel",
+        "kleidung":          "kleidung",
         "schiessbekleidung": "schiessbekleidung"
     };
     const stateKey = keyMap[kat];
-    if (!stateKey || !inventarState[stateKey]) return t.Inventar_ID;
+    if (!stateKey || !inventarState[stateKey]) return String(t.Inventar_ID);
     const item = inventarState[stateKey].find(
         i => i.ID.toString() === t.Inventar_ID.toString()
     );
-    return item ? getItemLabel(kat, item) : t.Inventar_ID;
+    return item ? getItemLabel(kat, item) : String(t.Inventar_ID);
 }
-
 
 // =========================================================
 //  BESTANDESLISTE
@@ -477,16 +479,19 @@ function renderInventoryTable() {
 }
 
 
+
 // =========================================================
-//  JOURNAL TABELLEN
+//  FIX: renderJournalTables
+//  - t.Aktueller_Besitzer_ID (nicht Mitglied_ID)
+//  - t.Aktion: 'AUSGABE'/'CHECKOUT' vs 'CHECKIN'
+//  - Protokoll: Spalte heisst 'Nutzer (Vorstand)', kein 'Tabelle'
 // =========================================================
 function renderJournalTables() {
     if (!inventarState) return;
 
-    // 1. Offene Ausleihen
     renderOffeneAusleihen();
 
-    // 2. Material-Bewegungen (Transaktionen)
+    // 2. Material-Bewegungen
     const transTable = document.getElementById('table-transaktionen');
     if (inventarState.transaktionen && inventarState.transaktionen.length > 0) {
 
@@ -500,23 +505,22 @@ function renderJournalTables() {
         </tr></thead><tbody>`;
 
         [...inventarState.transaktionen].reverse().slice(0, 30).forEach(t => {
-            // ⬇ FIX: Zeitstempel robust parsen
-            const date = formatCH(t.Zeitstempel);
+            const date     = formatCH(t.Zeitstempel);
 
-            // ⬇ FIX: Mitglied_ID → Name
-            const mitglied = getInventarNameFromId(t.Mitglied_ID);
+            // ✅ FIX: echtes Feld heisst Aktueller_Besitzer_ID
+            const mitglied = getInventarNameFromId(t.Aktueller_Besitzer_ID);
 
-            // ⬇ FIX: Aktion als Text-Badge statt Piktogramm
-            const aktionBadge = (t.Typ === 'checkout' || t.Typ === 'checkout')
+            // ✅ FIX: Aktion heisst 'AUSGABE'/'CHECKOUT'/'CHECKIN'
+            const aktion   = (t.Aktion || "").toUpperCase();
+            const istAusgabe = aktion === 'AUSGABE' || aktion === 'CHECKOUT';
+            const aktionBadge = istAusgabe
                 ? '<span class="badge bg-primary">Ausgabe</span>'
-                : (t.Typ === 'checkin')
-                    ? '<span class="badge bg-success">Rückgabe</span>'
-                    : `<span class="badge bg-secondary">${t.Typ || '-'}</span>`;
+                : '<span class="badge bg-success">Rückgabe</span>';
 
-            // ⬇ FIX: Kategorie aus Feld, nicht Spalten-Verwechslung
+            // ✅ FIX: Kategorie korrekt
             const kat = t.Kategorie || '-';
 
-            // ⬇ FIX: Gegenstand-Label statt roher ID
+            // ✅ FIX: Gegenstand-Label
             const gegenstand = getItemLabelFromTrans(t);
 
             html += `<tr>
@@ -536,32 +540,33 @@ function renderJournalTables() {
             <th>Kategorie</th><th>Gegenstand</th><th>Bemerkung</th>
         </tr></thead>
         <tbody><tr><td colspan="6" class="text-muted text-center">
-            Noch keine Transaktionen geloggt.
+            Noch keine Transaktionen.
         </td></tr></tbody>`;
     }
 
     // 3. Admin-Protokoll
+    // ✅ FIX: Spalten heissen 'Nutzer (Vorstand)', 'Aktion', 'Details', ''
     const logTable = document.getElementById('table-protokoll');
     if (inventarState.protokoll && inventarState.protokoll.length > 0) {
 
         let html = `<thead><tr class="table-secondary">
-            <th>Zeit</th><th>Aktion</th><th>Tabelle</th><th>Details</th>
+            <th>Zeit</th>
+            <th>Nutzer</th>
+            <th>Aktion</th>
+            <th>Details</th>
         </tr></thead><tbody>`;
 
         [...inventarState.protokoll].reverse().slice(0, 20).forEach(p => {
-            // ⬇ FIX: Zeitstempel
-            const time = formatCHDateTime(p.Zeitstempel);
-
-            // ⬇ FIX: Spaltenname robust - GAS schreibt evtl. andere Namen
-            // Versuche alle möglichen Varianten
-            const aktion  = p.Aktion  || p.aktion  || p.Action  || '-';
-            const tabelle = p.Tabelle || p.tabelle || p.Table   || p.Sheet || '-';
-            const details = p.Details || p.details || p.Detail  || '-';
+            const time    = formatCHDateTime(p.Zeitstempel);
+            const nutzer  = p['Nutzer (Vorstand)'] || '-';
+            const aktion  = p.Aktion  || '-';
+            // Details + leere Spalte zusammenführen
+            const details = [p.Details, p['']].filter(v => v && v !== '').join(' | ') || '-';
 
             html += `<tr>
                 <td><small>${time}</small></td>
+                <td><small>${nutzer}</small></td>
                 <td><strong>${aktion}</strong></td>
-                <td><small>${tabelle}</small></td>
                 <td><small>${details}</small></td>
             </tr>`;
         });
@@ -569,7 +574,7 @@ function renderJournalTables() {
         logTable.innerHTML = html + "</tbody>";
     } else {
         logTable.innerHTML = `<thead><tr class="table-secondary">
-            <th>Zeit</th><th>Aktion</th><th>Tabelle</th><th>Details</th>
+            <th>Zeit</th><th>Nutzer</th><th>Aktion</th><th>Details</th>
         </tr></thead>
         <tbody><tr><td colspan="4" class="text-muted text-center">
             Keine Admin-Aktionen protokolliert.
@@ -578,8 +583,13 @@ function renderJournalTables() {
 }
 
 
+
+
+
 // =========================================================
-//  OFFENE AUSLEIHEN
+//  FIX: renderOffeneAusleihen
+//  - t.Aktion statt t.Typ
+//  - t.Inventar_ID als String vergleichen (GAS liefert Zahl!)
 // =========================================================
 function renderOffeneAusleihen() {
     const journalSection = document.getElementById('inv-section-journal');
@@ -619,7 +629,7 @@ function renderOffeneAusleihen() {
                 const mitglied  = getInventarNameFromId(besitzer);
                 const itemLabel = getItemLabel(keyMap[key], item);
 
-                // Pfand-Info
+                // Pfand
                 const pfand = (inventarState.pfand || []).find(p =>
                     p.Inventar_ID &&
                     p.Inventar_ID.toString() === item.ID.toString() &&
@@ -629,15 +639,15 @@ function renderOffeneAusleihen() {
                     ? `CHF ${parseFloat(pfand.Betrag).toFixed(2)}`
                     : '-';
 
-                // ⬇ FIX: Letztes checkout-Datum aus Transaktionen
-                // Feldname: t.Inventar_ID und t.Typ (nicht t.type!)
+                // ✅ FIX: t.Aktion statt t.Typ, Inventar_ID als String
                 const trans = [...(inventarState.transaktionen || [])]
                     .reverse()
-                    .find(t =>
-                        t.Inventar_ID &&
-                        t.Inventar_ID.toString() === item.ID.toString() &&
-                        (t.Typ === 'checkout' || t.Typ === 'Ausgabe')
-                    );
+                    .find(t => {
+                        const aktion = (t.Aktion || "").toUpperCase();
+                        return t.Inventar_ID &&
+                               t.Inventar_ID.toString() === item.ID.toString() &&
+                               (aktion === 'AUSGABE' || aktion === 'CHECKOUT');
+                    });
                 const seit = trans?.Zeitstempel
                     ? formatCH(trans.Zeitstempel)
                     : '-';
@@ -776,7 +786,8 @@ function editInventarItem(targetSheet, id) {
 
 
 // =========================================================
-//  SUBMIT TRANSAKTION
+//  FIX: handleInventarSubmit
+//  Payload-Feldnamen an GAS-Schema anpassen
 // =========================================================
 async function handleInventarSubmit(e) {
     e.preventDefault();
@@ -789,11 +800,11 @@ async function handleInventarSubmit(e) {
 
     // Doppelbuchungs-Check bei Rückgabe
     if (action === 'checkin') {
-        const keyMap = {
+        const km = {
             "gewehr":"gewehre","schluessel":"schluessel",
             "kleidung":"kleidung","schiessbekleidung":"schiessbekleidung"
         };
-        const item = (inventarState[keyMap[kategorie]] || [])
+        const item = (inventarState[km[kategorie]] || [])
             .find(i => i.ID.toString() === itemId.toString());
         if (!item || item.Aktueller_Besitzer_ID.toString() !== mitgliedId.toString()) {
             alert("⚠️ Dieser Gegenstand ist nicht bei diesem Mitglied!");
@@ -802,21 +813,29 @@ async function handleInventarSubmit(e) {
         }
     }
 
+    // ✅ Feldnamen exakt wie GAS-Sheet-Spalten
     const payload = {
-        action:           action,
-        type:             action,
-        mitgliedId:       mitgliedId,
-        kategorie:        kategorie,
-        itemId:           itemId,
-        zustandAbgabe:    document.getElementById('select-zustand-abgabe').value,
-        zustandRueckgabe: document.getElementById('select-zustand-rueckgabe').value,
-        bemerkungen:      document.getElementById('trans-bemerkungen').value,
-        verantwortlicheId: currentUser,
-        pfandBetrag:      document.getElementById('pfand-betrag').value,
-        pfandEinnahme:    document.getElementById('pfand-einnahme').value,
-        pfandRetour:      document.getElementById('pfand-retour').value,
-        sigMitglied:      sigPadMitglied ? sigPadMitglied.toDataURL() : "",
-        sigVorstand:      sigPadVorstand ? sigPadVorstand.toDataURL() : ""
+        action:                  action,
+        type:                    action,
+        // GAS-Spalte: Aktueller_Besitzer_ID
+        Aktueller_Besitzer_ID:   mitgliedId,
+        mitgliedId:              mitgliedId,   // Fallback
+        kategorie:               kategorie,
+        Kategorie:               kategorie,
+        // GAS-Spalte: Inventar_ID
+        Inventar_ID:             itemId,
+        itemId:                  itemId,
+        // GAS-Spalte: Aktion
+        Aktion:                  action === 'checkout' ? 'AUSGABE' : 'CHECKIN',
+        Zustand_Abgabe:          document.getElementById('select-zustand-abgabe').value,
+        Zustand_Rueckgabe:       document.getElementById('select-zustand-rueckgabe').value,
+        Bemerkungen:             document.getElementById('trans-bemerkungen').value,
+        Verantwortliche_ID:      currentUser,
+        Pfandbetrag:             document.getElementById('pfand-betrag').value,
+        Pfand_einnahme:          document.getElementById('pfand-einnahme').value,
+        Pfand_retour_bezahlt:    document.getElementById('pfand-retour').value,
+        sigMitglied:             sigPadMitglied ? sigPadMitglied.toDataURL() : "",
+        Sig_Vorstand:            sigPadVorstand ? sigPadVorstand.toDataURL() : ""
     };
 
     try {
@@ -840,8 +859,6 @@ async function handleInventarSubmit(e) {
 
     setInventarBusy(false);
 }
-
-
 // =========================================================
 //  SAVE NEW / UPDATE
 // =========================================================
