@@ -10,6 +10,8 @@ let warenkorb        = [];
 let journalSortCol   = 'datum';   let journalSortDir   = 'desc';
 let protokollSortCol = 'zeit';    let protokollSortDir = 'desc';
 let ausleihenSortCol = 'seit';    let ausleihenSortDir = 'desc';
+let bestandSortCol = 'status';
+let bestandSortDir = 'asc';
 
 
 // =========================================================
@@ -104,16 +106,17 @@ function renderInventarUI(container) {
             .warenkorb-card { border:2px dashed #0d6efd; border-radius:10px; background:#f8f9ff; }
         </style>
 
-        <div class="d-flex flex-wrap gap-2 mb-4">
-            <button class="btn btn-primary nav-btn" id="inv-btn-ausgabe"
-                    onclick="showInventarSection('ausgabe')">📤 Buchung</button>
-            <button class="btn btn-outline-secondary nav-btn" id="inv-btn-liste"
-                    onclick="showInventarSection('liste')">📋 Bestand</button>
-            <button class="btn btn-outline-secondary nav-btn" id="inv-btn-journal"
-                    onclick="showInventarSection('journal')">📖 Journal</button>
-            <button class="btn btn-outline-dark nav-btn" id="inv-btn-admin"
-                    onclick="showInventarSection('admin')">⚙️ Admin</button>
-        </div>
+     <div class="d-flex flex-wrap gap-2 mb-4">
+    <button class="btn btn-primary nav-btn" id="inv-btn-ausgabe"
+            onclick="showInventarSection('ausgabe')">📤 Buchung</button>
+    <button class="btn btn-outline-secondary nav-btn" id="inv-btn-journal"
+            onclick="showInventarSection('journal')">📖 Journal</button>
+    <button class="btn btn-outline-secondary nav-btn" id="inv-btn-liste"
+            onclick="showInventarSection('liste')">✏️ Bestand &amp; Mitglieder ändern/löschen</button>
+    <button class="btn btn-outline-dark nav-btn" id="inv-btn-admin"
+            onclick="showInventarSection('admin')">➕ Bestand &amp; Mitglieder hinzufügen</button>
+</div>
+
 
         <!-- SECTION: BUCHUNG -->
         <div id="inv-section-ausgabe" class="inv-section">
@@ -499,41 +502,96 @@ function sortHeader(label, col, currentCol, currentDir, callbackFn) {
 // =========================================================
 //  BESTANDESLISTE
 // =========================================================
+function sortBestand(col) {
+    bestandSortDir = bestandSortCol === col
+        ? (bestandSortDir === 'asc' ? 'desc' : 'asc') : 'asc';
+    bestandSortCol = col;
+    renderInventoryTable();
+}
+
 function renderInventoryTable() {
     if (!inventarState) return;
     const target = document.getElementById('filter-liste').value;
     const keyMap = {
-        "Inventar_Gewehre":"gewehre","Inventar_Schluessel":"schluessel",
-        "Inventar_Kleidung":"kleidung","Inventar_Schiessbekleidung":"schiessbekleidung",
-        "Personendaten":"mitglieder"
+        "Inventar_Gewehre":           "gewehre",
+        "Inventar_Schluessel":        "schluessel",
+        "Inventar_Kleidung":          "kleidung",
+        "Inventar_Schiessbekleidung": "schiessbekleidung",
+        "Personendaten":              "mitglieder"
     };
-    const data  = inventarState[keyMap[target]];
-    const table = document.getElementById('inventory-table');
+    const rawData = inventarState[keyMap[target]];
+    const table   = document.getElementById('inventory-table');
 
-    if (!data?.length) {
-        table.innerHTML = "<thead><tr><th>Keine Daten vorhanden</th></tr></thead>"; return;
+    if (!rawData?.length) {
+        table.innerHTML = "<thead><tr><th>Keine Daten vorhanden</th></tr></thead>";
+        return;
     }
 
-    const allHeaders     = Object.keys(data[0]);
+    // Standard-Sortierung je nach Typ
+    if (target === 'Personendaten') {
+        if (bestandSortCol === 'status') bestandSortCol = 'Nachname';
+    } else {
+        if (bestandSortCol === 'Nachname') bestandSortCol = 'status';
+    }
+
+    const allHeaders     = Object.keys(rawData[0]);
     const displayHeaders = allHeaders.filter(h => h !== "ID");
     const dateKeys       = ['zeitstempel','kaufdatum','birthdate','kassiert_am',
                             'retour_am','kauf_spender_jahr','datum','date'];
 
-    let html = `<thead><tr class="table-dark">`;
-    displayHeaders.forEach(h => html += `<th>${h.replace(/_/g,' ')}</th>`);
-    html += `<th>Aktion</th></tr></thead><tbody>`;
+    // Sortieren
+    let sorted = [...rawData];
+    sorted.sort((a, b) => {
+        let va = a[bestandSortCol];
+        let vb = b[bestandSortCol];
 
-    html += data.map(row => {
+        // Mitglieder: Nachname + Vorname kombiniert
+        if (target === 'Personendaten' && bestandSortCol === 'Nachname') {
+            va = (a['Nachname']||'') + ' ' + (a['Vorname']||'');
+            vb = (b['Nachname']||'') + ' ' + (b['Vorname']||'');
+        }
+
+        // Status-Sortierung: Im Lager zuerst
+        if (bestandSortCol === 'Status') {
+            const order = { 'Im Lager': 0, 'Ausgegeben': 1 };
+            va = order[va] !== undefined ? order[va] : 2;
+            vb = order[vb] !== undefined ? order[vb] : 2;
+            return bestandSortDir === 'asc' ? va - vb : vb - va;
+        }
+
+        if (va === undefined || va === null || va === '') va = '';
+        if (vb === undefined || vb === null || vb === '') vb = '';
+        if (va < vb) return bestandSortDir === 'asc' ? -1 : 1;
+        if (va > vb) return bestandSortDir === 'asc' ?  1 : -1;
+        return 0;
+    });
+
+    // Header mit Sortier-Pfeilen
+    let html = '<thead><tr class="table-dark">';
+    displayHeaders.forEach(h => {
+        const arrow = bestandSortCol === h
+            ? (bestandSortDir === 'asc' ? ' ▲' : ' ▼') : ' ⇅';
+        html += `<th style="cursor:pointer;user-select:none;white-space:nowrap"
+                     onclick="sortBestand('${h}')">
+                     ${h.replace(/_/g,' ')}
+                     <span class="text-muted small">${arrow}</span>
+                 </th>`;
+    });
+    html += '<th>Aktion</th></tr></thead><tbody>';
+
+    html += sorted.map(row => {
         const cells = displayHeaders.map(key => {
             const val = row[key];
             if (key.endsWith("_ID") || key === "Aktueller_Besitzer_ID")
                 return `<td>${getInventarNameFromId(val) || '<span class="text-muted">-</span>'}</td>`;
             if (key === "Status") {
-                if (val === "Im Lager")    return `<td><span class="badge bg-success">Lager</span></td>`;
-                if (val === "Ausgegeben")  return `<td><span class="badge bg-warning text-dark">Ausleihe</span></td>`;
+                if (val === "Im Lager")
+                    return `<td><span class="badge bg-success">Lager</span></td>`;
+                if (val === "Ausgegeben")
+                    return `<td><span class="badge bg-warning text-dark">Ausleihe</span></td>`;
                 return `<td><span class="badge bg-secondary">${val||'-'}</span></td>`;
             }
-            if (dateKeys.some(dk => key.toLowerCase().includes(dk)) && val)
+            if (dateKeys.some(dk => key.toLowerCase().includes(dk.toLowerCase())) && val)
                 return `<td>${formatCH(val)}</td>`;
             if (key.toLowerCase().includes("pfand") || key === "Depot")
                 return `<td class="fw-bold">${val ? parseFloat(val).toFixed(2) : '0.00'}</td>`;
@@ -744,11 +802,17 @@ function renderTransaktionenTable() {
             let pdfCell = '';
             if (idx === 0) {
                 const safeGroup = encodeURIComponent(JSON.stringify(group));
-                pdfCell = `<td rowspan="${rowspan}" class="text-center align-middle">
-                    <button class="btn btn-sm btn-outline-secondary"
-                            title="PDF neu generieren"
-                            onclick="regeneratePDF('${safeGroup}')">📄</button>
-                </td>`;
+         // NEU – zuerst Backend-PDF versuchen, Fallback auf lokale Generierung:
+const backendPdfUrl = group[0].PDF_URL || "";
+pdfCell = `<td rowspan="${rowspan}" class="text-center align-middle">
+    ${backendPdfUrl
+        ? `<a href="${backendPdfUrl}" target="_blank"
+              class="btn btn-sm btn-success" title="PDF aus Drive öffnen">📄</a>`
+        : `<button class="btn btn-sm btn-outline-secondary"
+                   title="PDF lokal generieren"
+                   onclick="regeneratePDF('${safeGroup}')">📄</button>`
+    }
+</td>`;
             }
             html += `<tr>
                 <td>${date}</td>
