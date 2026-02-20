@@ -31,7 +31,7 @@ function formatCHDateTime(val) {
             hour:'2-digit', minute:'2-digit'
         });
     return val;
-}
+} 
 
 
 function sendTransaktionsMail(mitgliedObj, aktion, items, bemerkungen,
