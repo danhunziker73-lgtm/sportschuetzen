@@ -642,12 +642,21 @@ function renderOffeneAusleihen() {
                 // ✅ FIX: t.Aktion statt t.Typ, Inventar_ID als String
                 const trans = [...(inventarState.transaktionen || [])]
                     .reverse()
-                    .find(t => {
-                        const aktion = (t.Aktion || "").toUpperCase();
-                        return t.Inventar_ID &&
-                               t.Inventar_ID.toString() === item.ID.toString() &&
-                               (aktion === 'AUSGABE' || aktion === 'CHECKOUT');
-                    });
+  .find(t => {
+    const aktion = (t.Aktion || "").toUpperCase();
+    const istAusgabe = aktion === 'AUSGABE' || aktion === 'CHECKOUT';
+    if (!istAusgabe) return false;
+
+    // Direkter Vergleich (falls GAS ID als String speichert)
+    if (t.Inventar_ID.toString() === item.ID.toString()) return true;
+
+    // Numerischer Vergleich (falls GAS nur Zahl liefert, item.ID = "G-1")
+    const numT = parseInt(t.Inventar_ID);
+    const numI = parseInt(item.ID.toString().replace(/\D/g, ''));
+    return !isNaN(numT) && !isNaN(numI) && numT === numI
+           && (t.Kategorie || "").toLowerCase() === keyMap[key];
+});
+
                 const seit = trans?.Zeitstempel
                     ? formatCH(trans.Zeitstempel)
                     : '-';
