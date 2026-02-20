@@ -89,27 +89,109 @@ function teardownInventar() {
 // =========================================================
 //  UI SHELL
 // =========================================================
+// =========================================================
+//  WARENKORB STATE
+// =========================================================
+let warenkorb = [];
+
+function warenkorbAdd() {
+    const action    = document.getElementById('select-action').value;
+    const kategorie = document.getElementById('select-kategorie').value;
+    const itemId    = document.getElementById('select-gegenstand').value;
+    const zustandA  = document.getElementById('select-zustand-abgabe').value;
+    const zustandR  = document.getElementById('select-zustand-rueckgabe').value;
+    const pfand     = parseFloat(document.getElementById('pfand-betrag').value) || 0;
+    const pfandEin  = document.getElementById('pfand-einnahme').value;
+    const pfandRet  = document.getElementById('pfand-retour').value;
+    const mitgliedId = document.getElementById('select-mitglied').value;
+
+    if (!itemId) { alert("Bitte Gegenstand wählen."); return; }
+    if (!mitgliedId) { alert("Bitte Mitglied wählen."); return; }
+
+    if (warenkorb.find(w => w.itemId === itemId && w.kategorie === kategorie)) {
+        alert("Dieser Gegenstand ist bereits im Warenkorb."); return;
+    }
+
+    const keyMap = {
+        "gewehr":"gewehre","schluessel":"schluessel",
+        "kleidung":"kleidung","schiessbekleidung":"schiessbekleidung"
+    };
+    const item  = (inventarState[keyMap[kategorie]] || [])
+        .find(i => i.ID.toString() === itemId.toString());
+    const label = item ? getItemLabel(kategorie, item) : itemId;
+
+    if (action === 'checkin') {
+        if (!item || item.Aktueller_Besitzer_ID.toString() !== mitgliedId.toString()) {
+            alert("⚠️ Dieser Gegenstand ist nicht bei diesem Mitglied!"); return;
+        }
+    }
+
+    warenkorb.push({ itemId, kategorie, label, zustandAbgabe: zustandA,
+                     zustandRueckgabe: zustandR, pfandBetrag: pfand,
+                     pfandEinnahme: pfandEin, pfandRetour: pfandRet });
+
+    renderWarenkorb();
+    document.getElementById('pfand-betrag').value = '';
+    updateSubOptions();
+}
+
+function warenkorbRemove(idx) {
+    warenkorb.splice(idx, 1);
+    renderWarenkorb();
+}
+
+function renderWarenkorb() {
+    const container = document.getElementById('warenkorb-list');
+    if (!container) return;
+
+    if (warenkorb.length === 0) {
+        container.innerHTML = `<p class="text-muted small mb-0">Noch keine Gegenstände.</p>`;
+        document.getElementById('btn-warenkorb-submit').disabled = true;
+        return;
+    }
+
+    document.getElementById('btn-warenkorb-submit').disabled = false;
+    const action = document.getElementById('select-action').value;
+
+    container.innerHTML = `
+        <table class="table table-sm table-bordered mb-1">
+            <thead><tr class="table-light">
+                <th>Kategorie</th><th>Gegenstand</th><th>Zustand</th><th>Pfand</th><th></th>
+            </tr></thead>
+            <tbody>
+                ${warenkorb.map((w, i) => `
+                    <tr>
+                        <td><span class="badge bg-secondary">${w.kategorie}</span></td>
+                        <td><small>${w.label}</small></td>
+                        <td><small>${action === 'checkout' ? w.zustandAbgabe : w.zustandRueckgabe}</small></td>
+                        <td><small>${w.pfandBetrag > 0 ? `CHF ${w.pfandBetrag.toFixed(2)}` : '-'}</small></td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-danger py-0"
+                                    onclick="warenkorbRemove(${i})">✕</button>
+                        </td>
+                    </tr>`).join('')}
+            </tbody>
+        </table>
+        <small class="text-muted">${warenkorb.length} Position(en)</small>`;
+}
+
+
+// =========================================================
+//  UI SHELL – komplett mit Warenkorb
+// =========================================================
 function renderInventarUI(container) {
     container.innerHTML = `
         <style>
             #inventar-container .sig-container {
-                border: 1px solid #ccc;
-                background: white;
-                height: 160px;
-                border-radius: 8px;
-                overflow: hidden;
+                border: 1px solid #ccc; background: white;
+                height: 150px; border-radius: 8px; overflow: hidden;
             }
             #inventar-container canvas {
-                width: 100% !important;
-                height: 100% !important;
-                touch-action: none;
+                width: 100% !important; height: 100% !important; touch-action: none;
             }
-            #inventar-container .nav-btn {
-                font-weight: bold;
-                border-radius: 10px;
-                padding: 8px 16px;
-            }
+            #inventar-container .nav-btn { font-weight: bold; border-radius: 10px; padding: 8px 16px; }
             #inventar-container .table-sm { font-size: 0.85rem; }
+            .warenkorb-card { border: 2px dashed #0d6efd; border-radius: 10px; background: #f8f9ff; }
         </style>
 
         <div class="d-flex flex-wrap gap-2 mb-4">
@@ -123,21 +205,26 @@ function renderInventarUI(container) {
                     onclick="showInventarSection('admin')">⚙️ Admin</button>
         </div>
 
-        <!-- SECTION: AUSGABE / BUCHUNG -->
+        <!-- SECTION: BUCHUNG -->
         <div id="inv-section-ausgabe" class="inv-section">
             <div class="card border-0 shadow-sm p-4">
                 <form id="form-ausgabe" onsubmit="handleInventarSubmit(event)">
-                    <div class="row">
-                        <div class="col-md-6 border-end">
+                    <div class="row g-3">
+
+                        <!-- LINKE SPALTE: Artikel erfassen -->
+                        <div class="col-md-4 border-end">
+                            <h6 class="fw-bold text-muted mb-3 text-uppercase">Artikel erfassen</h6>
+
                             <label class="form-label fw-bold">Aktion</label>
                             <select id="select-action" class="form-select mb-3"
-                                    onchange="toggleBookingFields()">
+                                    onchange="toggleBookingFields(); warenkorb=[]; renderWarenkorb();">
                                 <option value="checkout">📤 Ausgabe</option>
                                 <option value="checkin">📥 Rückgabe</option>
                             </select>
 
                             <label class="form-label fw-bold">Mitglied</label>
-                            <select id="select-mitglied" class="form-select mb-3" required></select>
+                            <select id="select-mitglied" class="form-select mb-3"
+                                    onchange="updateSubOptions()" required></select>
 
                             <label class="form-label fw-bold">Kategorie</label>
                             <select id="select-kategorie" class="form-select mb-3"
@@ -149,7 +236,7 @@ function renderInventarUI(container) {
                             </select>
 
                             <label class="form-label fw-bold">Gegenstand</label>
-                            <select id="select-gegenstand" class="form-select mb-3" required></select>
+                            <select id="select-gegenstand" class="form-select mb-3"></select>
 
                             <div id="container-zustand-abgabe">
                                 <label class="form-label fw-bold text-primary">Zustand bei Abgabe</label>
@@ -160,23 +247,20 @@ function renderInventarUI(container) {
                                 <select id="select-zustand-rueckgabe" class="form-select mb-3"></select>
                             </div>
 
-                            <label class="form-label fw-bold">Bemerkungen</label>
-                            <textarea id="trans-bemerkungen" class="form-control mb-3" rows="2"></textarea>
-
-                            <div class="row g-2">
-                                <div class="col-4">
-                                    <label class="form-label fw-bold small">Pfandbetrag</label>
+                            <div class="row g-2 mb-3">
+                                <div class="col-6">
+                                    <label class="form-label fw-bold small">Pfandbetrag CHF</label>
                                     <input type="number" id="pfand-betrag" class="form-control"
                                            placeholder="0.00" step="0.01">
                                 </div>
-                                <div class="col-4" id="container-pfand-einnahme">
+                                <div class="col-6" id="container-pfand-einnahme">
                                     <label class="form-label fw-bold small">Einnahme</label>
                                     <select id="pfand-einnahme" class="form-select">
                                         <option value="Nein">Nein</option>
                                         <option value="Ja">Ja</option>
                                     </select>
                                 </div>
-                                <div class="col-4 d-none" id="container-pfand-retour">
+                                <div class="col-6 d-none" id="container-pfand-retour">
                                     <label class="form-label fw-bold small">Retour bezahlt</label>
                                     <select id="pfand-retour" class="form-select">
                                         <option value="Nein">Nein</option>
@@ -184,11 +268,32 @@ function renderInventarUI(container) {
                                     </select>
                                 </div>
                             </div>
+
+                            <button type="button" class="btn btn-outline-primary w-100"
+                                    onclick="warenkorbAdd()">
+                                ＋ Zum Warenkorb hinzufügen
+                            </button>
                         </div>
 
-                        <div class="col-md-6">
-                            <label class="form-label fw-bold">Unterschrift Mitglied</label>
-                            <div class="sig-container mb-2">
+                        <!-- MITTE: Warenkorb + Bemerkungen -->
+                        <div class="col-md-4 border-end">
+                            <h6 class="fw-bold text-muted mb-3 text-uppercase">🛒 Warenkorb</h6>
+                            <div class="warenkorb-card p-3 mb-3">
+                                <div id="warenkorb-list">
+                                    <p class="text-muted small mb-0">Noch keine Gegenstände.</p>
+                                </div>
+                            </div>
+
+                            <label class="form-label fw-bold">Bemerkungen</label>
+                            <textarea id="trans-bemerkungen" class="form-control" rows="4"></textarea>
+                        </div>
+
+                        <!-- RECHTE SPALTE: Unterschriften -->
+                        <div class="col-md-4">
+                            <h6 class="fw-bold text-muted mb-3 text-uppercase">Unterschriften</h6>
+
+                            <label class="form-label fw-bold">Mitglied</label>
+                            <div class="sig-container mb-1">
                                 <canvas id="sig-mitglied"></canvas>
                             </div>
                             <button type="button" class="btn btn-sm btn-link text-danger p-0 mb-3"
@@ -196,19 +301,22 @@ function renderInventarUI(container) {
 
                             <div class="alert alert-light border py-2 mb-3 small">
                                 <i class="fas fa-user-check text-success"></i>
-                                Verantwortlich: <strong id="inv-verantwortlicher-label"></strong>
+                                Verantwortlich:<br>
+                                <strong id="inv-verantwortlicher-label"></strong>
                             </div>
 
-                            <label class="form-label fw-bold">Unterschrift Vorstand</label>
-                            <div class="sig-container mb-2">
+                            <label class="form-label fw-bold">Vorstand</label>
+                            <div class="sig-container mb-1">
                                 <canvas id="sig-vorstand"></canvas>
                             </div>
                             <button type="button" class="btn btn-sm btn-link text-danger p-0"
                                     onclick="sigPadVorstand.clear()">Löschen</button>
                         </div>
                     </div>
-                    <button type="submit" class="btn btn-success w-100 mt-4 py-3 fw-bold inv-submit">
-                        Transaktion speichern
+
+                    <button type="submit" id="btn-warenkorb-submit" disabled
+                            class="btn btn-success w-100 mt-4 py-3 fw-bold inv-submit">
+                        ✅ Warenkorb buchen &amp; Quittung erstellen
                     </button>
                 </form>
             </div>
@@ -229,15 +337,13 @@ function renderInventarUI(container) {
                     </select>
                 </div>
                 <div class="table-responsive">
-                    <table class="table table-hover table-sm align-middle"
-                           id="inventory-table"></table>
+                    <table class="table table-hover table-sm align-middle" id="inventory-table"></table>
                 </div>
             </div>
         </div>
 
         <!-- SECTION: JOURNAL -->
         <div id="inv-section-journal" class="inv-section d-none">
-            <!-- Offene Ausleihen wird dynamisch eingefügt -->
             <div class="card border-0 shadow-sm p-4 mb-4">
                 <h4>📖 Material-Bewegungen</h4>
                 <div class="table-responsive">
@@ -275,6 +381,406 @@ function renderInventarUI(container) {
     `;
 }
 
+
+// =========================================================
+//  SUBMIT – Warenkorb buchen
+// =========================================================
+async function handleInventarSubmit(e) {
+    e.preventDefault();
+    if (warenkorb.length === 0) { alert("Warenkorb ist leer."); return; }
+    setInventarBusy(true);
+
+    const action     = document.getElementById('select-action').value;
+    const mitgliedId = document.getElementById('select-mitglied').value;
+
+    const payload = {
+        action:                action,
+        Aktion:                action === 'checkout' ? 'AUSGABE' : 'CHECKIN',
+        Aktueller_Besitzer_ID: mitgliedId,
+        mitgliedId:            mitgliedId,
+        Bemerkungen:           document.getElementById('trans-bemerkungen').value,
+        Verantwortliche_ID:    currentUser,
+        sigMitglied:           sigPadMitglied ? sigPadMitglied.toDataURL() : "",
+        Sig_Vorstand:          sigPadVorstand ? sigPadVorstand.toDataURL() : "",
+        items: warenkorb.map(w => ({
+            itemId:           w.itemId,
+            kategorie:        w.kategorie,
+            zustandAbgabe:    w.zustandAbgabe,
+            zustandRueckgabe: w.zustandRueckgabe,
+            pfandBetrag:      w.pfandBetrag,
+            pfandEinnahme:    w.pfandEinnahme,
+            pfandRetour:      w.pfandRetour
+        }))
+    };
+
+    try {
+        const res    = await apiFetch('inventar', '', {
+            method: 'POST',
+            body: JSON.stringify(payload)
+        });
+        const result = await res.json();
+
+        await generateQuittungPDF(
+            payload,
+            result.transactionId || result.transactionIds?.[0],
+            result.sigMitgliedUrl,
+            result.sigVorstandUrl
+        );
+
+        warenkorb = [];
+        renderWarenkorb();
+        document.getElementById('form-ausgabe').reset();
+        if (sigPadMitglied) sigPadMitglied.clear();
+        if (sigPadVorstand) sigPadVorstand.clear();
+
+        await loadInventarData();
+        showInventarSection('journal');
+        alert(`✅ ${payload.items.length} Position(en) gebucht! PDF wird heruntergeladen.`);
+    } catch (err) {
+        alert("Fehler: " + err.message);
+    }
+
+    setInventarBusy(false);
+}
+
+
+// =========================================================
+//  JOURNAL – Material-Bewegungen mit PDF-Wiederherstellung
+// =========================================================
+function renderJournalTables() {
+    if (!inventarState) return;
+
+    renderOffeneAusleihen();
+
+    // ── Material-Bewegungen ──
+    const transTable = document.getElementById('table-transaktionen');
+    if (inventarState.transaktionen && inventarState.transaktionen.length > 0) {
+
+        // Transaktionen nach Quittungs-Gruppen gruppieren:
+        // Mehrere Items mit gleichem Zeitstempel + Besitzer = eine Quittung
+        // Wir zeigen jede Zeile einzeln, aber mit PDF-Wiederherstellungs-Button pro Gruppe
+        const grouped = {};
+        [...inventarState.transaktionen].forEach(t => {
+            // Gruppierungsschlüssel: Runde auf Minute + Besitzer
+            const tsKey = t.Zeitstempel
+                ? new Date(t.Zeitstempel).toISOString().slice(0, 16)
+                : 'unbekannt';
+            const groupKey = `${tsKey}_${t.Aktueller_Besitzer_ID}_${t.Aktion}`;
+            if (!grouped[groupKey]) grouped[groupKey] = [];
+            grouped[groupKey].push(t);
+        });
+
+        let html = `<thead><tr class="table-dark">
+            <th>Datum</th>
+            <th>Mitglied</th>
+            <th>Aktion</th>
+            <th>Kategorie</th>
+            <th>Gegenstand</th>
+            <th>Bemerkung</th>
+            <th>PDF</th>
+        </tr></thead><tbody>`;
+
+        // Sortiert nach Zeit absteigend, max. 50
+        const sortedGroups = Object.values(grouped)
+            .sort((a, b) => new Date(b[0].Zeitstempel) - new Date(a[0].Zeitstempel))
+            .slice(0, 50);
+
+        sortedGroups.forEach(group => {
+            const rowspan = group.length;
+            group.forEach((t, idx) => {
+                const date     = formatCH(t.Zeitstempel);
+                const mitglied = getInventarNameFromId(t.Aktueller_Besitzer_ID);
+                const aktion   = (t.Aktion || "").toUpperCase();
+                const istAusgabe = aktion === 'AUSGABE' || aktion === 'CHECKOUT';
+                const aktionBadge = istAusgabe
+                    ? '<span class="badge bg-primary">Ausgabe</span>'
+                    : '<span class="badge bg-success">Rückgabe</span>';
+                const kat      = t.Kategorie || '-';
+                const gegenstand = getItemLabelFromTrans(t);
+
+                // PDF-Button nur in erster Zeile der Gruppe, mit rowspan
+                let pdfCell = '';
+                if (idx === 0) {
+                    // Signaturen-URLs aus Transaktion
+                    const sigMUrl = t.Unterschrift_URL  || '';
+                    const sigVUrl = t.Sig_Vorstand       || '';
+                    pdfCell = `<td rowspan="${rowspan}" class="text-center align-middle">
+                        <button class="btn btn-sm btn-outline-secondary"
+                                title="PDF neu generieren"
+                                onclick="regeneratePDF('${encodeURIComponent(JSON.stringify(group))}')">
+                            📄
+                        </button>
+                    </td>`;
+                }
+
+                html += `<tr>
+                    <td>${date}</td>
+                    <td>${mitglied}</td>
+                    <td>${aktionBadge}</td>
+                    <td><span class="badge bg-secondary">${kat}</span></td>
+                    <td><small>${gegenstand}</small></td>
+                    <td><small class="text-muted">${t.Bemerkungen || ''}</small></td>
+                    ${pdfCell}
+                </tr>`;
+            });
+        });
+
+        transTable.innerHTML = html + "</tbody>";
+    } else {
+        transTable.innerHTML = `<thead><tr class="table-dark">
+            <th>Datum</th><th>Mitglied</th><th>Aktion</th>
+            <th>Kategorie</th><th>Gegenstand</th><th>Bemerkung</th><th>PDF</th>
+        </tr></thead>
+        <tbody><tr><td colspan="7" class="text-muted text-center">
+            Noch keine Transaktionen.
+        </td></tr></tbody>`;
+    }
+
+    // ── Admin-Protokoll (unverändert) ──
+    const logTable = document.getElementById('table-protokoll');
+    if (inventarState.protokoll && inventarState.protokoll.length > 0) {
+        let html = `<thead><tr class="table-secondary">
+            <th>Zeit</th><th>Nutzer</th><th>Aktion</th><th>Details</th>
+        </tr></thead><tbody>`;
+
+        [...inventarState.protokoll].reverse().slice(0, 20).forEach(p => {
+            const time    = formatCHDateTime(p.Zeitstempel);
+            const nutzer  = p['Nutzer (Vorstand)'] || '-';
+            const aktion  = p.Aktion  || '-';
+            const details = [p.Details, p['']].filter(v => v && v !== '').join(' | ') || '-';
+
+            html += `<tr>
+                <td><small>${time}</small></td>
+                <td><small>${nutzer}</small></td>
+                <td><strong>${aktion}</strong></td>
+                <td><small>${details}</small></td>
+            </tr>`;
+        });
+
+        logTable.innerHTML = html + "</tbody>";
+    } else {
+        logTable.innerHTML = `<thead><tr class="table-secondary">
+            <th>Zeit</th><th>Nutzer</th><th>Aktion</th><th>Details</th>
+        </tr></thead>
+        <tbody><tr><td colspan="4" class="text-muted text-center">
+            Keine Admin-Aktionen protokolliert.
+        </td></tr></tbody>`;
+    }
+}
+
+
+// =========================================================
+//  PDF WIEDERHERSTELLEN aus Transaktions-Daten
+// =========================================================
+async function regeneratePDF(groupJson) {
+    try {
+        const group = JSON.parse(decodeURIComponent(groupJson));
+        if (!group || group.length === 0) return;
+
+        const first = group[0];
+        const aktion = (first.Aktion || "").toUpperCase();
+        const isAusgabe = aktion === 'AUSGABE' || aktion === 'CHECKOUT';
+
+        // Items aus Gruppe rekonstruieren
+        const items = group.map(t => ({
+            itemId:           t.Inventar_ID,
+            kategorie:        (t.Kategorie || "").toLowerCase(),
+            zustandAbgabe:    t.Zustand_Abgabe    || '-',
+            zustandRueckgabe: t.Zustand_Rueckgabe || '-',
+            pfandBetrag:      parseFloat(t.Pfandbetrag)  || 0,
+            pfandEinnahme:    t.Pfand_einnahme           || 'Nein',
+            pfandRetour:      t.Pfand_retour_bezahlt     || 'Nein'
+        }));
+
+        // Signaturen: Aus Drive-URLs als Images laden (falls vorhanden)
+        // Wir übergeben die URLs direkt ans PDF – jsPDF addImage unterstützt URLs
+        const sigMitgliedUrl = first.Unterschrift_URL || "";
+        const sigVorstandUrl = first.Sig_Vorstand     || "";
+
+        // Signaturen als Base64 laden für jsPDF
+        const [sigMBase64, sigVBase64] = await Promise.all([
+            sigMitgliedUrl ? urlToBase64(sigMitgliedUrl) : Promise.resolve(""),
+            sigVorstandUrl ? urlToBase64(sigVorstandUrl) : Promise.resolve("")
+        ]);
+
+        const pseudoPayload = {
+            action:                isAusgabe ? 'checkout' : 'checkin',
+            Aktion:                first.Aktion,
+            Aktueller_Besitzer_ID: first.Aktueller_Besitzer_ID,
+            mitgliedId:            first.Aktueller_Besitzer_ID,
+            Bemerkungen:           first.Bemerkungen || '',
+            Verantwortliche_ID:    first.Verantwortliche_ID || '',
+            sigMitglied:           sigMBase64,
+            Sig_Vorstand:          sigVBase64,
+            items
+        };
+
+        await generateQuittungPDF(pseudoPayload, first.Inventar_ID || '?');
+    } catch (err) {
+        alert("PDF konnte nicht wiederhergestellt werden: " + err.message);
+    }
+}
+
+// Hilfsfunktion: URL → Base64 (nur für gleiche Origin oder CORS-freie URLs)
+async function urlToBase64(url) {
+    if (!url || url === "") return "";
+    try {
+        const res  = await fetch(url);
+        const blob = await res.blob();
+        return new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result);
+            reader.readAsDataURL(blob);
+        });
+    } catch {
+        return ""; // Falls CORS blockiert → leere Signatur im PDF
+    }
+}
+
+
+// =========================================================
+//  PDF-QUITTUNG – mit Warenkorb-Tabelle
+// =========================================================
+async function generateQuittungPDF(data, transId, sigMitgliedUrl, sigVorstandUrl) {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+
+    const mitgliedId   = data.Aktueller_Besitzer_ID || data.mitgliedId;
+    const mitglied     = (inventarState.mitglieder || [])
+        .find(m => m.ID.toString() === mitgliedId.toString());
+    const mitgliedName = mitglied
+        ? `${mitglied.Nachname} ${mitglied.Vorname}` : mitgliedId;
+
+    const isAusgabe = data.action === 'checkout' || data.Aktion === 'AUSGABE';
+    const typ       = isAusgabe ? 'AUSGABE-QUITTUNG' : 'RÜCKNAHME-QUITTUNG';
+
+    // ── HEADER ──
+    doc.setFontSize(20); doc.setFont(undefined, 'bold');
+    doc.text("Sportschützen Muhen", 105, 18, { align: 'center' });
+    doc.setFontSize(15);
+    doc.text(typ, 105, 28, { align: 'center' });
+    doc.setLineWidth(0.5); doc.line(20, 33, 190, 33);
+
+    // ── STAMMDATEN ──
+    doc.setFontSize(10); doc.setFont(undefined, 'normal');
+    let y = 42;
+    const rowMeta = (label, value) => {
+        doc.setFont(undefined, 'bold');   doc.text(label, 20, y);
+        doc.setFont(undefined, 'normal'); doc.text(String(value || '-'), 65, y);
+        y += 7;
+    };
+    rowMeta("Datum:",          formatCH(new Date()));
+    rowMeta("Quittungs-Nr.:",  `T-${transId}`);
+    rowMeta("Mitglied:",        mitgliedName);
+    rowMeta("Verantwortlich:",  data.Verantwortliche_ID || '-');
+    if (data.Bemerkungen) rowMeta("Bemerkungen:", data.Bemerkungen);
+    y += 4;
+
+    // ── POSITIONS-TABELLE ──
+    doc.setFont(undefined, 'bold');
+    doc.setFillColor(30, 30, 30); doc.setTextColor(255, 255, 255);
+    doc.rect(20, y, 170, 8, 'F');
+    doc.text("Pos.",       22, y + 5.5);
+    doc.text("Kategorie",  35, y + 5.5);
+    doc.text("Gegenstand", 68, y + 5.5);
+    doc.text("Zustand",    130, y + 5.5);
+    doc.text("Pfand",      165, y + 5.5);
+    doc.setTextColor(0, 0, 0);
+    y += 10;
+
+    const items = data.items || [{
+        itemId:           data.Inventar_ID || data.itemId,
+        kategorie:        (data.Kategorie  || data.kategorie || "").toLowerCase(),
+        zustandAbgabe:    data.Zustand_Abgabe,
+        zustandRueckgabe: data.Zustand_Rueckgabe,
+        pfandBetrag:      data.Pfandbetrag || 0,
+        pfandEinnahme:    data.Pfand_einnahme,
+        pfandRetour:      data.Pfand_retour_bezahlt
+    }];
+
+    const keyMap = {
+        "gewehr":"gewehre","schluessel":"schluessel",
+        "kleidung":"kleidung","schiessbekleidung":"schiessbekleidung"
+    };
+
+    let totalPfand = 0;
+    items.forEach((w, i) => {
+        const item  = (inventarState[keyMap[w.kategorie]] || [])
+            .find(it => it.ID.toString() === w.itemId.toString()
+                     || parseInt(it.ID) === parseInt(w.itemId));
+        const label   = item ? getItemLabel(w.kategorie, item) : String(w.itemId);
+        const zustand = isAusgabe ? w.zustandAbgabe : w.zustandRueckgabe;
+        const pfand   = parseFloat(w.pfandBetrag) || 0;
+        totalPfand   += pfand;
+
+        if (i % 2 === 0) {
+            doc.setFillColor(245, 245, 245);
+            doc.rect(20, y - 1, 170, 8, 'F');
+        }
+        doc.setFont(undefined, 'normal');
+        doc.text(String(i + 1), 22, y + 5);
+        doc.text((w.kategorie || '-').toUpperCase().slice(0, 10), 35, y + 5);
+        const lbl = label.length > 38 ? label.slice(0, 36) + '…' : label;
+        doc.text(lbl, 68, y + 5);
+        doc.text(zustand || '-', 130, y + 5);
+        doc.text(pfand > 0 ? `CHF ${pfand.toFixed(2)}` : '-', 165, y + 5);
+        y += 8;
+        if (y > 245) { doc.addPage(); y = 20; }
+    });
+
+    // Pfand-Summe
+    if (totalPfand > 0) {
+        doc.setLineWidth(0.3); doc.line(130, y, 190, y); y += 5;
+        doc.setFont(undefined, 'bold');
+        doc.text(`Total Pfand: CHF ${totalPfand.toFixed(2)}`, 130, y);
+        const pfandStatus = isAusgabe
+            ? (items[0]?.pfandEinnahme === 'Ja' ? '✓ Kassiert' : '✗ Nicht kassiert')
+            : (items[0]?.pfandRetour   === 'Ja' ? '✓ Retour bezahlt' : '✗ Noch offen');
+        doc.setFont(undefined, 'normal');
+        doc.text(pfandStatus, 130, y + 6);
+        y += 14;
+    }
+    y += 8;
+
+    // ── UNTERSCHRIFTEN ──
+    doc.setLineWidth(0.4); doc.line(20, y, 190, y); y += 8;
+    doc.setFont(undefined, 'bold'); doc.text("Unterschriften", 20, y);
+    doc.setFont(undefined, 'normal'); y += 8;
+
+    const sigM = data.sigMitglied || "";
+    const sigV = data.Sig_Vorstand || "";
+
+    if (sigM.length > 50) {
+        doc.addImage(sigM, 'PNG', 20, y, 70, 22);
+        doc.text("Mitglied", 20, y + 26);
+    } else if (sigMitgliedUrl) {
+        // URL anzeigen wenn Base64 nicht verfügbar
+        doc.setFontSize(8); doc.setTextColor(100);
+        doc.text(`Sig. Mitglied: ${sigMitgliedUrl}`, 20, y + 10);
+        doc.setFontSize(10); doc.setTextColor(0);
+    }
+
+    if (sigV.length > 50) {
+        doc.addImage(sigV, 'PNG', 110, y, 70, 22);
+        doc.text("Vorstand", 110, y + 26);
+    } else if (sigVorstandUrl) {
+        doc.setFontSize(8); doc.setTextColor(100);
+        doc.text(`Sig. Vorstand: ${sigVorstandUrl}`, 110, y + 10);
+        doc.setFontSize(10); doc.setTextColor(0);
+    }
+
+    // ── FOOTER ──
+    doc.setFontSize(7); doc.setTextColor(150);
+    doc.text(
+        `Sportschützen Muhen | www.schuetzen-muhen.ch | ${formatCH(new Date())}`,
+        105, 287, { align: 'center' }
+    );
+
+    const dateStr  = new Date().toISOString().split('T')[0].replace(/-/g, '');
+    const typKurz  = isAusgabe ? 'Ausgabe' : 'Rueckgabe';
+    const filename = `${dateStr}_${typKurz}_${mitglied?.Nachname || 'Unbekannt'}_T${transId}.pdf`;
+    doc.save(filename);
+}
 
 // =========================================================
 //  NAV
@@ -477,113 +983,6 @@ function renderInventoryTable() {
 
     table.innerHTML = html + "</tbody>";
 }
-
-
-
-// =========================================================
-//  FIX: renderJournalTables
-//  - t.Aktueller_Besitzer_ID (nicht Mitglied_ID)
-//  - t.Aktion: 'AUSGABE'/'CHECKOUT' vs 'CHECKIN'
-//  - Protokoll: Spalte heisst 'Nutzer (Vorstand)', kein 'Tabelle'
-// =========================================================
-function renderJournalTables() {
-    if (!inventarState) return;
-
-    renderOffeneAusleihen();
-
-    // 2. Material-Bewegungen
-    const transTable = document.getElementById('table-transaktionen');
-    if (inventarState.transaktionen && inventarState.transaktionen.length > 0) {
-
-        let html = `<thead><tr class="table-dark">
-            <th>Datum</th>
-            <th>Mitglied</th>
-            <th>Aktion</th>
-            <th>Kategorie</th>
-            <th>Gegenstand</th>
-            <th>Bemerkung</th>
-        </tr></thead><tbody>`;
-
-        [...inventarState.transaktionen].reverse().slice(0, 30).forEach(t => {
-            const date     = formatCH(t.Zeitstempel);
-
-            // ✅ FIX: echtes Feld heisst Aktueller_Besitzer_ID
-            const mitglied = getInventarNameFromId(t.Aktueller_Besitzer_ID);
-
-            // ✅ FIX: Aktion heisst 'AUSGABE'/'CHECKOUT'/'CHECKIN'
-            const aktion   = (t.Aktion || "").toUpperCase();
-            const istAusgabe = aktion === 'AUSGABE' || aktion === 'CHECKOUT';
-            const aktionBadge = istAusgabe
-                ? '<span class="badge bg-primary">Ausgabe</span>'
-                : '<span class="badge bg-success">Rückgabe</span>';
-
-            // ✅ FIX: Kategorie korrekt
-            const kat = t.Kategorie || '-';
-
-            // ✅ FIX: Gegenstand-Label
-            const gegenstand = getItemLabelFromTrans(t);
-
-            html += `<tr>
-                <td>${date}</td>
-                <td>${mitglied}</td>
-                <td>${aktionBadge}</td>
-                <td><span class="badge bg-secondary">${kat}</span></td>
-                <td><small>${gegenstand}</small></td>
-                <td><small class="text-muted">${t.Bemerkungen || ''}</small></td>
-            </tr>`;
-        });
-
-        transTable.innerHTML = html + "</tbody>";
-    } else {
-        transTable.innerHTML = `<thead><tr class="table-dark">
-            <th>Datum</th><th>Mitglied</th><th>Aktion</th>
-            <th>Kategorie</th><th>Gegenstand</th><th>Bemerkung</th>
-        </tr></thead>
-        <tbody><tr><td colspan="6" class="text-muted text-center">
-            Noch keine Transaktionen.
-        </td></tr></tbody>`;
-    }
-
-    // 3. Admin-Protokoll
-    // ✅ FIX: Spalten heissen 'Nutzer (Vorstand)', 'Aktion', 'Details', ''
-    const logTable = document.getElementById('table-protokoll');
-    if (inventarState.protokoll && inventarState.protokoll.length > 0) {
-
-        let html = `<thead><tr class="table-secondary">
-            <th>Zeit</th>
-            <th>Nutzer</th>
-            <th>Aktion</th>
-            <th>Details</th>
-        </tr></thead><tbody>`;
-
-        [...inventarState.protokoll].reverse().slice(0, 20).forEach(p => {
-            const time    = formatCHDateTime(p.Zeitstempel);
-            const nutzer  = p['Nutzer (Vorstand)'] || '-';
-            const aktion  = p.Aktion  || '-';
-            // Details + leere Spalte zusammenführen
-            const details = [p.Details, p['']].filter(v => v && v !== '').join(' | ') || '-';
-
-            html += `<tr>
-                <td><small>${time}</small></td>
-                <td><small>${nutzer}</small></td>
-                <td><strong>${aktion}</strong></td>
-                <td><small>${details}</small></td>
-            </tr>`;
-        });
-
-        logTable.innerHTML = html + "</tbody>";
-    } else {
-        logTable.innerHTML = `<thead><tr class="table-secondary">
-            <th>Zeit</th><th>Nutzer</th><th>Aktion</th><th>Details</th>
-        </tr></thead>
-        <tbody><tr><td colspan="4" class="text-muted text-center">
-            Keine Admin-Aktionen protokolliert.
-        </td></tr></tbody>`;
-    }
-}
-
-
-
 
 
 // =========================================================
