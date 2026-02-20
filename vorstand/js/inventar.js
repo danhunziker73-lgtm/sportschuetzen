@@ -399,9 +399,13 @@ function renderInventoryTable() {
         }).join('');
 
         return `<tr>${cells}<td>
-            <button class="btn btn-sm btn-danger"
-                    onclick="deleteInventarItem('${target}', '${row.ID}')">🗑️</button>
-        </td></tr>`;
+    <div class="btn-group">
+        <button class="btn btn-sm btn-outline-primary" 
+                onclick="editInventarItem('${target}', '${row.ID}')">✏️</button>
+        <button class="btn btn-sm btn-outline-danger"
+                onclick="deleteInventarItem('${target}', '${row.ID}')">🗑️</button>
+    </div>
+</td></tr>`;
     }).join('');
 
     table.innerHTML = html + "</tbody>";
@@ -460,6 +464,52 @@ function renderJournalTables() {
         logTable.innerHTML = "<tr><td>Keine Admin-Aktionen protokolliert.</td></tr>";
     }
 }
+
+// Bereitet das Admin-Formular mit bestehenden Daten vor
+function editInventarItem(targetSheet, id) {
+    // 1. Zum Admin-Tab wechseln
+    showInventarSection('admin');
+    
+    // 2. Dropdown auf den richtigen Typ setzen und Felder generieren
+    const select = document.getElementById('admin-target');
+    select.value = targetSheet;
+    renderAdminFields(targetSheet);
+
+    // 3. Daten aus dem State suchen
+    const keyMap = {
+        "Inventar_Gewehre": "gewehre",
+        "Inventar_Schluessel": "schluessel",
+        "Inventar_Kleidung": "kleidung",
+        "Inventar_Schiessbekleidung": "schiessbekleidung",
+        "Personendaten": "mitglieder"
+    };
+    const data = inventarState[keyMap[targetSheet]].find(item => item.ID.toString() === id.toString());
+
+    if (data) {
+        // 4. Hidden Field für die ID hinzufügen (damit das Backend weiß, es ist ein Update)
+        let idField = document.getElementById('admin-edit-id');
+        if (!idField) {
+            idField = document.createElement('input');
+            idField.type = 'hidden';
+            idField.id = 'admin-edit-id';
+            idField.name = 'ID';
+            document.getElementById('adminForm').appendChild(idField);
+        }
+        idField.value = id;
+
+        // 5. Felder befüllen
+        const form = document.getElementById('adminForm');
+        Object.keys(data).forEach(key => {
+            const input = form.querySelector(`[name="${key}"]`);
+            if (input) input.value = data[key];
+        });
+        
+        // Button-Text ändern
+        document.getElementById('btn-admin-save').innerText = "Änderungen speichern";
+        document.getElementById('btn-admin-save').classList.replace('btn-success', 'btn-warning');
+    }
+}
+
 
 function renderOffeneAusleihen() {
     const journalSection = document.getElementById('inv-section-journal');
@@ -661,6 +711,7 @@ async function handleInventarSubmit(e) {
     setInventarBusy(false);
 }
 
+// Ergänzung in saveNewInventarItem (am Anfang der Funktion):
 async function saveNewInventarItem(e) {
     e.preventDefault();
     setInventarBusy(true);
@@ -669,20 +720,29 @@ async function saveNewInventarItem(e) {
     const fields = {};
     new FormData(e.target).forEach((v, k) => fields[k] = v);
 
+    // Falls eine ID existiert, nennen wir die Aktion "updateItem" statt "addNewItem"
+    const isUpdate = fields.ID && fields.ID !== "";
+    const action = isUpdate ? "updateItem" : "addNewItem";
+
     try {
         await apiFetch('inventar', '', {
             method: 'POST',
-            body: JSON.stringify({ action: "addNewItem", targetSheet: target, fields })
+            body: JSON.stringify({ action: action, targetSheet: target, fields })
         });
+        
+        // Reset
         e.target.reset();
-        document.getElementById('admin-target').value = "";
-        renderAdminFields("");
+        const idField = document.getElementById('admin-edit-id');
+        if(idField) idField.remove();
+        
+        document.getElementById('btn-admin-save').innerText = "Speichern";
+        document.getElementById('btn-admin-save').classList.replace('btn-warning', 'btn-success');
+        
         await loadInventarData();
-        alert("✅ Gespeichert!");
+        alert(isUpdate ? "✅ Änderung gespeichert!" : "✅ Neu erfasst!");
     } catch (err) {
         alert("Fehler: " + err.message);
     }
-
     setInventarBusy(false);
 }
 
