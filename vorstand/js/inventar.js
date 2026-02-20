@@ -1212,7 +1212,7 @@ async function generateQuittungPDF(data, transId, sigMitgliedUrl, sigVorstandUrl
 
     // Footer
     doc.setFontSize(7); doc.setTextColor(150);
-    doc.text(`Sportschützen Muhen | www.schuetzen-muhen.ch | ${formatCH(new Date())}`,
+    doc.text(`Sportschützen Muhen | www.sportschuetzen-muhen.ch | ${formatCH(new Date())}`,
              105, 287, { align:'center' });
 
     const dateStr  = new Date().toISOString().split('T')[0].replace(/-/g,'');
