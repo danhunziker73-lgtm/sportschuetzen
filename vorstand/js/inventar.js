@@ -950,17 +950,25 @@ async function handleInventarSubmit(e) {
     };
 
     try {
-        const res    = await apiFetch('inventar', '', {
-            method: 'POST', body: JSON.stringify(payload)
-        });
+   // NEU – Content-Type explizit setzen:
+const res = await apiFetch('inventar', '', {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify(payload)
+});
         const result = await res.json();
 
-        await generateQuittungPDF(
-            payload,
-            result.transactionId || result.transactionIds?.[0],
-            result.sigMitgliedUrl,
-            result.sigVorstandUrl
-        );
+     
+// PDF-Link in Konsole loggen (optional, zur Kontrolle):
+console.log("Backend PDF URL:", result.pdfUrl);
+
+// generateQuittungPDF mit payload aufrufen (NICHT result):
+await generateQuittungPDF(
+    payload,                                             // ← payload hat items[]
+    result.transactionId || result.transactionIds?.[0],
+    result.sigMitgliedUrl || "",
+    result.sigVorstandUrl || ""
+);;
 
         warenkorb = [];
         renderWarenkorb();
