@@ -995,7 +995,7 @@ async function handleInventarSubmit(e) {
 
     const payload = {
         action:                action,
-        Aktion:                action==='checkout' ? 'AUSGABE' : 'CHECKIN',
+        Aktion:                action === 'checkout' ? 'AUSGABE' : 'CHECKIN',
         Aktueller_Besitzer_ID: mitgliedId,
         mitgliedId:            mitgliedId,
         Bemerkungen:           document.getElementById('trans-bemerkungen').value,
@@ -1014,25 +1014,24 @@ async function handleInventarSubmit(e) {
     };
 
     try {
-   // NEU – Content-Type explizit setzen:
-const res = await apiFetch('inventar', '', {
-    method:  'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body:    JSON.stringify(payload)
-});
+        const res = await apiFetch('inventar', '', {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify(payload)
+        });
         const result = await res.json();
 
-     
-// PDF-Link in Konsole loggen (optional, zur Kontrolle):
-console.log("Backend PDF URL:", result.pdfUrl);
+        console.log("Backend PDF URL:", result.pdfUrl);
 
-// generateQuittungPDF mit payload aufrufen (NICHT result):
-await generateQuittungPDF(
-    payload,                                             // ← payload hat items[]
-    result.transactionId || result.transactionIds?.[0],
-    result.sigMitgliedUrl || "",
-    result.sigVorstandUrl || ""
-);;
+        // PDF nur lokal generieren wenn Backend keins hat
+        if (!result.pdfUrl) {
+            await generateQuittungPDF(
+                payload,
+                result.transactionId || result.transactionIds?.[0],
+                result.sigMitgliedUrl || "",
+                result.sigVorstandUrl || ""
+            );
+        }
 
         warenkorb = [];
         renderWarenkorb();
@@ -1042,12 +1041,20 @@ await generateQuittungPDF(
 
         await loadInventarData();
         showInventarSection('journal');
-        alert(`✅ ${payload.items.length} Position(en) gebucht! PDF wird heruntergeladen.`);
+
+        const pdfHinweis = result.pdfUrl
+            ? `✅ ${payload.items.length} Position(en) gebucht!\n📄 PDF im Drive gespeichert.`
+            : `✅ ${payload.items.length} Position(en) gebucht!\n📄 PDF wird heruntergeladen.`;
+        alert(pdfHinweis);
+
     } catch (err) {
-        alert("Fehler: " + err.message);
+        console.error("Buchungsfehler:", err);
+        alert("❌ Fehler bei der Buchung: " + err.message);
+    } finally {
+        setInventarBusy(false);
     }
-    setInventarBusy(false);
 }
+
 
 
 // =========================================================
