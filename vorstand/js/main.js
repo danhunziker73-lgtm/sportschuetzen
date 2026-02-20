@@ -61,7 +61,7 @@ function navTo(viewId, el) {
     if (viewId === 'manager'   && typeof loadContestData   === 'function') loadContestData();
 }
 
-
+  
 
 
 function toggleSidebar() {
