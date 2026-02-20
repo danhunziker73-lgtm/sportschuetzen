@@ -1,43 +1,41 @@
 // =========================================================
 //  MODULE: INVENTAR
-//  - Standalone-Version als Basis
-//  - Integriert in Portal (apiFetch statt direktem fetch)
-//  - Primärschlüssel: ID
-//  - PDF-Quittungen + Pfand-Tracking
 // =========================================================
 
-let inventarState = null;
+let inventarState    = null;
 let sigPadMitglied, sigPadVorstand;
+let warenkorb        = [];
+
+// Sortier-State
+let journalSortCol   = 'datum';   let journalSortDir   = 'desc';
+let protokollSortCol = 'zeit';    let protokollSortDir = 'desc';
+let ausleihenSortCol = 'seit';    let ausleihenSortDir = 'desc';
+
 
 // =========================================================
-//  HILFSFUNKTION: Datum-Formatierung tt.mm.jjjj
+//  DATUM HELPER
 // =========================================================
 function formatCH(val) {
     if (!val || val === "" || val === 0) return '-';
     const d = new Date(val);
-    if (!isNaN(d.getTime())) {
-        return d.toLocaleDateString('de-CH', {
-            day: '2-digit', month: '2-digit', year: 'numeric'
-        });
-    }
+    if (!isNaN(d.getTime()))
+        return d.toLocaleDateString('de-CH', { day:'2-digit', month:'2-digit', year:'numeric' });
     return val;
 }
-
 function formatCHDateTime(val) {
     if (!val || val === "" || val === 0) return '-';
     const d = new Date(val);
-    if (!isNaN(d.getTime())) {
+    if (!isNaN(d.getTime()))
         return d.toLocaleString('de-CH', {
-            day: '2-digit', month: '2-digit', year: 'numeric',
-            hour: '2-digit', minute: '2-digit'
+            day:'2-digit', month:'2-digit', year:'numeric',
+            hour:'2-digit', minute:'2-digit'
         });
-    }
     return val;
 }
 
 
 // =========================================================
-//  ENTRY: called from main.js navTo('inventar')
+//  ENTRY
 // =========================================================
 async function loadInventarData() {
     const container = document.getElementById('inventar-container');
@@ -80,118 +78,29 @@ async function loadInventarData() {
 //  TEARDOWN
 // =========================================================
 function teardownInventar() {
-    inventarState = null;
+    inventarState  = null;
     sigPadMitglied = null;
     sigPadVorstand = null;
+    warenkorb      = [];
 }
 
 
 // =========================================================
 //  UI SHELL
 // =========================================================
-// =========================================================
-//  WARENKORB STATE
-// =========================================================
-let warenkorb = [];
-
-function warenkorbAdd() {
-    const action    = document.getElementById('select-action').value;
-    const kategorie = document.getElementById('select-kategorie').value;
-    const itemId    = document.getElementById('select-gegenstand').value;
-    const zustandA  = document.getElementById('select-zustand-abgabe').value;
-    const zustandR  = document.getElementById('select-zustand-rueckgabe').value;
-    const pfand     = parseFloat(document.getElementById('pfand-betrag').value) || 0;
-    const pfandEin  = document.getElementById('pfand-einnahme').value;
-    const pfandRet  = document.getElementById('pfand-retour').value;
-    const mitgliedId = document.getElementById('select-mitglied').value;
-
-    if (!itemId) { alert("Bitte Gegenstand wählen."); return; }
-    if (!mitgliedId) { alert("Bitte Mitglied wählen."); return; }
-
-    if (warenkorb.find(w => w.itemId === itemId && w.kategorie === kategorie)) {
-        alert("Dieser Gegenstand ist bereits im Warenkorb."); return;
-    }
-
-    const keyMap = {
-        "gewehr":"gewehre","schluessel":"schluessel",
-        "kleidung":"kleidung","schiessbekleidung":"schiessbekleidung"
-    };
-    const item  = (inventarState[keyMap[kategorie]] || [])
-        .find(i => i.ID.toString() === itemId.toString());
-    const label = item ? getItemLabel(kategorie, item) : itemId;
-
-    if (action === 'checkin') {
-        if (!item || item.Aktueller_Besitzer_ID.toString() !== mitgliedId.toString()) {
-            alert("⚠️ Dieser Gegenstand ist nicht bei diesem Mitglied!"); return;
-        }
-    }
-
-    warenkorb.push({ itemId, kategorie, label, zustandAbgabe: zustandA,
-                     zustandRueckgabe: zustandR, pfandBetrag: pfand,
-                     pfandEinnahme: pfandEin, pfandRetour: pfandRet });
-
-    renderWarenkorb();
-    document.getElementById('pfand-betrag').value = '';
-    updateSubOptions();
-}
-
-function warenkorbRemove(idx) {
-    warenkorb.splice(idx, 1);
-    renderWarenkorb();
-}
-
-function renderWarenkorb() {
-    const container = document.getElementById('warenkorb-list');
-    if (!container) return;
-
-    if (warenkorb.length === 0) {
-        container.innerHTML = `<p class="text-muted small mb-0">Noch keine Gegenstände.</p>`;
-        document.getElementById('btn-warenkorb-submit').disabled = true;
-        return;
-    }
-
-    document.getElementById('btn-warenkorb-submit').disabled = false;
-    const action = document.getElementById('select-action').value;
-
-    container.innerHTML = `
-        <table class="table table-sm table-bordered mb-1">
-            <thead><tr class="table-light">
-                <th>Kategorie</th><th>Gegenstand</th><th>Zustand</th><th>Pfand</th><th></th>
-            </tr></thead>
-            <tbody>
-                ${warenkorb.map((w, i) => `
-                    <tr>
-                        <td><span class="badge bg-secondary">${w.kategorie}</span></td>
-                        <td><small>${w.label}</small></td>
-                        <td><small>${action === 'checkout' ? w.zustandAbgabe : w.zustandRueckgabe}</small></td>
-                        <td><small>${w.pfandBetrag > 0 ? `CHF ${w.pfandBetrag.toFixed(2)}` : '-'}</small></td>
-                        <td>
-                            <button class="btn btn-sm btn-outline-danger py-0"
-                                    onclick="warenkorbRemove(${i})">✕</button>
-                        </td>
-                    </tr>`).join('')}
-            </tbody>
-        </table>
-        <small class="text-muted">${warenkorb.length} Position(en)</small>`;
-}
-
-
-// =========================================================
-//  UI SHELL – komplett mit Warenkorb
-// =========================================================
 function renderInventarUI(container) {
     container.innerHTML = `
         <style>
             #inventar-container .sig-container {
-                border: 1px solid #ccc; background: white;
-                height: 150px; border-radius: 8px; overflow: hidden;
+                border:1px solid #ccc; background:white;
+                height:150px; border-radius:8px; overflow:hidden;
             }
             #inventar-container canvas {
-                width: 100% !important; height: 100% !important; touch-action: none;
+                width:100% !important; height:100% !important; touch-action:none;
             }
-            #inventar-container .nav-btn { font-weight: bold; border-radius: 10px; padding: 8px 16px; }
-            #inventar-container .table-sm { font-size: 0.85rem; }
-            .warenkorb-card { border: 2px dashed #0d6efd; border-radius: 10px; background: #f8f9ff; }
+            #inventar-container .nav-btn { font-weight:bold; border-radius:10px; padding:8px 16px; }
+            #inventar-container .table-sm { font-size:0.85rem; }
+            .warenkorb-card { border:2px dashed #0d6efd; border-radius:10px; background:#f8f9ff; }
         </style>
 
         <div class="d-flex flex-wrap gap-2 mb-4">
@@ -211,7 +120,7 @@ function renderInventarUI(container) {
                 <form id="form-ausgabe" onsubmit="handleInventarSubmit(event)">
                     <div class="row g-3">
 
-                        <!-- LINKE SPALTE: Artikel erfassen -->
+                        <!-- Links: Artikel erfassen -->
                         <div class="col-md-4 border-end">
                             <h6 class="fw-bold text-muted mb-3 text-uppercase">Artikel erfassen</h6>
 
@@ -275,7 +184,7 @@ function renderInventarUI(container) {
                             </button>
                         </div>
 
-                        <!-- MITTE: Warenkorb + Bemerkungen -->
+                        <!-- Mitte: Warenkorb + Bemerkungen -->
                         <div class="col-md-4 border-end">
                             <h6 class="fw-bold text-muted mb-3 text-uppercase">🛒 Warenkorb</h6>
                             <div class="warenkorb-card p-3 mb-3">
@@ -283,12 +192,11 @@ function renderInventarUI(container) {
                                     <p class="text-muted small mb-0">Noch keine Gegenstände.</p>
                                 </div>
                             </div>
-
                             <label class="form-label fw-bold">Bemerkungen</label>
                             <textarea id="trans-bemerkungen" class="form-control" rows="4"></textarea>
                         </div>
 
-                        <!-- RECHTE SPALTE: Unterschriften -->
+                        <!-- Rechts: Unterschriften -->
                         <div class="col-md-4">
                             <h6 class="fw-bold text-muted mb-3 text-uppercase">Unterschriften</h6>
 
@@ -337,7 +245,8 @@ function renderInventarUI(container) {
                     </select>
                 </div>
                 <div class="table-responsive">
-                    <table class="table table-hover table-sm align-middle" id="inventory-table"></table>
+                    <table class="table table-hover table-sm align-middle"
+                           id="inventory-table"></table>
                 </div>
             </div>
         </div>
@@ -383,406 +292,6 @@ function renderInventarUI(container) {
 
 
 // =========================================================
-//  SUBMIT – Warenkorb buchen
-// =========================================================
-async function handleInventarSubmit(e) {
-    e.preventDefault();
-    if (warenkorb.length === 0) { alert("Warenkorb ist leer."); return; }
-    setInventarBusy(true);
-
-    const action     = document.getElementById('select-action').value;
-    const mitgliedId = document.getElementById('select-mitglied').value;
-
-    const payload = {
-        action:                action,
-        Aktion:                action === 'checkout' ? 'AUSGABE' : 'CHECKIN',
-        Aktueller_Besitzer_ID: mitgliedId,
-        mitgliedId:            mitgliedId,
-        Bemerkungen:           document.getElementById('trans-bemerkungen').value,
-        Verantwortliche_ID:    currentUser,
-        sigMitglied:           sigPadMitglied ? sigPadMitglied.toDataURL() : "",
-        Sig_Vorstand:          sigPadVorstand ? sigPadVorstand.toDataURL() : "",
-        items: warenkorb.map(w => ({
-            itemId:           w.itemId,
-            kategorie:        w.kategorie,
-            zustandAbgabe:    w.zustandAbgabe,
-            zustandRueckgabe: w.zustandRueckgabe,
-            pfandBetrag:      w.pfandBetrag,
-            pfandEinnahme:    w.pfandEinnahme,
-            pfandRetour:      w.pfandRetour
-        }))
-    };
-
-    try {
-        const res    = await apiFetch('inventar', '', {
-            method: 'POST',
-            body: JSON.stringify(payload)
-        });
-        const result = await res.json();
-
-        await generateQuittungPDF(
-            payload,
-            result.transactionId || result.transactionIds?.[0],
-            result.sigMitgliedUrl,
-            result.sigVorstandUrl
-        );
-
-        warenkorb = [];
-        renderWarenkorb();
-        document.getElementById('form-ausgabe').reset();
-        if (sigPadMitglied) sigPadMitglied.clear();
-        if (sigPadVorstand) sigPadVorstand.clear();
-
-        await loadInventarData();
-        showInventarSection('journal');
-        alert(`✅ ${payload.items.length} Position(en) gebucht! PDF wird heruntergeladen.`);
-    } catch (err) {
-        alert("Fehler: " + err.message);
-    }
-
-    setInventarBusy(false);
-}
-
-
-// =========================================================
-//  JOURNAL – Material-Bewegungen mit PDF-Wiederherstellung
-// =========================================================
-function renderJournalTables() {
-    if (!inventarState) return;
-
-    renderOffeneAusleihen();
-
-    // ── Material-Bewegungen ──
-    const transTable = document.getElementById('table-transaktionen');
-    if (inventarState.transaktionen && inventarState.transaktionen.length > 0) {
-
-        // Transaktionen nach Quittungs-Gruppen gruppieren:
-        // Mehrere Items mit gleichem Zeitstempel + Besitzer = eine Quittung
-        // Wir zeigen jede Zeile einzeln, aber mit PDF-Wiederherstellungs-Button pro Gruppe
-        const grouped = {};
-        [...inventarState.transaktionen].forEach(t => {
-            // Gruppierungsschlüssel: Runde auf Minute + Besitzer
-            const tsKey = t.Zeitstempel
-                ? new Date(t.Zeitstempel).toISOString().slice(0, 16)
-                : 'unbekannt';
-            const groupKey = `${tsKey}_${t.Aktueller_Besitzer_ID}_${t.Aktion}`;
-            if (!grouped[groupKey]) grouped[groupKey] = [];
-            grouped[groupKey].push(t);
-        });
-
-        let html = `<thead><tr class="table-dark">
-            <th>Datum</th>
-            <th>Mitglied</th>
-            <th>Aktion</th>
-            <th>Kategorie</th>
-            <th>Gegenstand</th>
-            <th>Bemerkung</th>
-            <th>PDF</th>
-        </tr></thead><tbody>`;
-
-        // Sortiert nach Zeit absteigend, max. 50
-        const sortedGroups = Object.values(grouped)
-            .sort((a, b) => new Date(b[0].Zeitstempel) - new Date(a[0].Zeitstempel))
-            .slice(0, 50);
-
-        sortedGroups.forEach(group => {
-            const rowspan = group.length;
-            group.forEach((t, idx) => {
-                const date     = formatCH(t.Zeitstempel);
-                const mitglied = getInventarNameFromId(t.Aktueller_Besitzer_ID);
-                const aktion   = (t.Aktion || "").toUpperCase();
-                const istAusgabe = aktion === 'AUSGABE' || aktion === 'CHECKOUT';
-                const aktionBadge = istAusgabe
-                    ? '<span class="badge bg-primary">Ausgabe</span>'
-                    : '<span class="badge bg-success">Rückgabe</span>';
-                const kat      = t.Kategorie || '-';
-                const gegenstand = getItemLabelFromTrans(t);
-
-                // PDF-Button nur in erster Zeile der Gruppe, mit rowspan
-                let pdfCell = '';
-                if (idx === 0) {
-                    // Signaturen-URLs aus Transaktion
-                    const sigMUrl = t.Unterschrift_URL  || '';
-                    const sigVUrl = t.Sig_Vorstand       || '';
-                    pdfCell = `<td rowspan="${rowspan}" class="text-center align-middle">
-                        <button class="btn btn-sm btn-outline-secondary"
-                                title="PDF neu generieren"
-                                onclick="regeneratePDF('${encodeURIComponent(JSON.stringify(group))}')">
-                            📄
-                        </button>
-                    </td>`;
-                }
-
-                html += `<tr>
-                    <td>${date}</td>
-                    <td>${mitglied}</td>
-                    <td>${aktionBadge}</td>
-                    <td><span class="badge bg-secondary">${kat}</span></td>
-                    <td><small>${gegenstand}</small></td>
-                    <td><small class="text-muted">${t.Bemerkungen || ''}</small></td>
-                    ${pdfCell}
-                </tr>`;
-            });
-        });
-
-        transTable.innerHTML = html + "</tbody>";
-    } else {
-        transTable.innerHTML = `<thead><tr class="table-dark">
-            <th>Datum</th><th>Mitglied</th><th>Aktion</th>
-            <th>Kategorie</th><th>Gegenstand</th><th>Bemerkung</th><th>PDF</th>
-        </tr></thead>
-        <tbody><tr><td colspan="7" class="text-muted text-center">
-            Noch keine Transaktionen.
-        </td></tr></tbody>`;
-    }
-
-    // ── Admin-Protokoll (unverändert) ──
-    const logTable = document.getElementById('table-protokoll');
-    if (inventarState.protokoll && inventarState.protokoll.length > 0) {
-        let html = `<thead><tr class="table-secondary">
-            <th>Zeit</th><th>Nutzer</th><th>Aktion</th><th>Details</th>
-        </tr></thead><tbody>`;
-
-        [...inventarState.protokoll].reverse().slice(0, 20).forEach(p => {
-            const time    = formatCHDateTime(p.Zeitstempel);
-            const nutzer  = p['Nutzer (Vorstand)'] || '-';
-            const aktion  = p.Aktion  || '-';
-            const details = [p.Details, p['']].filter(v => v && v !== '').join(' | ') || '-';
-
-            html += `<tr>
-                <td><small>${time}</small></td>
-                <td><small>${nutzer}</small></td>
-                <td><strong>${aktion}</strong></td>
-                <td><small>${details}</small></td>
-            </tr>`;
-        });
-
-        logTable.innerHTML = html + "</tbody>";
-    } else {
-        logTable.innerHTML = `<thead><tr class="table-secondary">
-            <th>Zeit</th><th>Nutzer</th><th>Aktion</th><th>Details</th>
-        </tr></thead>
-        <tbody><tr><td colspan="4" class="text-muted text-center">
-            Keine Admin-Aktionen protokolliert.
-        </td></tr></tbody>`;
-    }
-}
-
-
-// =========================================================
-//  PDF WIEDERHERSTELLEN aus Transaktions-Daten
-// =========================================================
-async function regeneratePDF(groupJson) {
-    try {
-        const group = JSON.parse(decodeURIComponent(groupJson));
-        if (!group || group.length === 0) return;
-
-        const first = group[0];
-        const aktion = (first.Aktion || "").toUpperCase();
-        const isAusgabe = aktion === 'AUSGABE' || aktion === 'CHECKOUT';
-
-        // Items aus Gruppe rekonstruieren
-        const items = group.map(t => ({
-            itemId:           t.Inventar_ID,
-            kategorie:        (t.Kategorie || "").toLowerCase(),
-            zustandAbgabe:    t.Zustand_Abgabe    || '-',
-            zustandRueckgabe: t.Zustand_Rueckgabe || '-',
-            pfandBetrag:      parseFloat(t.Pfandbetrag)  || 0,
-            pfandEinnahme:    t.Pfand_einnahme           || 'Nein',
-            pfandRetour:      t.Pfand_retour_bezahlt     || 'Nein'
-        }));
-
-        // Signaturen: Aus Drive-URLs als Images laden (falls vorhanden)
-        // Wir übergeben die URLs direkt ans PDF – jsPDF addImage unterstützt URLs
-        const sigMitgliedUrl = first.Unterschrift_URL || "";
-        const sigVorstandUrl = first.Sig_Vorstand     || "";
-
-        // Signaturen als Base64 laden für jsPDF
-        const [sigMBase64, sigVBase64] = await Promise.all([
-            sigMitgliedUrl ? urlToBase64(sigMitgliedUrl) : Promise.resolve(""),
-            sigVorstandUrl ? urlToBase64(sigVorstandUrl) : Promise.resolve("")
-        ]);
-
-        const pseudoPayload = {
-            action:                isAusgabe ? 'checkout' : 'checkin',
-            Aktion:                first.Aktion,
-            Aktueller_Besitzer_ID: first.Aktueller_Besitzer_ID,
-            mitgliedId:            first.Aktueller_Besitzer_ID,
-            Bemerkungen:           first.Bemerkungen || '',
-            Verantwortliche_ID:    first.Verantwortliche_ID || '',
-            sigMitglied:           sigMBase64,
-            Sig_Vorstand:          sigVBase64,
-            items
-        };
-
-        await generateQuittungPDF(pseudoPayload, first.Inventar_ID || '?');
-    } catch (err) {
-        alert("PDF konnte nicht wiederhergestellt werden: " + err.message);
-    }
-}
-
-// Hilfsfunktion: URL → Base64 (nur für gleiche Origin oder CORS-freie URLs)
-async function urlToBase64(url) {
-    if (!url || url === "") return "";
-    try {
-        const res  = await fetch(url);
-        const blob = await res.blob();
-        return new Promise((resolve) => {
-            const reader = new FileReader();
-            reader.onloadend = () => resolve(reader.result);
-            reader.readAsDataURL(blob);
-        });
-    } catch {
-        return ""; // Falls CORS blockiert → leere Signatur im PDF
-    }
-}
-
-
-// =========================================================
-//  PDF-QUITTUNG – mit Warenkorb-Tabelle
-// =========================================================
-async function generateQuittungPDF(data, transId, sigMitgliedUrl, sigVorstandUrl) {
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
-
-    const mitgliedId   = data.Aktueller_Besitzer_ID || data.mitgliedId;
-    const mitglied     = (inventarState.mitglieder || [])
-        .find(m => m.ID.toString() === mitgliedId.toString());
-    const mitgliedName = mitglied
-        ? `${mitglied.Nachname} ${mitglied.Vorname}` : mitgliedId;
-
-    const isAusgabe = data.action === 'checkout' || data.Aktion === 'AUSGABE';
-    const typ       = isAusgabe ? 'AUSGABE-QUITTUNG' : 'RÜCKNAHME-QUITTUNG';
-
-    // ── HEADER ──
-    doc.setFontSize(20); doc.setFont(undefined, 'bold');
-    doc.text("Sportschützen Muhen", 105, 18, { align: 'center' });
-    doc.setFontSize(15);
-    doc.text(typ, 105, 28, { align: 'center' });
-    doc.setLineWidth(0.5); doc.line(20, 33, 190, 33);
-
-    // ── STAMMDATEN ──
-    doc.setFontSize(10); doc.setFont(undefined, 'normal');
-    let y = 42;
-    const rowMeta = (label, value) => {
-        doc.setFont(undefined, 'bold');   doc.text(label, 20, y);
-        doc.setFont(undefined, 'normal'); doc.text(String(value || '-'), 65, y);
-        y += 7;
-    };
-    rowMeta("Datum:",          formatCH(new Date()));
-    rowMeta("Quittungs-Nr.:",  `T-${transId}`);
-    rowMeta("Mitglied:",        mitgliedName);
-    rowMeta("Verantwortlich:",  data.Verantwortliche_ID || '-');
-    if (data.Bemerkungen) rowMeta("Bemerkungen:", data.Bemerkungen);
-    y += 4;
-
-    // ── POSITIONS-TABELLE ──
-    doc.setFont(undefined, 'bold');
-    doc.setFillColor(30, 30, 30); doc.setTextColor(255, 255, 255);
-    doc.rect(20, y, 170, 8, 'F');
-    doc.text("Pos.",       22, y + 5.5);
-    doc.text("Kategorie",  35, y + 5.5);
-    doc.text("Gegenstand", 68, y + 5.5);
-    doc.text("Zustand",    130, y + 5.5);
-    doc.text("Pfand",      165, y + 5.5);
-    doc.setTextColor(0, 0, 0);
-    y += 10;
-
-    const items = data.items || [{
-        itemId:           data.Inventar_ID || data.itemId,
-        kategorie:        (data.Kategorie  || data.kategorie || "").toLowerCase(),
-        zustandAbgabe:    data.Zustand_Abgabe,
-        zustandRueckgabe: data.Zustand_Rueckgabe,
-        pfandBetrag:      data.Pfandbetrag || 0,
-        pfandEinnahme:    data.Pfand_einnahme,
-        pfandRetour:      data.Pfand_retour_bezahlt
-    }];
-
-    const keyMap = {
-        "gewehr":"gewehre","schluessel":"schluessel",
-        "kleidung":"kleidung","schiessbekleidung":"schiessbekleidung"
-    };
-
-    let totalPfand = 0;
-    items.forEach((w, i) => {
-        const item  = (inventarState[keyMap[w.kategorie]] || [])
-            .find(it => it.ID.toString() === w.itemId.toString()
-                     || parseInt(it.ID) === parseInt(w.itemId));
-        const label   = item ? getItemLabel(w.kategorie, item) : String(w.itemId);
-        const zustand = isAusgabe ? w.zustandAbgabe : w.zustandRueckgabe;
-        const pfand   = parseFloat(w.pfandBetrag) || 0;
-        totalPfand   += pfand;
-
-        if (i % 2 === 0) {
-            doc.setFillColor(245, 245, 245);
-            doc.rect(20, y - 1, 170, 8, 'F');
-        }
-        doc.setFont(undefined, 'normal');
-        doc.text(String(i + 1), 22, y + 5);
-        doc.text((w.kategorie || '-').toUpperCase().slice(0, 10), 35, y + 5);
-        const lbl = label.length > 38 ? label.slice(0, 36) + '…' : label;
-        doc.text(lbl, 68, y + 5);
-        doc.text(zustand || '-', 130, y + 5);
-        doc.text(pfand > 0 ? `CHF ${pfand.toFixed(2)}` : '-', 165, y + 5);
-        y += 8;
-        if (y > 245) { doc.addPage(); y = 20; }
-    });
-
-    // Pfand-Summe
-    if (totalPfand > 0) {
-        doc.setLineWidth(0.3); doc.line(130, y, 190, y); y += 5;
-        doc.setFont(undefined, 'bold');
-        doc.text(`Total Pfand: CHF ${totalPfand.toFixed(2)}`, 130, y);
-        const pfandStatus = isAusgabe
-            ? (items[0]?.pfandEinnahme === 'Ja' ? '✓ Kassiert' : '✗ Nicht kassiert')
-            : (items[0]?.pfandRetour   === 'Ja' ? '✓ Retour bezahlt' : '✗ Noch offen');
-        doc.setFont(undefined, 'normal');
-        doc.text(pfandStatus, 130, y + 6);
-        y += 14;
-    }
-    y += 8;
-
-    // ── UNTERSCHRIFTEN ──
-    doc.setLineWidth(0.4); doc.line(20, y, 190, y); y += 8;
-    doc.setFont(undefined, 'bold'); doc.text("Unterschriften", 20, y);
-    doc.setFont(undefined, 'normal'); y += 8;
-
-    const sigM = data.sigMitglied || "";
-    const sigV = data.Sig_Vorstand || "";
-
-    if (sigM.length > 50) {
-        doc.addImage(sigM, 'PNG', 20, y, 70, 22);
-        doc.text("Mitglied", 20, y + 26);
-    } else if (sigMitgliedUrl) {
-        // URL anzeigen wenn Base64 nicht verfügbar
-        doc.setFontSize(8); doc.setTextColor(100);
-        doc.text(`Sig. Mitglied: ${sigMitgliedUrl}`, 20, y + 10);
-        doc.setFontSize(10); doc.setTextColor(0);
-    }
-
-    if (sigV.length > 50) {
-        doc.addImage(sigV, 'PNG', 110, y, 70, 22);
-        doc.text("Vorstand", 110, y + 26);
-    } else if (sigVorstandUrl) {
-        doc.setFontSize(8); doc.setTextColor(100);
-        doc.text(`Sig. Vorstand: ${sigVorstandUrl}`, 110, y + 10);
-        doc.setFontSize(10); doc.setTextColor(0);
-    }
-
-    // ── FOOTER ──
-    doc.setFontSize(7); doc.setTextColor(150);
-    doc.text(
-        `Sportschützen Muhen | www.schuetzen-muhen.ch | ${formatCH(new Date())}`,
-        105, 287, { align: 'center' }
-    );
-
-    const dateStr  = new Date().toISOString().split('T')[0].replace(/-/g, '');
-    const typKurz  = isAusgabe ? 'Ausgabe' : 'Rueckgabe';
-    const filename = `${dateStr}_${typKurz}_${mitglied?.Nachname || 'Unbekannt'}_T${transId}.pdf`;
-    doc.save(filename);
-}
-
-// =========================================================
 //  NAV
 // =========================================================
 function showInventarSection(id) {
@@ -806,25 +315,21 @@ function showInventarSection(id) {
 //  DROPDOWNS
 // =========================================================
 function fillInventarDropdowns() {
-    if (!inventarState || !inventarState.mitglieder) return;
+    if (!inventarState?.mitglieder) return;
 
     const sorted = [...inventarState.mitglieder]
         .sort((a, b) => (a.Nachname || "").localeCompare(b.Nachname || ""));
-    const optionsHtml = '<option value="">-- wählen --</option>' +
-        sorted.map(m =>
-            `<option value="${m.ID}">${m.Nachname} ${m.Vorname}</option>`
-        ).join('');
-    document.getElementById('select-mitglied').innerHTML = optionsHtml;
+
+    document.getElementById('select-mitglied').innerHTML =
+        '<option value="">-- wählen --</option>' +
+        sorted.map(m => `<option value="${m.ID}">${m.Nachname} ${m.Vorname}</option>`).join('');
 
     if (inventarState.config) {
-        const zOptions = '<option value="">-- wählen --</option>' +
-            inventarState.config
-                .map(c => c.Transaktion_Zustand)
-                .filter(v => v)
-                .map(v => `<option value="${v}">${v}</option>`)
-                .join('');
-        document.getElementById('select-zustand-abgabe').innerHTML = zOptions;
-        document.getElementById('select-zustand-rueckgabe').innerHTML = zOptions;
+        const zOpts = '<option value="">-- wählen --</option>' +
+            inventarState.config.map(c => c.Transaktion_Zustand).filter(v => v)
+                .map(v => `<option value="${v}">${v}</option>`).join('');
+        document.getElementById('select-zustand-abgabe').innerHTML    = zOpts;
+        document.getElementById('select-zustand-rueckgabe').innerHTML = zOpts;
     }
     updateSubOptions();
 }
@@ -840,23 +345,24 @@ function toggleBookingFields() {
 
 function updateSubOptions() {
     if (!inventarState) return;
-    const kat = document.getElementById('select-kategorie').value;
+    const kat    = document.getElementById('select-kategorie').value;
     const action = document.getElementById('select-action').value;
-    const keyMap = {
-        "gewehr": "gewehre",
-        "schluessel": "schluessel",
-        "kleidung": "kleidung",
-        "schiessbekleidung": "schiessbekleidung"
-    };
-    const items = inventarState[keyMap[kat]] || [];
+    const mitgliedId = document.getElementById('select-mitglied').value;
+    const keyMap = { "gewehr":"gewehre","schluessel":"schluessel",
+                     "kleidung":"kleidung","schiessbekleidung":"schiessbekleidung" };
+    const items  = inventarState[keyMap[kat]] || [];
 
     document.getElementById('select-gegenstand').innerHTML = items.map(i => {
         const isOut = i.Aktueller_Besitzer_ID &&
                       i.Aktueller_Besitzer_ID.toString() !== "0" &&
                       i.Aktueller_Besitzer_ID.toString() !== "";
         const disabled = (action === 'checkout' && isOut) || (action === 'checkin' && !isOut);
+        // Bei Rückgabe: nur Items des gewählten Mitglieds aktivieren
+        const wrongOwner = action === 'checkin' && isOut && mitgliedId &&
+                           i.Aktueller_Besitzer_ID.toString() !== mitgliedId.toString();
         const label = getItemLabel(kat, i);
-        return `<option value="${i.ID}" ${disabled ? 'disabled style="color:#ccc"' : ''}>
+        return `<option value="${i.ID}"
+            ${(disabled || wrongOwner) ? 'disabled style="color:#ccc"' : ''}>
             ${label} ${isOut ? '🔴' : '🟢'}
         </option>`;
     }).join('');
@@ -864,11 +370,92 @@ function updateSubOptions() {
 
 
 // =========================================================
-//  HILFSFUNKTIONEN TABELLEN
+//  WARENKORB
+// =========================================================
+function warenkorbAdd() {
+    const action     = document.getElementById('select-action').value;
+    const kategorie  = document.getElementById('select-kategorie').value;
+    const itemId     = document.getElementById('select-gegenstand').value;
+    const zustandA   = document.getElementById('select-zustand-abgabe').value;
+    const zustandR   = document.getElementById('select-zustand-rueckgabe').value;
+    const pfand      = parseFloat(document.getElementById('pfand-betrag').value) || 0;
+    const pfandEin   = document.getElementById('pfand-einnahme').value;
+    const pfandRet   = document.getElementById('pfand-retour').value;
+    const mitgliedId = document.getElementById('select-mitglied').value;
+
+    if (!itemId)     { alert("Bitte Gegenstand wählen."); return; }
+    if (!mitgliedId) { alert("Bitte Mitglied wählen.");  return; }
+
+    if (warenkorb.find(w => w.itemId === itemId && w.kategorie === kategorie)) {
+        alert("Dieser Gegenstand ist bereits im Warenkorb."); return;
+    }
+
+    const keyMap = { "gewehr":"gewehre","schluessel":"schluessel",
+                     "kleidung":"kleidung","schiessbekleidung":"schiessbekleidung" };
+    const item   = (inventarState[keyMap[kategorie]] || [])
+        .find(i => i.ID.toString() === itemId.toString());
+    const label  = item ? getItemLabel(kategorie, item) : itemId;
+
+    if (action === 'checkin') {
+        if (!item || item.Aktueller_Besitzer_ID.toString() !== mitgliedId.toString()) {
+            alert("⚠️ Dieser Gegenstand ist nicht bei diesem Mitglied!"); return;
+        }
+    }
+
+    warenkorb.push({ itemId, kategorie, label,
+                     zustandAbgabe: zustandA, zustandRueckgabe: zustandR,
+                     pfandBetrag: pfand, pfandEinnahme: pfandEin, pfandRetour: pfandRet });
+    renderWarenkorb();
+    document.getElementById('pfand-betrag').value = '';
+    updateSubOptions();
+}
+
+function warenkorbRemove(idx) {
+    warenkorb.splice(idx, 1);
+    renderWarenkorb();
+}
+
+function renderWarenkorb() {
+    const container = document.getElementById('warenkorb-list');
+    if (!container) return;
+
+    if (warenkorb.length === 0) {
+        container.innerHTML = `<p class="text-muted small mb-0">Noch keine Gegenstände.</p>`;
+        document.getElementById('btn-warenkorb-submit').disabled = true;
+        return;
+    }
+    document.getElementById('btn-warenkorb-submit').disabled = false;
+    const action = document.getElementById('select-action').value;
+
+    container.innerHTML = `
+        <table class="table table-sm table-bordered mb-1">
+            <thead><tr class="table-light">
+                <th>Kat.</th><th>Gegenstand</th><th>Zustand</th><th>Pfand</th><th></th>
+            </tr></thead>
+            <tbody>
+                ${warenkorb.map((w, i) => `
+                    <tr>
+                        <td><span class="badge bg-secondary">${w.kategorie}</span></td>
+                        <td><small>${w.label}</small></td>
+                        <td><small>${action==='checkout' ? w.zustandAbgabe : w.zustandRueckgabe}</small></td>
+                        <td><small>${w.pfandBetrag>0 ? `CHF ${w.pfandBetrag.toFixed(2)}` : '-'}</small></td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-danger py-0"
+                                    onclick="warenkorbRemove(${i})">✕</button>
+                        </td>
+                    </tr>`).join('')}
+            </tbody>
+        </table>
+        <small class="text-muted">${warenkorb.length} Position(en)</small>`;
+}
+
+
+// =========================================================
+//  HELPER
 // =========================================================
 function getInventarNameFromId(id) {
     if (!id || id === "" || id === 0 || id === "0") return '-';
-    if (!inventarState || !inventarState.mitglieder) return String(id);
+    if (!inventarState?.mitglieder) return String(id);
     const m = inventarState.mitglieder.find(
         member => member.ID.toString() === id.toString()
     );
@@ -878,33 +465,35 @@ function getInventarNameFromId(id) {
 function getItemLabel(kat, item) {
     if (!item) return '-';
     if (kat === 'gewehr')
-        return `${item.Hersteller || ''} ${item.Modell || ''} (${item.Laufnummer || '-'})`.trim();
+        return `${item.Hersteller||''} ${item.Modell||''} (${item.Laufnummer||'-'})`.trim();
     if (kat === 'schluessel')
-        return `${item.Bezeichnung || ''} (${item.Nummer || '-'})`.trim();
-    return `${item.Typ || ''} (${item.Groesse || '-'})`.trim();
+        return `${item.Bezeichnung||''} (${item.Nummer||'-'})`.trim();
+    return `${item.Typ||''} (${item.Groesse||'-'})`.trim();
 }
 
-
-// =========================================================
-//  FIX: getItemLabelFromTrans
-//  Echtes Feld: t.Inventar_ID (kann Zahl sein!), t.Kategorie
-// =========================================================
 function getItemLabelFromTrans(t) {
-    if (!t || !t.Inventar_ID) return '-';
-    const kat = (t.Kategorie || "").toLowerCase();
-    const keyMap = {
-        "gewehr":            "gewehre",
-        "schluessel":        "schluessel",
-        "kleidung":          "kleidung",
-        "schiessbekleidung": "schiessbekleidung"
-    };
-    const stateKey = keyMap[kat];
-    if (!stateKey || !inventarState[stateKey]) return String(t.Inventar_ID);
-    const item = inventarState[stateKey].find(
-        i => i.ID.toString() === t.Inventar_ID.toString()
+    if (!t?.Inventar_ID) return '-';
+    const kat    = (t.Kategorie || "").toLowerCase();
+    const keyMap = { "gewehr":"gewehre","schluessel":"schluessel",
+                     "kleidung":"kleidung","schiessbekleidung":"schiessbekleidung" };
+    const key    = keyMap[kat];
+    if (!key || !inventarState[key]) return String(t.Inventar_ID);
+    const item   = inventarState[key].find(
+        i => i.ID.toString() === t.Inventar_ID.toString() ||
+             parseInt(i.ID) === parseInt(t.Inventar_ID)
     );
     return item ? getItemLabel(kat, item) : String(t.Inventar_ID);
 }
+
+function sortHeader(label, col, currentCol, currentDir, callbackFn) {
+    const arrow = currentCol === col
+        ? (currentDir === 'asc' ? ' ▲' : ' ▼') : ' ⇅';
+    return `<th style="cursor:pointer;user-select:none;white-space:nowrap"
+                onclick="${callbackFn}('${col}')">
+                ${label}<span class="text-muted small">${arrow}</span>
+            </th>`;
+}
+
 
 // =========================================================
 //  BESTANDESLISTE
@@ -913,70 +502,49 @@ function renderInventoryTable() {
     if (!inventarState) return;
     const target = document.getElementById('filter-liste').value;
     const keyMap = {
-        "Inventar_Gewehre": "gewehre",
-        "Inventar_Schluessel": "schluessel",
-        "Inventar_Kleidung": "kleidung",
-        "Inventar_Schiessbekleidung": "schiessbekleidung",
-        "Personendaten": "mitglieder"
+        "Inventar_Gewehre":"gewehre","Inventar_Schluessel":"schluessel",
+        "Inventar_Kleidung":"kleidung","Inventar_Schiessbekleidung":"schiessbekleidung",
+        "Personendaten":"mitglieder"
     };
-    const data = inventarState[keyMap[target]];
+    const data  = inventarState[keyMap[target]];
     const table = document.getElementById('inventory-table');
 
-    if (!data || data.length === 0) {
-        table.innerHTML = "<thead><tr><th>Keine Daten vorhanden</th></tr></thead>";
-        return;
+    if (!data?.length) {
+        table.innerHTML = "<thead><tr><th>Keine Daten vorhanden</th></tr></thead>"; return;
     }
 
-    const allHeaders = Object.keys(data[0]);
+    const allHeaders     = Object.keys(data[0]);
     const displayHeaders = allHeaders.filter(h => h !== "ID");
+    const dateKeys       = ['zeitstempel','kaufdatum','birthdate','kassiert_am',
+                            'retour_am','kauf_spender_jahr','datum','date'];
 
     let html = `<thead><tr class="table-dark">`;
-    displayHeaders.forEach(h => html += `<th>${h.replace(/_/g, ' ')}</th>`);
+    displayHeaders.forEach(h => html += `<th>${h.replace(/_/g,' ')}</th>`);
     html += `<th>Aktion</th></tr></thead><tbody>`;
 
     html += data.map(row => {
         const cells = displayHeaders.map(key => {
             const val = row[key];
-
-            // _ID Felder → Name auflösen
-            if (key.endsWith("_ID") || key === "Aktueller_Besitzer_ID") {
-                const name = getInventarNameFromId(val);
-                return `<td>${name || '<span class="text-muted">-</span>'}</td>`;
-            }
-
-            // Status Badge
+            if (key.endsWith("_ID") || key === "Aktueller_Besitzer_ID")
+                return `<td>${getInventarNameFromId(val) || '<span class="text-muted">-</span>'}</td>`;
             if (key === "Status") {
-                if (val === "Im Lager")
-                    return `<td><span class="badge bg-success">Lager</span></td>`;
-                if (val === "Ausgegeben")
-                    return `<td><span class="badge bg-warning text-dark">Ausleihe</span></td>`;
-                return `<td><span class="badge bg-secondary">${val || '-'}</span></td>`;
+                if (val === "Im Lager")    return `<td><span class="badge bg-success">Lager</span></td>`;
+                if (val === "Ausgegeben")  return `<td><span class="badge bg-warning text-dark">Ausleihe</span></td>`;
+                return `<td><span class="badge bg-secondary">${val||'-'}</span></td>`;
             }
-
-            // ⬇ FIX: Alle Datumsfelder einheitlich tt.mm.jjjj
-            const dateKeys = ['Zeitstempel', 'Kaufdatum', 'BirthDate', 'Kassiert_Am',
-                              'Retour_Am', 'Kauf_Spender_Jahr', 'datum', 'Date'];
-            const isDateKey = dateKeys.some(dk =>
-                key.toLowerCase().includes(dk.toLowerCase())
-            );
-            if (isDateKey && val) {
+            if (dateKeys.some(dk => key.toLowerCase().includes(dk)) && val)
                 return `<td>${formatCH(val)}</td>`;
-            }
-
-            // Pfand/Depot → CHF-Betrag
-            if (key.toLowerCase().includes("pfand") || key === "Depot") {
+            if (key.toLowerCase().includes("pfand") || key === "Depot")
                 return `<td class="fw-bold">${val ? parseFloat(val).toFixed(2) : '0.00'}</td>`;
-            }
-
             return `<td>${val !== undefined && val !== null && val !== "" ? val : '-'}</td>`;
         }).join('');
 
         return `<tr>${cells}<td>
             <div class="btn-group">
                 <button class="btn btn-sm btn-outline-primary"
-                        onclick="editInventarItem('${target}', '${row.ID}')">✏️</button>
+                        onclick="editInventarItem('${target}','${row.ID}')">✏️</button>
                 <button class="btn btn-sm btn-outline-danger"
-                        onclick="deleteInventarItem('${target}', '${row.ID}')">🗑️</button>
+                        onclick="deleteInventarItem('${target}','${row.ID}')">🗑️</button>
             </div>
         </td></tr>`;
     }).join('');
@@ -986,141 +554,307 @@ function renderInventoryTable() {
 
 
 // =========================================================
-//  FIX: renderOffeneAusleihen
-//  - t.Aktion statt t.Typ
-//  - t.Inventar_ID als String vergleichen (GAS liefert Zahl!)
+//  JOURNAL TABELLEN
 // =========================================================
+function renderJournalTables() {
+    if (!inventarState) return;
+    renderOffeneAusleihen();
+    renderTransaktionenTable();
+    renderProtokollTable();
+}
+
+// ── Offene Ausleihen ──
+function sortAusleihen(col) {
+    ausleihenSortDir = ausleihenSortCol === col
+        ? (ausleihenSortDir === 'asc' ? 'desc' : 'asc') : 'asc';
+    ausleihenSortCol = col;
+    renderOffeneAusleihen();
+}
+
 function renderOffeneAusleihen() {
     const journalSection = document.getElementById('inv-section-journal');
-
     const existing = journalSection.querySelector('.offene-ausleihen-card');
     if (existing) existing.remove();
 
-    let offeneHTML = `
+    const keyMap = {
+        "gewehre":"gewehr","schluessel":"schluessel",
+        "kleidung":"kleidung","schiessbekleidung":"schiessbekleidung"
+    };
+
+    let rows = [];
+    Object.keys(keyMap).forEach(key => {
+        (inventarState[key] || []).forEach(item => {
+            const besitzer = item.Aktueller_Besitzer_ID;
+            if (!besitzer || besitzer.toString()==="0" || besitzer.toString()==="") return;
+
+            const mitglied  = getInventarNameFromId(besitzer);
+            const itemLabel = getItemLabel(keyMap[key], item);
+            const pfand     = (inventarState.pfand || []).find(p =>
+                p.Inventar_ID?.toString() === item.ID.toString() &&
+                (p.Status||"").toLowerCase() === "offen");
+            const pfandStr  = pfand ? `CHF ${parseFloat(pfand.Betrag).toFixed(2)}` : '-';
+
+            const trans = [...(inventarState.transaktionen||[])].reverse().find(t => {
+                const ak = (t.Aktion||"").toUpperCase();
+                if (ak !== 'AUSGABE' && ak !== 'CHECKOUT') return false;
+                if (t.Inventar_ID.toString() === item.ID.toString()) return true;
+                const numT = parseInt(t.Inventar_ID);
+                const numI = parseInt(item.ID.toString().replace(/\D/g,''));
+                return !isNaN(numT) && !isNaN(numI) && numT===numI &&
+                       (t.Kategorie||"").toLowerCase() === keyMap[key];
+            });
+            const seit     = trans?.Zeitstempel ? formatCH(trans.Zeitstempel) : '-';
+            const seitDate = trans?.Zeitstempel ? new Date(trans.Zeitstempel) : new Date(0);
+            rows.push({ mitglied, kategorie:keyMap[key], itemLabel, seit, seitDate, pfandStr });
+        });
+    });
+
+    rows.sort((a, b) => {
+        let va, vb;
+        if      (ausleihenSortCol==='mitglied') { va=a.mitglied;  vb=b.mitglied; }
+        else if (ausleihenSortCol==='kat')      { va=a.kategorie; vb=b.kategorie; }
+        else if (ausleihenSortCol==='gegen')    { va=a.itemLabel; vb=b.itemLabel; }
+        else                                    { va=a.seitDate;  vb=b.seitDate; }
+        if (va<vb) return ausleihenSortDir==='asc'?-1:1;
+        if (va>vb) return ausleihenSortDir==='asc'?1:-1;
+        return 0;
+    });
+
+    const sh = (l,c) => sortHeader(l,c,ausleihenSortCol,ausleihenSortDir,'sortAusleihen');
+
+    let html = `
         <div class="card border-0 shadow-sm p-4 mb-4 offene-ausleihen-card">
             <h4>📋 Offene Ausleihen</h4>
             <div class="table-responsive">
                 <table class="table table-hover table-sm">
                     <thead><tr class="table-info">
-                        <th>Mitglied</th>
-                        <th>Kategorie</th>
-                        <th>Gegenstand</th>
-                        <th>Seit</th>
+                        ${sh('Mitglied','mitglied')}
+                        ${sh('Kategorie','kat')}
+                        ${sh('Gegenstand','gegen')}
+                        ${sh('Seit','seit')}
                         <th>Pfand</th>
                     </tr></thead>
                     <tbody>`;
 
-    const keyMap = {
-        "gewehre":           "gewehr",
-        "schluessel":        "schluessel",
-        "kleidung":          "kleidung",
-        "schiessbekleidung": "schiessbekleidung"
-    };
-
-    let hasOpen = false;
-
-    Object.keys(keyMap).forEach(key => {
-        const items = inventarState[key] || [];
-        items.forEach(item => {
-            const besitzer = item.Aktueller_Besitzer_ID;
-            if (besitzer && besitzer.toString() !== "0" && besitzer.toString() !== "") {
-                hasOpen = true;
-                const mitglied  = getInventarNameFromId(besitzer);
-                const itemLabel = getItemLabel(keyMap[key], item);
-
-                // Pfand
-                const pfand = (inventarState.pfand || []).find(p =>
-                    p.Inventar_ID &&
-                    p.Inventar_ID.toString() === item.ID.toString() &&
-                    (p.Status || "").toLowerCase() === "offen"
-                );
-                const pfandStr = pfand
-                    ? `CHF ${parseFloat(pfand.Betrag).toFixed(2)}`
-                    : '-';
-
-                // ✅ FIX: t.Aktion statt t.Typ, Inventar_ID als String
-                const trans = [...(inventarState.transaktionen || [])]
-                    .reverse()
-  .find(t => {
-    const aktion = (t.Aktion || "").toUpperCase();
-    const istAusgabe = aktion === 'AUSGABE' || aktion === 'CHECKOUT';
-    if (!istAusgabe) return false;
-
-    // Direkter Vergleich (falls GAS ID als String speichert)
-    if (t.Inventar_ID.toString() === item.ID.toString()) return true;
-
-    // Numerischer Vergleich (falls GAS nur Zahl liefert, item.ID = "G-1")
-    const numT = parseInt(t.Inventar_ID);
-    const numI = parseInt(item.ID.toString().replace(/\D/g, ''));
-    return !isNaN(numT) && !isNaN(numI) && numT === numI
-           && (t.Kategorie || "").toLowerCase() === keyMap[key];
-});
-
-                const seit = trans?.Zeitstempel
-                    ? formatCH(trans.Zeitstempel)
-                    : '-';
-
-                offeneHTML += `<tr>
-                    <td>${mitglied}</td>
-                    <td><span class="badge bg-secondary">${keyMap[key]}</span></td>
-                    <td>${itemLabel}</td>
-                    <td>${seit}</td>
-                    <td class="fw-bold">${pfandStr}</td>
-                </tr>`;
-            }
+    if (rows.length === 0) {
+        html += `<tr><td colspan="5" class="text-muted text-center py-3">✅ Keine offenen Ausleihen</td></tr>`;
+    } else {
+        rows.forEach(r => {
+            html += `<tr>
+                <td>${r.mitglied}</td>
+                <td><span class="badge bg-secondary">${r.kategorie}</span></td>
+                <td>${r.itemLabel}</td>
+                <td>${r.seit}</td>
+                <td class="fw-bold">${r.pfandStr}</td>
+            </tr>`;
         });
-    });
+    }
+    html += `</tbody></table></div></div>`;
+    journalSection.insertAdjacentHTML('afterbegin', html);
+}
 
-    if (!hasOpen) {
-        offeneHTML += `<tr><td colspan="5" class="text-muted text-center py-3">
-            ✅ Keine offenen Ausleihen
-        </td></tr>`;
+
+// ── Material-Bewegungen ──
+function sortTransaktionen(col) {
+    journalSortDir = journalSortCol===col
+        ? (journalSortDir==='asc'?'desc':'asc') : 'desc';
+    journalSortCol = col;
+    renderTransaktionenTable();
+}
+
+function renderTransaktionenTable() {
+    const transTable = document.getElementById('table-transaktionen');
+    const sh = (l,c) => sortHeader(l,c,journalSortCol,journalSortDir,'sortTransaktionen');
+
+    if (!inventarState?.transaktionen?.length) {
+        transTable.innerHTML = `<thead><tr class="table-dark">
+            <th>Datum</th><th>Mitglied</th><th>Aktion</th>
+            <th>Kategorie</th><th>Gegenstand</th><th>Bemerkung</th><th>PDF</th>
+        </tr></thead>
+        <tbody><tr><td colspan="7" class="text-center text-muted">Noch keine Transaktionen.</td></tr></tbody>`;
+        return;
     }
 
-    offeneHTML += `</tbody></table></div></div>`;
-    journalSection.insertAdjacentHTML('afterbegin', offeneHTML);
+    // Gruppierung: gleicher Besitzer + Aktion + Zeitstempel ±10 Sek
+    const groups = [];
+    const used   = new Set();
+    const sorted = [...inventarState.transaktionen]
+        .sort((a, b) => new Date(b.Zeitstempel) - new Date(a.Zeitstempel));
+
+    sorted.forEach((t, i) => {
+        if (used.has(i)) return;
+        const group = [t];
+        used.add(i);
+        const tMs = new Date(t.Zeitstempel).getTime();
+        sorted.forEach((t2, j) => {
+            if (used.has(j)) return;
+            const t2Ms = new Date(t2.Zeitstempel).getTime();
+            if (Math.abs(tMs - t2Ms) <= 10000 &&
+                t2.Aktueller_Besitzer_ID === t.Aktueller_Besitzer_ID &&
+                (t2.Aktion||"").toUpperCase() === (t.Aktion||"").toUpperCase()) {
+                group.push(t2);
+                used.add(j);
+            }
+        });
+        groups.push(group);
+    });
+
+    // Sortierung
+    groups.sort((a, b) => {
+        const dA  = new Date(a[0].Zeitstempel);
+        const dB  = new Date(b[0].Zeitstempel);
+        const mA  = getInventarNameFromId(a[0].Aktueller_Besitzer_ID);
+        const mB  = getInventarNameFromId(b[0].Aktueller_Besitzer_ID);
+        const akA = a[0].Aktion || '';
+        const akB = b[0].Aktion || '';
+        let va, vb;
+        if      (journalSortCol==='datum') { va=dA;  vb=dB; }
+        else if (journalSortCol==='mitgl') { va=mA;  vb=mB; }
+        else if (journalSortCol==='aktion'){ va=akA; vb=akB; }
+        else                               { va=dA;  vb=dB; }
+        if (va<vb) return journalSortDir==='asc'?-1:1;
+        if (va>vb) return journalSortDir==='asc'?1:-1;
+        return 0;
+    });
+
+    let html = `<thead><tr class="table-dark">
+        ${sh('Datum','datum')}
+        ${sh('Mitglied','mitgl')}
+        ${sh('Aktion','aktion')}
+        <th>Kategorie</th>
+        <th>Gegenstand</th>
+        <th>Bemerkung</th>
+        <th>PDF</th>
+    </tr></thead><tbody>`;
+
+    groups.slice(0, 50).forEach(group => {
+        const rowspan = group.length;
+        group.forEach((t, idx) => {
+            const date       = formatCH(t.Zeitstempel);
+            const mitglied   = getInventarNameFromId(t.Aktueller_Besitzer_ID);
+            const aktion     = (t.Aktion||"").toUpperCase();
+            const istAusgabe = aktion==='AUSGABE'||aktion==='CHECKOUT';
+            const aktionBadge= istAusgabe
+                ? '<span class="badge bg-primary">Ausgabe</span>'
+                : '<span class="badge bg-success">Rückgabe</span>';
+            const kat        = t.Kategorie || '-';
+            const gegenstand = getItemLabelFromTrans(t);
+
+            let pdfCell = '';
+            if (idx === 0) {
+                const safeGroup = encodeURIComponent(JSON.stringify(group));
+                pdfCell = `<td rowspan="${rowspan}" class="text-center align-middle">
+                    <button class="btn btn-sm btn-outline-secondary"
+                            title="PDF neu generieren"
+                            onclick="regeneratePDF('${safeGroup}')">📄</button>
+                </td>`;
+            }
+            html += `<tr>
+                <td>${date}</td>
+                <td>${mitglied}</td>
+                <td>${aktionBadge}</td>
+                <td><span class="badge bg-secondary">${kat}</span></td>
+                <td><small>${gegenstand}</small></td>
+                <td><small class="text-muted">${t.Bemerkungen||''}</small></td>
+                ${pdfCell}
+            </tr>`;
+        });
+    });
+    transTable.innerHTML = html + "</tbody>";
+}
+
+
+// ── Admin-Protokoll ──
+function sortProtokoll(col) {
+    protokollSortDir = protokollSortCol===col
+        ? (protokollSortDir==='asc'?'desc':'asc') : 'desc';
+    protokollSortCol = col;
+    renderProtokollTable();
+}
+
+function renderProtokollTable() {
+    const logTable = document.getElementById('table-protokoll');
+    const sh = (l,c) => sortHeader(l,c,protokollSortCol,protokollSortDir,'sortProtokoll');
+
+    if (!inventarState?.protokoll?.length) {
+        logTable.innerHTML = `<thead><tr class="table-secondary">
+            <th>Zeit</th><th>Nutzer</th><th>Aktion</th><th>Details</th>
+        </tr></thead>
+        <tbody><tr><td colspan="4" class="text-center text-muted">Keine Admin-Aktionen.</td></tr></tbody>`;
+        return;
+    }
+
+    let rows = inventarState.protokoll.map(p => ({
+        ts:      p.Zeitstempel,
+        tsDate:  new Date(p.Zeitstempel||0),
+        nutzer:  p['Nutzer (Vorstand)'] || '-',
+        aktion:  p.Aktion  || '-',
+        details: [p.Details, p['']].filter(v=>v&&v!=='').join(' | ') || '-'
+    }));
+
+    rows.sort((a, b) => {
+        let va, vb;
+        if      (protokollSortCol==='nutzer') { va=a.nutzer; vb=b.nutzer; }
+        else if (protokollSortCol==='akt')    { va=a.aktion; vb=b.aktion; }
+        else                                  { va=a.tsDate; vb=b.tsDate; }
+        if (va<vb) return protokollSortDir==='asc'?-1:1;
+        if (va>vb) return protokollSortDir==='asc'?1:-1;
+        return 0;
+    });
+
+    let html = `<thead><tr class="table-secondary">
+        ${sh('Zeit','zeit')}
+        ${sh('Nutzer','nutzer')}
+        ${sh('Aktion','akt')}
+        <th>Details</th>
+    </tr></thead><tbody>`;
+
+    rows.slice(0,30).forEach(r => {
+        html += `<tr>
+            <td><small>${formatCHDateTime(r.ts)}</small></td>
+            <td><small>${r.nutzer}</small></td>
+            <td><strong>${r.aktion}</strong></td>
+            <td><small>${r.details}</small></td>
+        </tr>`;
+    });
+    logTable.innerHTML = html + "</tbody>";
 }
 
 
 // =========================================================
-//  ADMIN: FELDER DYNAMISCH
+//  ADMIN FELDER
 // =========================================================
 function renderAdminFields(target) {
     const fieldsDiv = document.getElementById('dynamic-fields');
     const saveBtn   = document.getElementById('btn-admin-save');
     if (!target || !inventarState) {
-        fieldsDiv.innerHTML = "";
-        saveBtn.classList.add('d-none');
-        return;
+        fieldsDiv.innerHTML = ""; saveBtn.classList.add('d-none'); return;
     }
     saveBtn.classList.remove('d-none');
 
     const configs = {
-        "Personendaten":           ["PersonNumber","Vorname","Nachname","email","BirthDate","Status"],
-        "Inventar_Gewehre":        ["Hersteller","Modell","Laufnummer","Diopter","Ringkorn",
-                                    "Zubehoer","Spezielles","Distanz","Eigentümer_ID",
-                                    "Gespendet_ID","Kauf_Spender_Jahr","Verkaeufer_ID"],
-        "Inventar_Schluessel":     ["Bezeichnung","Nummer"],
-        "Inventar_Kleidung":       ["Typ","Groesse","Kaufdatum"],
+        "Personendaten":              ["PersonNumber","Vorname","Nachname","email","BirthDate","Status"],
+        "Inventar_Gewehre":           ["Hersteller","Modell","Laufnummer","Diopter","Ringkorn",
+                                       "Zubehoer","Spezielles","Distanz","Eigentümer_ID",
+                                       "Gespendet_ID","Kauf_Spender_Jahr","Verkaeufer_ID"],
+        "Inventar_Schluessel":        ["Bezeichnung","Nummer"],
+        "Inventar_Kleidung":          ["Typ","Groesse","Kaufdatum"],
         "Inventar_Schiessbekleidung": ["Typ","Groesse","Kaufdatum"]
     };
-
     const dropdownMapping = {
         "Status":      "MG_Status",
         "Bezeichnung": "Schluessel_Bezeichnung",
         "Distanz":     "Gewehre_Distanz",
-        "Typ": target === "Inventar_Schiessbekleidung"
-               ? "Schiessbekleidung_Typ" : "Kleidung_Typ",
-        "Groesse": "Kleidung_Schiessbekleidung_Groesse"
+        "Typ":         target==="Inventar_Schiessbekleidung" ? "Schiessbekleidung_Typ":"Kleidung_Typ",
+        "Groesse":     "Kleidung_Schiessbekleidung_Groesse"
     };
 
-    fieldsDiv.innerHTML = (configs[target] || []).map(field => {
+    fieldsDiv.innerHTML = (configs[target]||[]).map(field => {
         if (field.endsWith("_ID")) {
             const sorted = [...inventarState.mitglieder]
-                .sort((a, b) => (a.Nachname || "").localeCompare(b.Nachname || ""));
+                .sort((a,b)=>(a.Nachname||"").localeCompare(b.Nachname||""));
             const options = sorted
-                .map(m => `<option value="${m.ID}">${m.Nachname} ${m.Vorname}</option>`)
-                .join('');
+                .map(m=>`<option value="${m.ID}">${m.Nachname} ${m.Vorname}</option>`).join('');
             return `<div class="col-md-6 mb-3">
                 <label class="fw-bold">${field.replace(/_/g,' ')}</label>
                 <select name="${field}" class="form-select">
@@ -1128,22 +862,19 @@ function renderAdminFields(target) {
                 </select></div>`;
         }
         if (dropdownMapping[field]) {
-            const configKey = dropdownMapping[field];
-            const options = (inventarState.config || [])
-                .map(c => c[configKey]).filter(v => v)
-                .map(v => `<option value="${v}">${v}</option>`).join('');
+            const options = (inventarState.config||[])
+                .map(c=>c[dropdownMapping[field]]).filter(v=>v)
+                .map(v=>`<option value="${v}">${v}</option>`).join('');
             return `<div class="col-md-6 mb-3">
                 <label class="fw-bold">${field.replace(/_/g,' ')}</label>
                 <select name="${field}" class="form-select">
                     <option value="">-- wählen --</option>${options}
                 </select></div>`;
         }
-        const isDate = ['datum','date','Jahr'].some(
-            d => field.toLowerCase().includes(d.toLowerCase())
-        );
+        const isDate = ['datum','date','Jahr'].some(d=>field.toLowerCase().includes(d.toLowerCase()));
         return `<div class="col-md-6 mb-3">
             <label class="fw-bold">${field.replace(/_/g,' ')}</label>
-            <input type="${isDate ? 'date' : 'text'}" name="${field}" class="form-control">
+            <input type="${isDate?'date':'text'}" name="${field}" class="form-control">
         </div>`;
     }).join('');
 }
@@ -1154,152 +885,123 @@ function renderAdminFields(target) {
 // =========================================================
 function editInventarItem(targetSheet, id) {
     showInventarSection('admin');
-
     const select = document.getElementById('admin-target');
     select.value = targetSheet;
     renderAdminFields(targetSheet);
 
     const keyMap = {
-        "Inventar_Gewehre":          "gewehre",
-        "Inventar_Schluessel":       "schluessel",
-        "Inventar_Kleidung":         "kleidung",
-        "Inventar_Schiessbekleidung":"schiessbekleidung",
-        "Personendaten":             "mitglieder"
+        "Inventar_Gewehre":"gewehre","Inventar_Schluessel":"schluessel",
+        "Inventar_Kleidung":"kleidung","Inventar_Schiessbekleidung":"schiessbekleidung",
+        "Personendaten":"mitglieder"
     };
-    const data = (inventarState[keyMap[targetSheet]] || [])
+    const data = (inventarState[keyMap[targetSheet]]||[])
         .find(item => item.ID.toString() === id.toString());
 
     if (data) {
         let idField = document.getElementById('admin-edit-id');
         if (!idField) {
             idField = document.createElement('input');
-            idField.type  = 'hidden';
-            idField.id    = 'admin-edit-id';
-            idField.name  = 'ID';
+            idField.type='hidden'; idField.id='admin-edit-id'; idField.name='ID';
             document.getElementById('adminForm').appendChild(idField);
         }
         idField.value = id;
-
         const form = document.getElementById('adminForm');
         Object.keys(data).forEach(key => {
             const input = form.querySelector(`[name="${key}"]`);
             if (input) input.value = data[key];
         });
-
         const btn = document.getElementById('btn-admin-save');
         btn.innerText = "Änderungen speichern";
-        btn.classList.replace('btn-success', 'btn-warning');
+        btn.classList.replace('btn-success','btn-warning');
     }
 }
 
 
 // =========================================================
-//  FIX: handleInventarSubmit
-//  Payload-Feldnamen an GAS-Schema anpassen
+//  SUBMIT – Warenkorb buchen
 // =========================================================
 async function handleInventarSubmit(e) {
     e.preventDefault();
+    if (warenkorb.length === 0) { alert("Warenkorb ist leer."); return; }
     setInventarBusy(true);
 
     const action     = document.getElementById('select-action').value;
     const mitgliedId = document.getElementById('select-mitglied').value;
-    const kategorie  = document.getElementById('select-kategorie').value;
-    const itemId     = document.getElementById('select-gegenstand').value;
 
-    // Doppelbuchungs-Check bei Rückgabe
-    if (action === 'checkin') {
-        const km = {
-            "gewehr":"gewehre","schluessel":"schluessel",
-            "kleidung":"kleidung","schiessbekleidung":"schiessbekleidung"
-        };
-        const item = (inventarState[km[kategorie]] || [])
-            .find(i => i.ID.toString() === itemId.toString());
-        if (!item || item.Aktueller_Besitzer_ID.toString() !== mitgliedId.toString()) {
-            alert("⚠️ Dieser Gegenstand ist nicht bei diesem Mitglied!");
-            setInventarBusy(false);
-            return;
-        }
-    }
-
-    // ✅ Feldnamen exakt wie GAS-Sheet-Spalten
     const payload = {
-        action:                  action,
-        type:                    action,
-        // GAS-Spalte: Aktueller_Besitzer_ID
-        Aktueller_Besitzer_ID:   mitgliedId,
-        mitgliedId:              mitgliedId,   // Fallback
-        kategorie:               kategorie,
-        Kategorie:               kategorie,
-        // GAS-Spalte: Inventar_ID
-        Inventar_ID:             itemId,
-        itemId:                  itemId,
-        // GAS-Spalte: Aktion
-        Aktion:                  action === 'checkout' ? 'AUSGABE' : 'CHECKIN',
-        Zustand_Abgabe:          document.getElementById('select-zustand-abgabe').value,
-        Zustand_Rueckgabe:       document.getElementById('select-zustand-rueckgabe').value,
-        Bemerkungen:             document.getElementById('trans-bemerkungen').value,
-        Verantwortliche_ID:      currentUser,
-        Pfandbetrag:             document.getElementById('pfand-betrag').value,
-        Pfand_einnahme:          document.getElementById('pfand-einnahme').value,
-        Pfand_retour_bezahlt:    document.getElementById('pfand-retour').value,
-        sigMitglied:             sigPadMitglied ? sigPadMitglied.toDataURL() : "",
-        Sig_Vorstand:            sigPadVorstand ? sigPadVorstand.toDataURL() : ""
+        action:                action,
+        Aktion:                action==='checkout' ? 'AUSGABE' : 'CHECKIN',
+        Aktueller_Besitzer_ID: mitgliedId,
+        mitgliedId:            mitgliedId,
+        Bemerkungen:           document.getElementById('trans-bemerkungen').value,
+        Verantwortliche_ID:    currentUser,
+        sigMitglied:           sigPadMitglied ? sigPadMitglied.toDataURL() : "",
+        Sig_Vorstand:          sigPadVorstand ? sigPadVorstand.toDataURL() : "",
+        items: warenkorb.map(w => ({
+            itemId:           w.itemId,
+            kategorie:        w.kategorie,
+            zustandAbgabe:    w.zustandAbgabe,
+            zustandRueckgabe: w.zustandRueckgabe,
+            pfandBetrag:      w.pfandBetrag,
+            pfandEinnahme:    w.pfandEinnahme,
+            pfandRetour:      w.pfandRetour
+        }))
     };
 
     try {
         const res    = await apiFetch('inventar', '', {
-            method: 'POST',
-            body: JSON.stringify(payload)
+            method: 'POST', body: JSON.stringify(payload)
         });
         const result = await res.json();
 
-        await generateQuittungPDF(payload, result.transactionId);
+        await generateQuittungPDF(
+            payload,
+            result.transactionId || result.transactionIds?.[0],
+            result.sigMitgliedUrl,
+            result.sigVorstandUrl
+        );
 
-        e.target.reset();
+        warenkorb = [];
+        renderWarenkorb();
+        document.getElementById('form-ausgabe').reset();
         if (sigPadMitglied) sigPadMitglied.clear();
         if (sigPadVorstand) sigPadVorstand.clear();
+
         await loadInventarData();
-        showInventarSection('liste');
-        alert("✅ Buchung erfolgreich! PDF wird heruntergeladen.");
+        showInventarSection('journal');
+        alert(`✅ ${payload.items.length} Position(en) gebucht! PDF wird heruntergeladen.`);
     } catch (err) {
         alert("Fehler: " + err.message);
     }
-
     setInventarBusy(false);
 }
+
+
 // =========================================================
 //  SAVE NEW / UPDATE
 // =========================================================
 async function saveNewInventarItem(e) {
     e.preventDefault();
     setInventarBusy(true);
-
     const target = document.getElementById('admin-target').value;
     const fields = {};
-    new FormData(e.target).forEach((v, k) => fields[k] = v);
-
+    new FormData(e.target).forEach((v,k) => fields[k]=v);
     const isUpdate = fields.ID && fields.ID !== "";
-    const action   = isUpdate ? "updateItem" : "addNewItem";
 
     try {
         await apiFetch('inventar', '', {
             method: 'POST',
-            body: JSON.stringify({ action, targetSheet: target, fields })
+            body: JSON.stringify({ action: isUpdate?"updateItem":"addNewItem", targetSheet:target, fields })
         });
-
         e.target.reset();
         const idField = document.getElementById('admin-edit-id');
         if (idField) idField.remove();
-
         const btn = document.getElementById('btn-admin-save');
         btn.innerText = "Speichern";
-        btn.classList.replace('btn-warning', 'btn-success');
-
+        btn.classList.replace('btn-warning','btn-success');
         await loadInventarData();
         alert(isUpdate ? "✅ Änderung gespeichert!" : "✅ Neu erfasst!");
-    } catch (err) {
-        alert("Fehler: " + err.message);
-    }
+    } catch (err) { alert("Fehler: " + err.message); }
     setInventarBusy(false);
 }
 
@@ -1313,114 +1015,205 @@ async function deleteInventarItem(target, id) {
     try {
         await apiFetch('inventar', '', {
             method: 'POST',
-            body: JSON.stringify({ action: "deleteItem", targetSheet: target, itemId: id })
+            body: JSON.stringify({ action:"deleteItem", targetSheet:target, itemId:id })
         });
         await loadInventarData();
-    } catch (err) {
-        alert("Fehler: " + err.message);
-    }
+    } catch (err) { alert("Fehler: " + err.message); }
     setInventarBusy(false);
+}
+
+
+// =========================================================
+//  PDF WIEDERHERSTELLEN
+// =========================================================
+async function regeneratePDF(groupJson) {
+    try {
+        const group = JSON.parse(decodeURIComponent(groupJson));
+        if (!group?.length) return;
+        const first     = group[0];
+        const aktion    = (first.Aktion||"").toUpperCase();
+        const isAusgabe = aktion==='AUSGABE'||aktion==='CHECKOUT';
+
+        const items = group.map(t => ({
+            itemId:           t.Inventar_ID,
+            kategorie:        (t.Kategorie||"").toLowerCase(),
+            zustandAbgabe:    t.Zustand_Abgabe    || '-',
+            zustandRueckgabe: t.Zustand_Rueckgabe || '-',
+            pfandBetrag:      parseFloat(t.Pfandbetrag)    || 0,
+            pfandEinnahme:    t.Pfand_einnahme             || 'Nein',
+            pfandRetour:      t.Pfand_retour_bezahlt       || 'Nein'
+        }));
+
+        const [sigMBase64, sigVBase64] = await Promise.all([
+            urlToBase64(first.Unterschrift_URL || ""),
+            urlToBase64(first.Sig_Vorstand     || "")
+        ]);
+
+        await generateQuittungPDF({
+            action:                isAusgabe ? 'checkout' : 'checkin',
+            Aktion:                first.Aktion,
+            Aktueller_Besitzer_ID: first.Aktueller_Besitzer_ID,
+            mitgliedId:            first.Aktueller_Besitzer_ID,
+            Bemerkungen:           first.Bemerkungen || '',
+            Verantwortliche_ID:    first.Verantwortliche_ID || '',
+            sigMitglied:           sigMBase64,
+            Sig_Vorstand:          sigVBase64,
+            items
+        }, String(first.Inventar_ID || '?'));
+    } catch (err) {
+        alert("PDF konnte nicht wiederhergestellt werden: " + err.message);
+    }
+}
+
+async function urlToBase64(url) {
+    if (!url) return "";
+    try {
+        const res  = await fetch(url);
+        const blob = await res.blob();
+        return new Promise(resolve => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result);
+            reader.readAsDataURL(blob);
+        });
+    } catch { return ""; }
 }
 
 
 // =========================================================
 //  PDF-QUITTUNG
 // =========================================================
-async function generateQuittungPDF(data, transId) {
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
+async function generateQuittungPDF(data, transId, sigMitgliedUrl, sigVorstandUrl) {
+    const { jsPDF }    = window.jspdf;
+    const doc          = new jsPDF();
+    const mitgliedId   = data.Aktueller_Besitzer_ID || data.mitgliedId;
+    const mitglied     = (inventarState.mitglieder||[])
+        .find(m => m.ID.toString() === mitgliedId.toString());
+    const mitgliedName = mitglied ? `${mitglied.Nachname} ${mitglied.Vorname}` : mitgliedId;
+    const isAusgabe    = data.action==='checkout' || data.Aktion==='AUSGABE';
+    const typ          = isAusgabe ? 'AUSGABE-QUITTUNG' : 'RÜCKNAHME-QUITTUNG';
 
-    doc.setFontSize(20);
-    doc.setFont(undefined, 'bold');
-    doc.text("Sportschützen Muhen", 105, 20, { align: 'center' });
+    // Header
+    doc.setFontSize(20); doc.setFont(undefined,'bold');
+    doc.text("Sportschützen Muhen", 105, 18, { align:'center' });
+    doc.setFontSize(15);
+    doc.text(typ, 105, 28, { align:'center' });
+    doc.setLineWidth(0.5); doc.line(20, 33, 190, 33);
 
-    doc.setFontSize(16);
-    const typ = data.type === 'checkout' ? 'AUSGABE-QUITTUNG' : 'RÜCKNAHME-QUITTUNG';
-    doc.text(typ, 105, 32, { align: 'center' });
-
-    doc.setLineWidth(0.5);
-    doc.line(20, 38, 190, 38);
-
-    doc.setFontSize(11);
-    doc.setFont(undefined, 'normal');
-
-    const mitglied     = (inventarState.mitglieder || [])
-        .find(m => m.ID.toString() === data.mitgliedId.toString());
-    const mitgliedName = mitglied
-        ? `${mitglied.Nachname} ${mitglied.Vorname}` : data.mitgliedId;
-
-    const keyMap = {
-        "gewehr":"gewehre","schluessel":"schluessel",
-        "kleidung":"kleidung","schiessbekleidung":"schiessbekleidung"
+    // Stammdaten
+    doc.setFontSize(10); doc.setFont(undefined,'normal');
+    let y = 42;
+    const rowMeta = (label, value) => {
+        doc.setFont(undefined,'bold');   doc.text(label, 20, y);
+        doc.setFont(undefined,'normal'); doc.text(String(value||'-'), 65, y);
+        y += 7;
     };
-    const item      = (inventarState[keyMap[data.kategorie]] || [])
-        .find(i => i.ID.toString() === data.itemId.toString());
-    const itemLabel = item ? getItemLabel(data.kategorie, item) : data.itemId;
+    rowMeta("Datum:",          formatCH(new Date()));
+    rowMeta("Quittungs-Nr.:",  `T-${transId}`);
+    rowMeta("Mitglied:",        mitgliedName);
+    rowMeta("Verantwortlich:",  data.Verantwortliche_ID || '-');
+    if (data.Bemerkungen) rowMeta("Bemerkungen:", data.Bemerkungen);
+    y += 4;
 
-    let y = 50;
-    const row = (label, value) => {
-        doc.setFont(undefined, 'bold');   doc.text(label, 20, y);
-        doc.setFont(undefined, 'normal'); doc.text(String(value || '-'), 80, y);
-        y += 10;
-    };
-
-    row("Datum:",         formatCH(new Date()));
-    row("Transaktion-ID:", `T-${transId}`);
-    row("Mitglied:",       mitgliedName);
-    row("Kategorie:",      data.kategorie.toUpperCase());
-    row("Gegenstand:",     itemLabel);
-    row("Zustand:", data.type === 'checkout' ? data.zustandAbgabe : data.zustandRueckgabe);
-
-    if (data.pfandBetrag && parseFloat(data.pfandBetrag) > 0) {
-        doc.setFont(undefined, 'bold');
-        doc.text("Pfandbetrag:", 20, y);
-        doc.text(`CHF ${parseFloat(data.pfandBetrag).toFixed(2)}`, 80, y);
-        doc.setFont(undefined, 'normal');
-        y += 8;
-        const pfandStatus = data.type === 'checkout'
-            ? (data.pfandEinnahme === 'Ja' ? '✓ Kassiert' : '✗ Nicht kassiert')
-            : (data.pfandRetour   === 'Ja' ? '✓ Retour bezahlt' : '✗ Noch offen');
-        doc.text(pfandStatus, 80, y);
-        y += 10;
-    }
-
-    if (data.bemerkungen) {
-        doc.setFont(undefined, 'bold');   doc.text("Bemerkungen:", 20, y);
-        doc.setFont(undefined, 'normal');
-        const lines = doc.splitTextToSize(data.bemerkungen, 110);
-        doc.text(lines, 80, y);
-        y += lines.length * 6;
-    }
-
-    y += 15;
-    doc.setFont(undefined, 'bold');
-    doc.text("Unterschriften:", 20, y);
-    doc.setFont(undefined, 'normal');
+    // Tabellen-Header
+    doc.setFont(undefined,'bold');
+    doc.setFillColor(30,30,30); doc.setTextColor(255,255,255);
+    doc.rect(20, y, 170, 8, 'F');
+    doc.text("Pos.",       22, y+5.5);
+    doc.text("Kategorie",  35, y+5.5);
+    doc.text("Gegenstand", 68, y+5.5);
+    doc.text("Zustand",    130, y+5.5);
+    doc.text("Pfand",      165, y+5.5);
+    doc.setTextColor(0,0,0);
     y += 10;
 
-    if (data.sigMitglied && data.sigMitglied.length > 50) {
-        doc.addImage(data.sigMitglied, 'PNG', 20, y, 60, 20);
-        doc.text("Mitglied", 20, y + 25);
+    const keyMap = { "gewehr":"gewehre","schluessel":"schluessel",
+                     "kleidung":"kleidung","schiessbekleidung":"schiessbekleidung" };
+    const items  = data.items || [{
+        itemId:           data.Inventar_ID || data.itemId,
+        kategorie:        (data.Kategorie||data.kategorie||"").toLowerCase(),
+        zustandAbgabe:    data.Zustand_Abgabe,
+        zustandRueckgabe: data.Zustand_Rueckgabe,
+        pfandBetrag:      data.Pfandbetrag || 0,
+        pfandEinnahme:    data.Pfand_einnahme,
+        pfandRetour:      data.Pfand_retour_bezahlt
+    }];
+
+    let totalPfand = 0;
+    items.forEach((w, i) => {
+        const item    = (inventarState[keyMap[w.kategorie]]||[])
+            .find(it => it.ID.toString()===w.itemId.toString() ||
+                        parseInt(it.ID)===parseInt(w.itemId));
+        const label   = item ? getItemLabel(w.kategorie, item) : String(w.itemId);
+        const zustand = isAusgabe ? w.zustandAbgabe : w.zustandRueckgabe;
+        const pfand   = parseFloat(w.pfandBetrag) || 0;
+        totalPfand   += pfand;
+
+        if (i%2===0) {
+            doc.setFillColor(245,245,245);
+            doc.rect(20, y-1, 170, 8, 'F');
+        }
+        doc.setFont(undefined,'normal');
+        doc.text(String(i+1), 22, y+5);
+        doc.text((w.kategorie||'-').toUpperCase().slice(0,10), 35, y+5);
+        doc.text(label.length>38 ? label.slice(0,36)+'…' : label, 68, y+5);
+        doc.text(zustand||'-', 130, y+5);
+        doc.text(pfand>0 ? `CHF ${pfand.toFixed(2)}` : '-', 165, y+5);
+        y += 8;
+        if (y > 245) { doc.addPage(); y = 20; }
+    });
+
+    // Pfand-Summe
+    if (totalPfand > 0) {
+        doc.setLineWidth(0.3); doc.line(130, y, 190, y); y += 5;
+        doc.setFont(undefined,'bold');
+        doc.text(`Total Pfand: CHF ${totalPfand.toFixed(2)}`, 130, y);
+        const pfandStatus = isAusgabe
+            ? (items[0]?.pfandEinnahme==='Ja' ? '✓ Kassiert' : '✗ Nicht kassiert')
+            : (items[0]?.pfandRetour  ==='Ja' ? '✓ Retour bezahlt' : '✗ Noch offen');
+        doc.setFont(undefined,'normal');
+        doc.text(pfandStatus, 130, y+6);
+        y += 14;
     }
-    if (data.sigVorstand && data.sigVorstand.length > 50) {
-        doc.addImage(data.sigVorstand, 'PNG', 110, y, 60, 20);
-        doc.text("Vorstand", 110, y + 25);
+    y += 8;
+
+    // Unterschriften
+    doc.setLineWidth(0.4); doc.line(20, y, 190, y); y += 8;
+    doc.setFont(undefined,'bold'); doc.text("Unterschriften", 20, y);
+    doc.setFont(undefined,'normal'); y += 8;
+
+    const sigM = data.sigMitglied  || "";
+    const sigV = data.Sig_Vorstand || "";
+
+    if (sigM.length > 50) {
+        doc.addImage(sigM, 'PNG', 20, y, 70, 22);
+        doc.text("Mitglied", 20, y+26);
+    } else if (sigMitgliedUrl) {
+        doc.setFontSize(7); doc.setTextColor(100);
+        doc.text(`Sig. Mitglied: ${sigMitgliedUrl}`, 20, y+10);
+        doc.setFontSize(10); doc.setTextColor(0);
+    }
+    if (sigV.length > 50) {
+        doc.addImage(sigV, 'PNG', 110, y, 70, 22);
+        doc.text("Vorstand", 110, y+26);
+    } else if (sigVorstandUrl) {
+        doc.setFontSize(7); doc.setTextColor(100);
+        doc.text(`Sig. Vorstand: ${sigVorstandUrl}`, 110, y+10);
+        doc.setFontSize(10); doc.setTextColor(0);
     }
 
-    doc.setFontSize(8);
-    doc.setTextColor(128);
-    doc.text("Sportschützen Muhen | www.schuetzen-muhen.ch", 105, 280, { align: 'center' });
+    // Footer
+    doc.setFontSize(7); doc.setTextColor(150);
+    doc.text(`Sportschützen Muhen | www.schuetzen-muhen.ch | ${formatCH(new Date())}`,
+             105, 287, { align:'center' });
 
-    const dateStr  = new Date().toISOString().split('T')[0].replace(/-/g, '');
-    const typKurz  = data.type === 'checkout' ? 'Ausgabe' : 'Rueckgabe';
-    const filename = `${dateStr}_${typKurz}_${data.kategorie}_${data.itemId}_${mitglied?.Nachname || 'Unbekannt'}_${mitglied?.Vorname || ''}.pdf`;
-
-    doc.save(filename);
+    const dateStr  = new Date().toISOString().split('T')[0].replace(/-/g,'');
+    const typKurz  = isAusgabe ? 'Ausgabe' : 'Rueckgabe';
+    doc.save(`${dateStr}_${typKurz}_${mitglied?.Nachname||'Unbekannt'}_T${transId}.pdf`);
 }
 
 
 // =========================================================
-//  BUSY STATE
+//  BUSY
 // =========================================================
 function setInventarBusy(status) {
     document.querySelectorAll('.inv-submit').forEach(b => b.disabled = status);
