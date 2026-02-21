@@ -28,8 +28,11 @@ td.cell:hover { background: #e6eef5; }
 
 <script>
 const WORKER_URL = "https://gruppe.dan-hunziker73.workers.dev";
-const selectedYear = 'aktuell'; // Fixiert auf Aktuell wie gewünscht
 
+const params = new URLSearchParams(window.location.search);
+const selectedYear = params.get('jahr') || 'aktuell';
+
+  
 let raw = [];
 let teams = [];
 
