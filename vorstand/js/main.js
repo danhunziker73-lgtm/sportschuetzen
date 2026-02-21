@@ -59,6 +59,8 @@ function navTo(viewId, el) {
     if (viewId === 'termine'   && typeof loadTermineData   === 'function') loadTermineData();
     if (viewId === 'resultate' && typeof loadResultateData === 'function') loadResultateData();
     if (viewId === 'manager'   && typeof loadContestData   === 'function') loadContestData();
+    if (viewId === 'vermietung' && typeof loadVermietungData === 'function') loadVermietungData();
+
 }
 
   
