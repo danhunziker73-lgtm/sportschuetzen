@@ -13,9 +13,14 @@ let ausleihenSortCol = 'seit';    let ausleihenSortDir = 'desc';
 let bestandSortCol = 'Status';
 let bestandSortDir = 'asc';
 
-function canDelete() {
+function canAdd() {
     const role = userRole || localStorage.getItem('portal_role');
     return ['admin','materialwart','schuetzenmeister'].includes(role);
+}
+
+function canDelete() {
+    const role = userRole || localStorage.getItem('portal_role');
+    return ['admin','materialwart'].includes(role);
 }
 // =========================================================
 //  DATUM HELPER
@@ -289,7 +294,7 @@ function renderInventarUI(container) {
         </div>
 
         <!-- SECTION: ADMIN (nur für admin/materialwart) -->
-        ${canDelete() ? `
+        ${canAdd() ? `
         <div id="inv-section-admin" class="inv-section d-none">
             <div class="card border-0 shadow-sm p-4">
                 <h4>Neuen Eintrag erfassen</h4>
@@ -1109,15 +1114,32 @@ async function saveNewInventarItem(e) {
 //  DELETE
 // =========================================================
 async function deleteInventarItem(target, id) {
+
+    if (!canDelete()) {
+        alert("❌ Keine Berechtigung zum Löschen.");
+        return;
+    }
+
     if (!confirm("Eintrag wirklich löschen?")) return;
+
     setInventarBusy(true);
+
     try {
         await apiFetch('inventar', '', {
             method: 'POST',
-            body: JSON.stringify({ action:"deleteItem", targetSheet:target, itemId:id })
+            body: JSON.stringify({
+                action: "deleteItem",
+                targetSheet: target,
+                itemId: id
+            })
         });
+
         await loadInventarData();
-    } catch (err) { alert("Fehler: " + err.message); }
+
+    } catch (err) {
+        alert("Fehler: " + err.message);
+    }
+
     setInventarBusy(false);
 }
 
