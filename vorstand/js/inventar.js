@@ -343,7 +343,7 @@ function showInventarSection(id) {
 function fillInventarDropdowns() {
     if (!inventarState?.mitglieder) return;
 
-   d = [...inventarState.mitglieder]
+const sorted = [...inventarState.mitglieder]
   .filter(m => m.Status === 'Aktiv')  // nur aktive Mitglieder
   .sort((a, b) => a.Nachname.localeCompare(b.Nachname));
     
