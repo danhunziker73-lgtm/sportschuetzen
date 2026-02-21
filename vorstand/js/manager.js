@@ -240,15 +240,28 @@ function ensureManagerShell() {
                 </button>
             </div>
             <div class="d-flex gap-2">
-                <button class="btn btn-outline-dark btn-sm" onclick="exportPDF()" title="PDF Export">
-                    <i class="fas fa-file-pdf text-danger"></i> <span class="d-none d-sm-inline">PDF</span>
-                </button>
-                <button class="btn btn-outline-primary btn-sm" onclick="exportAllPDF()" title="Alle 3 Module in ein PDF">
-                    <i class="fas fa-layer-group"></i> <span class="d-none d-sm-inline">Alle PDFs</span>
-                </button>
-                <button id="btn-save-manager" class="btn btn-success btn-sm fw-bold" onclick="saveContest()">
-                    <i class="fas fa-save"></i> <span class="d-none d-sm-inline">Speichern</span>
-                </button>
+
+// NEU – Dropdown einfügen an derselben Stelle:
+<div class="btn-group">
+  <button class="btn btn-outline-dark btn-sm" onclick="exportPDF()">
+    <i class="fas fa-file-pdf text-danger"></i>
+    <span class="d-none d-sm-inline"> PDF</span>
+  </button>
+  <button class="btn btn-outline-dark btn-sm dropdown-toggle dropdown-toggle-split"
+          data-bs-toggle="dropdown" aria-expanded="false">
+  </button>
+  <ul class="dropdown-menu dropdown-menu-end">
+    <li><a class="dropdown-item" href="#" onclick="exportPDF();return false;">
+      📄 Aktuelles Modul</a></li>
+    <li><a class="dropdown-item" href="#" onclick="exportAllPDF();return false;">
+      📚 Alle 3 Module</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><a class="dropdown-item" href="#" onclick="sendAllPdfViaMail();return false;">
+      📧 Alle per Mail senden</a></li>
+  </ul>
+</div>
+
+              
             </div>
         </div>
 
@@ -773,7 +786,7 @@ async function sendMailViaBackend() {
 
         if (data.error) throw new Error(data.error);
 
-        alert(`✅ Entwurf erstellt! Bitte in Gmail öffnen, prüfen und senden.\n(${mails.length} Empfänger als BCC)`);
+        alert(`✅ Entwurf erstellt! Bitte in Gmail öffnen, prüfen und senden. Bis zur Erstellung des Anhanges kann es einige Zeit dauern.\n(${mails.length} Empfänger als BCC)`);
 
     } catch (e) {
         alert("Fehler beim Mail-Versand: " + e.message);
