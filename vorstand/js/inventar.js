@@ -14,7 +14,7 @@ let bestandSortCol = 'status';
 let bestandSortDir = 'asc';
 
 function canDelete() {
-    return currentRole === 'admin' || currentRole === 'materialwart';
+    return userRole === 'admin' || userRole === 'materialwart';
 }
 
 // =========================================================
