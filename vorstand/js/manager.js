@@ -364,71 +364,72 @@ function renderContestUI() {
 
   const teamsHtml = appState.teams.map(team => renderTeamCard(team, config)).join('');
 
-  const sidebarContent = `
-    <!-- MAIL -->
-    <div class="card shadow-sm border-warning sidebar-card mb-3">
+  const mailCard = `
+    <div class="card shadow-sm border-warning sidebar-card h-100">
       <div class="card-header bg-warning text-dark py-2 d-flex justify-content-between align-items-center">
-        <span><i class="fas fa-envelope"></i> Mail Versand</span>
-        <button class="btn btn-sm btn-dark py-0" onclick="sendMailViaBackend()" style="font-size:0.8rem;">
-          <i class="fas fa-paper-plane"></i> Senden
+        <span><i class="fas fa-envelope"></i></span>
+        <button class="btn btn-sm btn-dark py-0"
+                onclick="sendMailViaBackend()"
+                style="font-size:0.75rem;">
+          <i class="fas fa-paper-plane"></i>
         </button>
       </div>
-      <div class="card-body dropzone bg-light overflow-auto mail-body" data-target-type="mail">
+      <div class="card-body dropzone bg-light overflow-auto"
+           style="height:30vh;"
+           data-target-type="mail">
         ${appState.mailList.length === 0
-          ? '<div class="text-center text-muted small mt-3">Schützen hierher ziehen<br>(Kopie)</div>'
+          ? '<div class="text-center text-muted small mt-3">Mail</div>'
           : ''}
         ${appState.mailList.map(s => renderMailItem(s)).join('')}
       </div>
       <div class="card-footer small text-muted text-center py-1">
-        ${appState.mailList.length} Empfänger
+        ${appState.mailList.length}
       </div>
     </div>
+  `;
 
-    <!-- POOL -->
-    <div class="card shadow-sm border-secondary sidebar-card">
+  const poolCard = `
+    <div class="card shadow-sm border-secondary sidebar-card h-100">
       <div class="card-header bg-secondary text-white py-2">
-        <i class="fas fa-users"></i> Schützen-Pool
-        <input type="text" class="form-control form-control-sm mt-1"
+        <i class="fas fa-users"></i>
+        <input type="text"
+               class="form-control form-control-sm mt-1"
                placeholder="Suchen..."
                onkeyup="filterPool(this.value)">
       </div>
-      <div class="card-body dropzone bg-light overflow-auto pool-body" data-target-type="pool">
+      <div class="card-body dropzone bg-light overflow-auto"
+           style="height:30vh;"
+           data-target-type="pool">
         ${appState.pool.map(s => renderPlayerItem(s)).join('')}
         ${appState.pool.length === 0
-          ? '<div class="text-muted text-center small mt-3">Alle Schützen eingeteilt</div>'
+          ? '<div class="text-muted text-center small mt-3">Leer</div>'
           : ''}
       </div>
       <div class="card-footer small text-muted text-center py-1">
-        ${appState.pool.length} verfügbar
+        ${appState.pool.length}
       </div>
     </div>
   `;
 
   container.innerHTML = `
 
-    <!-- DESKTOP: normales 2-Spalten Layout -->
+    <!-- DESKTOP SIDEBAR -->
     <div class="col-md-5 col-lg-4 d-none d-md-block">
       <div class="sidebar-stack h-100">
-        ${sidebarContent}
+        ${mailCard}
+        ${poolCard}
       </div>
     </div>
 
-    <!-- DESKTOP + MOBILE: Teams -->
+    <!-- MAIN CONTENT -->
     <div class="col-12 col-md-7 col-lg-8">
 
-      <!-- MOBILE: Pool/Mail Button -->
-      <div class="d-md-none mb-3 d-flex gap-2">
-        <button class="btn btn-warning btn-sm w-50"
-                data-bs-toggle="offcanvas"
-                data-bs-target="#offcanvas-pool">
-          <i class="fas fa-users"></i>
-          Pool (${appState.pool.length})
-          &amp; Mail (${appState.mailList.length})
-        </button>
-        <button class="btn btn-outline-secondary btn-sm w-50"
-                onclick="sendMailViaBackend()">
-          <i class="fas fa-paper-plane"></i> Mail senden
-        </button>
+      <!-- MOBILE: Mail + Pool nebeneinander -->
+      <div class="d-md-none mb-3">
+        <div class="row g-2">
+          <div class="col-6">${mailCard}</div>
+          <div class="col-6">${poolCard}</div>
+        </div>
       </div>
 
       <!-- Teams -->
@@ -436,29 +437,8 @@ function renderContestUI() {
         ${teamsHtml}
       </div>
     </div>
-
-    <!-- MOBILE OFFCANVAS: Pool + Mail -->
-    <div class="offcanvas offcanvas-bottom d-md-none"
-         tabindex="-1"
-         id="offcanvas-pool"
-         style="height:75vh;border-radius:16px 16px 0 0;">
-      <div class="offcanvas-header pb-1"
-           style="background:#0f3a5d;color:white;border-radius:16px 16px 0 0;">
-        <h6 class="offcanvas-title mb-0">
-          <i class="fas fa-users"></i> Pool &amp; Mail
-        </h6>
-        <button type="button"
-                class="btn-close btn-close-white"
-                data-bs-dismiss="offcanvas"></button>
-      </div>
-      <div class="offcanvas-body p-3" style="overflow-y:auto;">
-        ${sidebarContent}
-      </div>
-    </div>
   `;
 }
-
-
 function renderTeamCard(team, config) {
     const zonesHtml = config.zones.map((zone) => {
         const shooters = team.shooters.filter(s =>
