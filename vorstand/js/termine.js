@@ -117,11 +117,11 @@ function formatTime(v) {
 function renderTermineUI(container) {
     container.innerHTML = `
         <ul class="nav nav-tabs mb-3" id="admin-tabs">
-            <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#tab-gv">⚙️ Konfig</a></li>
+            <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#tab-gv">📋 GV & Mailinfo Resultate</a></li>
             <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-kalender">📅 Termine</a></li>
             <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-praesenz">📝 Präsenz</a></li>
             <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-protokoll">📜 Log</a></li>
-            <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-stammdaten">🛠️ Stammdaten</a></li>
+            <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-stammdaten">📍 Anlässe & Orte</a></li>
 
         </ul>
 
@@ -543,24 +543,29 @@ function renderDropdownEditor() {
 
 if (o) {
   const arr = (adminState.dropdowns.orteMitMaps || [])
-    .map(p => [String(p?.[0] || ''), String(p?.[1] || '')]); // kein Filter im UI
+    .map(p => [String(p?.[0] || ''), String(p?.[1] || '')]);
 
   adminState.dropdowns.orteMitMaps = arr;
 
-  o.innerHTML = arr.map((pair, i) => `
-    <div class="d-flex gap-2 mb-2">
-      <input type="text" class="form-control form-control-sm"
-        placeholder="Ort"
-        value="${escapeHtml(pair[0] || '')}"
-        onchange="adminState.dropdowns.orteMitMaps[${i}][0]=this.value">
-      <input type="text" class="form-control form-control-sm"
-        placeholder="Map Link"
-        value="${escapeHtml(pair[1] || '')}"
-        onchange="adminState.dropdowns.orteMitMaps[${i}][1]=this.value">
-      <button class="btn btn-outline-danger btn-sm" onclick="removeOrt(${i})">✕</button>
-    </div>
-  `).join('');
+  o.innerHTML = arr.map((pair, i) => {
+    // Leere Zeilen ausblenden (beide Felder leer)
+    const hidden = (!pair[0] && !pair[1]) ? 'style="display:none"' : '';
+    return `
+      <div class="d-flex gap-2 mb-2" ${hidden}>
+        <input type="text" class="form-control form-control-sm"
+          placeholder="Ort"
+          value="${escapeHtml(pair[0] || '')}"
+          onchange="adminState.dropdowns.orteMitMaps[${i}][0]=this.value">
+        <input type="text" class="form-control form-control-sm"
+          placeholder="Map Link"
+          value="${escapeHtml(pair[1] || '')}"
+          onchange="adminState.dropdowns.orteMitMaps[${i}][1]=this.value">
+        <button class="btn btn-outline-danger btn-sm" onclick="removeOrt(${i})">✕</button>
+      </div>
+    `;
+  }).join('');
 }
+
 }
 
 
@@ -589,7 +594,7 @@ function removeAnlass(i) {
 
 function addOrt() {
   adminState.dropdowns.orteMitMaps = adminState.dropdowns.orteMitMaps || [];
-  adminState.dropdowns.orteMitMaps.push(['Neuer Ort', '']);
+  adminState.dropdowns.orteMitMaps.push(['', '']);
   renderDropdownEditor();
 }
 
