@@ -14,9 +14,9 @@ let bestandSortCol = 'Status';
 let bestandSortDir = 'asc';
 
 function canDelete() {
-    return userRole === 'admin' || userRole === 'materialwart';
+    const role = userRole || localStorage.getItem('portal_role');
+    return role === 'admin' || role === 'materialwart';
 }
-
 // =========================================================
 //  DATUM HELPER
 // =========================================================
