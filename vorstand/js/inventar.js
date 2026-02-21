@@ -13,6 +13,9 @@ let ausleihenSortCol = 'seit';    let ausleihenSortDir = 'desc';
 let bestandSortCol = 'status';
 let bestandSortDir = 'asc';
 
+function canDelete() {
+    return currentRole === 'admin' || currentRole === 'materialwart';
+}
 
 // =========================================================
 //  DATUM HELPER
@@ -65,7 +68,7 @@ async function loadInventarData() {
         if (canvasVorstand) sigPadVorstand = new SignaturePad(canvasVorstand);
 
         fillInventarDropdowns();
-        renderInventoryTable();
+        ;
         renderJournalTables();
 
         const lastTab = localStorage.getItem('inventar-activeTab') || 'ausgabe';
@@ -111,9 +114,9 @@ function renderInventarUI(container) {
             onclick="showInventarSection('ausgabe')">📤 Buchung</button>
     <button class="btn btn-outline-secondary nav-btn" id="inv-btn-journal"
             onclick="showInventarSection('journal')">📖 Journal</button>
-    <button class="btn btn-outline-secondary nav-btn" id="inv-btn-liste"
-            onclick="showInventarSection('liste')">✏️ Bestand &amp; Mitglieder ändern/löschen</button>
-    <button class="btn btn-outline-dark nav-btn" id="inv-btn-admin"
+  <button ... id="inv-btn-liste" ...>
+    ✏️ Bestand &amp; Mitglieder ${canDelete() ? 'ändern/löschen' : 'ändern'}
+</button>  <button class="btn btn-outline-dark nav-btn" id="inv-btn-admin"
             onclick="showInventarSection('admin')">➕ Bestand &amp; Mitglieder hinzufügen</button>
 </div>
 
@@ -240,7 +243,7 @@ function renderInventarUI(container) {
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <h4>Bestandsliste</h4>
                     <select id="filter-liste" class="form-select w-auto"
-                            onchange="renderInventoryTable()">
+                            onchange="">
                         <option value="Inventar_Gewehre">Gewehre</option>
                         <option value="Inventar_Schluessel">Schlüssel</option>
                         <option value="Inventar_Kleidung">Kleidung</option>
@@ -598,14 +601,16 @@ function renderInventoryTable() {
             return `<td>${val !== undefined && val !== null && val !== "" ? val : '-'}</td>`;
         }).join('');
 
-        return `<tr>${cells}<td>
-            <div class="btn-group">
-                <button class="btn btn-sm btn-outline-primary"
-                        onclick="editInventarItem('${target}','${row.ID}')">✏️</button>
-                <button class="btn btn-sm btn-outline-danger"
-                        onclick="deleteInventarItem('${target}','${row.ID}')">🗑️</button>
-            </div>
-        </td></tr>`;
+       
+// NEU:
+return `<tr>${cells}<td>
+    <div class="btn-group">
+        <button class="btn btn-sm btn-outline-primary"
+                onclick="editInventarItem('${target}','${row.ID}')">✏️</button>
+        ${canDelete() ? `<button class="btn btn-sm btn-outline-danger"
+                onclick="deleteInventarItem('${target}','${row.ID}')">🗑️</button>` : ''}
+    </div>
+</td></tr>`;
     }).join('');
 
     table.innerHTML = html + "</tbody>";
