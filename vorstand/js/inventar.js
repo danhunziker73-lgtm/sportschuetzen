@@ -71,9 +71,12 @@ async function loadInventarData() {
         ;
         renderJournalTables();
 
-        const lastTab = localStorage.getItem('inventar-activeTab') || 'ausgabe';
-        showInventarSection(lastTab);
-
+       // NEU:
+const requestedTab = window._inventarRequestedTab || null;
+const lastTab = requestedTab || localStorage.getItem('inventar-activeTab') || 'ausgabe';
+window._inventarRequestedTab = null; // einmalig verwenden
+showInventarSection(lastTab);
+        
     } catch (e) {
         container.innerHTML = `<div class="alert alert-danger">Fehler beim Laden: ${e.message}</div>`;
     }
@@ -109,17 +112,25 @@ function renderInventarUI(container) {
             .warenkorb-card { border:2px dashed #0d6efd; border-radius:10px; background:#f8f9ff; }
         </style>
 
-     <div class="d-flex flex-wrap gap-2 mb-4">
-    <button class="btn btn-primary nav-btn" id="inv-btn-ausgabe"
-            onclick="showInventarSection('ausgabe')">📤 Buchung</button>
-    <button class="btn btn-outline-secondary nav-btn" id="inv-btn-journal"
-            onclick="showInventarSection('journal')">📖 Journal</button>
-  <button ... id="inv-btn-liste" ...>
-    ✏️ Bestand &amp; Mitglieder ${canDelete() ? 'ändern/löschen' : 'ändern'}
-</button>  <button class="btn btn-outline-dark nav-btn" id="inv-btn-admin"
-            onclick="showInventarSection('admin')">➕ Bestand &amp; Mitglieder hinzufügen</button>
-</div>
-
+        <div class="d-flex flex-wrap gap-2 mb-4">
+            <button class="btn btn-primary nav-btn" id="inv-btn-ausgabe"
+                    onclick="localStorage.setItem('inventar-activeTab','ausgabe'); showInventarSection('ausgabe')">
+                📤 Buchung
+            </button>
+            <button class="btn btn-outline-secondary nav-btn" id="inv-btn-journal"
+                    onclick="localStorage.setItem('inventar-activeTab','journal'); showInventarSection('journal')">
+                📖 Journal
+            </button>
+            <button class="btn btn-outline-secondary nav-btn" id="inv-btn-liste"
+                    onclick="localStorage.setItem('inventar-activeTab','liste'); showInventarSection('liste')">
+                ✏️ Bestand &amp; Mitglieder ${canDelete() ? 'ändern/löschen' : 'ändern'}
+            </button>
+            ${canDelete() ? `
+            <button class="btn btn-outline-dark nav-btn" id="inv-btn-admin"
+                    onclick="localStorage.setItem('inventar-activeTab','admin'); showInventarSection('admin')">
+                ➕ Bestand &amp; Mitglieder hinzufügen
+            </button>` : ''}
+        </div>
 
         <!-- SECTION: BUCHUNG -->
         <div id="inv-section-ausgabe" class="inv-section">
@@ -243,7 +254,7 @@ function renderInventarUI(container) {
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <h4>Bestandsliste</h4>
                     <select id="filter-liste" class="form-select w-auto"
-                            onchange="">
+                            onchange="renderInventoryTable()">
                         <option value="Inventar_Gewehre">Gewehre</option>
                         <option value="Inventar_Schluessel">Schlüssel</option>
                         <option value="Inventar_Kleidung">Kleidung</option>
@@ -274,7 +285,8 @@ function renderInventarUI(container) {
             </div>
         </div>
 
-        <!-- SECTION: ADMIN -->
+        <!-- SECTION: ADMIN (nur für admin/materialwart) -->
+        ${canDelete() ? `
         <div id="inv-section-admin" class="inv-section d-none">
             <div class="card border-0 shadow-sm p-4">
                 <h4>Neuen Eintrag erfassen</h4>
@@ -293,10 +305,9 @@ function renderInventarUI(container) {
                             id="btn-admin-save">Speichern</button>
                 </form>
             </div>
-        </div>
+        </div>` : ''}
     `;
 }
-
 
 // =========================================================
 //  NAV
