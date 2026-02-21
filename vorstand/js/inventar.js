@@ -543,10 +543,10 @@ function renderInventoryTable() {
 
     // Standard-Sortierung je nach Typ
     if (target === 'Personendaten') {
-        if (bestandSortCol === 'status') bestandSortCol = 'Nachname';
-    } else {
-        if (bestandSortCol === 'Nachname') bestandSortCol = 'status';
-    }
+    if (bestandSortCol === 'Status') bestandSortCol = 'Nachname';
+} else {
+    if (bestandSortCol === 'Nachname') bestandSortCol = 'Status';
+}
 
     const allHeaders     = Object.keys(rawData[0]);
     const displayHeaders = allHeaders.filter(h => h !== "ID");
