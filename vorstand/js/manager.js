@@ -1,3 +1,4 @@
+
 // =========================================================
 //  MODULE: MANAGER (Grenzland / Mannschaft / Gruppe)
 //  - UI/Drag&Drop/PDF: aus Standalone übernommen
@@ -13,7 +14,7 @@ const CONTEST_CONFIG = {
         fileBase: "Grenzland_Cup",
         sheetName: "aktuell_Grenzland",
         baseTeamName: "Muhen",
-        defaultTeams: 4,
+        defaultTeams: 3,
         zones: [{ key: "main", label: "Schützen", limit: 4 }]
     },
     "mannschaft": {
@@ -22,7 +23,7 @@ const CONTEST_CONFIG = {
         fileBase: "Mannschaft",
         sheetName: "aktuell_Mannschaft",
         baseTeamName: "Muhen",
-        defaultTeams: 1,
+        defaultTeams: 3,
         zones: [{ key: "main", label: "Mannschaft (8)", limit: 8 }]
     },
     "gruppe": {
@@ -31,7 +32,7 @@ const CONTEST_CONFIG = {
         fileBase: "Gruppe_SGM",
         sheetName: "aktuell_Gruppe",
         baseTeamName: "Muhen",
-        defaultTeams: 2,
+        defaultTeams: 3,
         zones: [
             { key: "liegend", label: "Liegend (3)", limit: 3 },
             { key: "kniend", label: "Kniend (2)", limit: 2 }
@@ -49,6 +50,7 @@ let appState = {
     isDirty: false,
     _dndInited: false
 };
+
 
 // =========================================================
 //  STYLES
@@ -141,7 +143,7 @@ let appState = {
 
         @media (max-width: 576px) {
             :root {
-                --mail-max: 18vh;
+                --mail-max: 29vh;
                 --pool-max: 45vh;
             }
             .container-fluid.py-3 { padding-top: .5rem !important; padding-bottom: .5rem !important; }
@@ -153,6 +155,7 @@ let appState = {
     `;
     document.head.appendChild(style);
 })();
+
 
 // =========================================================
 //  ENTRY: called from main.js navTo('manager')
@@ -211,6 +214,7 @@ function teardownManager() {
     if (app) app.remove();
 }
 
+
 // =========================================================
 //  UI Shell
 // =========================================================
@@ -221,7 +225,8 @@ function ensureManagerShell() {
 
     host.innerHTML = `
       <div class="container-fluid py-3" id="manager-app">
-        <!-- TOOLBAR -->
+
+        <!-- TOOLBAR: z-index 900 = unter Portal-Navbar (1050) -->
         <div class="d-flex justify-content-between align-items-center mb-3 sticky-top bg-white p-3 shadow-sm rounded no-print"
              style="z-index: 900;">
             <div class="d-flex align-items-center gap-2 flex-wrap">
@@ -236,24 +241,15 @@ function ensureManagerShell() {
                 </button>
             </div>
             <div class="d-flex gap-2">
-                <div class="btn-group">
-                  <button class="btn btn-outline-dark btn-sm" onclick="exportPDF()">
-                    <i class="fas fa-file-pdf text-danger"></i>
-                    <span class="d-none d-sm-inline"> PDF</span>
-                  </button>
-                  <button class="btn btn-outline-dark btn-sm dropdown-toggle dropdown-toggle-split"
-                          data-bs-toggle="dropdown" aria-expanded="false">
-                  </button>
-                  <ul class="dropdown-menu dropdown-menu-end">
-                    <li><a class="dropdown-item" href="#" onclick="exportPDF();return false;">
-                      📄 Aktuelles Modul</a></li>
-                    <li><a class="dropdown-item" href="#" onclick="exportAllPDF();return false;">
-                      📚 Alle 3 Module</a></li>
-                    <li><hr class="dropdown-divider"></li>
-                    <li><a class="dropdown-item" href="#" onclick="sendAllPdfViaMail();return false;">
-                      📧 Alle per Mail senden</a></li>
-                  </ul>
-                </div>
+                <button class="btn btn-outline-dark btn-sm" onclick="exportPDF()" title="PDF Export">
+                    <i class="fas fa-file-pdf text-danger"></i> <span class="d-none d-sm-inline">PDF</span>
+                </button>
+                <button class="btn btn-outline-primary btn-sm" onclick="exportAllPDF()" title="Alle 3 Module in ein PDF">
+                    <i class="fas fa-layer-group"></i> <span class="d-none d-sm-inline">Alle PDFs</span>
+                </button>
+                <button id="btn-save-manager" class="btn btn-success btn-sm fw-bold" onclick="saveContest()">
+                    <i class="fas fa-save"></i> <span class="d-none d-sm-inline">Speichern</span>
+                </button>
             </div>
         </div>
 
@@ -282,6 +278,7 @@ function renderLoadingState() {
             <p>Lade ${escapeHtml(config.title)}...</p>
         </div>`;
 }
+
 
 // =========================================================
 //  DATA PROCESSING
@@ -348,18 +345,6 @@ function processContestData(data, config) {
     });
 }
 
-// =========================================================
-//  UI RENDER
-// =========================================================
-// ... renderContestUI(), renderTeamCard(), renderPlayerItem(), renderMailItem()
-// ... DRAG & DROP (initDragAndDrop)
-// ... LOGIK handleDrop(), movePlayerInState(), copyToMail(), removeFromMail()
-// ... UTILS addTeamToState(), removeTeamFromState(), filterPool()
-// ... MAIL sendMailViaBackend()
-// ... SAVE saveContest()
-// ... PDF exportPDF(), exportAllPDF(), buildPdfDoc(), buildAllPdfDoc()
-// ... HELPERS escapeHtml(), escapeJs()
-// (alles exakt wie dein ursprünglicher Code)
 
 // =========================================================
 //  RENDER UI
@@ -371,95 +356,61 @@ function renderContestUI() {
 
     const teamsHtml = appState.teams.map(team => renderTeamCard(team, config)).join('');
 
-    const sidebarContent = `
-        <!-- MAIL -->
-        <div class="card shadow-sm border-warning sidebar-card mb-3">
-            <div class="card-header bg-warning text-dark py-2 d-flex justify-content-between align-items-center">
-                <span><i class="fas fa-envelope"></i> Mail Versand</span>
-                <button class="btn btn-sm btn-dark py-0" onclick="sendMailViaBackend()" style="font-size:0.8rem;">
-                    <i class="fas fa-paper-plane"></i> Senden
-                </button>
-            </div>
-            <div class="card-body dropzone bg-light overflow-auto mail-body" data-target-type="mail">
-                ${appState.mailList.length === 0
-                    ? '<div class="text-center text-muted small mt-3">Schützen hierher ziehen<br>(Kopie)</div>'
-                    : ''}
-                ${appState.mailList.map(s => renderMailItem(s)).join('')}
-            </div>
-            <div class="card-footer small text-muted text-center py-1">
-                ${appState.mailList.length} Empfänger
-            </div>
-        </div>
+    const sidebarHtml = `
+        <div class="sidebar-stack h-100">
 
-        <!-- POOL -->
-        <div class="card shadow-sm border-secondary sidebar-card">
-            <div class="card-header bg-secondary text-white py-2">
-                <i class="fas fa-users"></i> Schützen-Pool
-                <input type="text" class="form-control form-control-sm mt-1"
-                       placeholder="Suchen..."
-                       onkeyup="filterPool(this.value)">
+            <!-- MAIL -->
+            <div class="card shadow-sm border-warning sidebar-card">
+                <div class="card-header bg-warning text-dark py-2 d-flex justify-content-between align-items-center">
+                    <span><i class="fas fa-envelope"></i> Mail Versand</span>
+                    <button class="btn btn-sm btn-dark py-0"
+                            onclick="sendMailViaBackend()"
+                            style="font-size:0.8rem;">
+                        <i class="fas fa-paper-plane"></i> Senden
+                    </button>
+                </div>
+                <div class="card-body dropzone bg-light overflow-auto mail-body" data-target-type="mail">
+                    ${appState.mailList.length === 0
+                        ? '<div class="text-center text-muted small mt-3">Schützen hierher ziehen<br>(Kopie)</div>'
+                        : ''}
+                    ${appState.mailList.map(s => renderMailItem(s)).join('')}
+                </div>
+                <div class="card-footer small text-muted text-center py-1">
+                    ${appState.mailList.length} Empfänger
+                </div>
             </div>
-            <div class="card-body dropzone bg-light overflow-auto pool-body" data-target-type="pool">
-                ${appState.pool.map(s => renderPlayerItem(s)).join('')}
-                ${appState.pool.length === 0
-                    ? '<div class="text-muted text-center small mt-3">Alle Schützen eingeteilt</div>'
-                    : ''}
+
+            <!-- POOL -->
+            <div class="card shadow-sm border-secondary sidebar-card">
+                <div class="card-header bg-secondary text-white py-2">
+                    <i class="fas fa-users"></i> Schützen-Pool
+                    <input type="text" class="form-control form-control-sm mt-1"
+                           placeholder="Suchen..."
+                           onkeyup="filterPool(this.value)">
+                </div>
+                <div class="card-body dropzone bg-light overflow-auto pool-body" data-target-type="pool">
+                    ${appState.pool.map(s => renderPlayerItem(s)).join('')}
+                    ${appState.pool.length === 0
+                        ? '<div class="text-muted text-center small mt-3">Alle Schützen eingeteilt</div>'
+                        : ''}
+                </div>
+                <div class="card-footer small text-muted text-center py-1">
+                    ${appState.pool.length} verfügbar
+                </div>
             </div>
-            <div class="card-footer small text-muted text-center py-1">
-                ${appState.pool.length} verfügbar
-            </div>
+
         </div>
     `;
 
     container.innerHTML = `
-
-        <!-- DESKTOP: Sidebar links -->
-        <div class="col-md-5 col-lg-4 d-none d-md-block">
-            <div class="sidebar-stack h-100">
-                ${sidebarContent}
-            </div>
+      <div class="col-5 col-md-5 col-lg-4 order-1 mobile-sticky">
+        ${sidebarHtml}
+      </div>
+      <div class="col-7 col-md-7 col-lg-8 order-2">
+        <div class="row g-3" id="teams-area">
+          ${teamsHtml}
         </div>
-
-        <!-- TEAMS (Desktop + Mobile) -->
-        <div class="col-12 col-md-7 col-lg-8">
-
-            <!-- MOBILE: Buttons für Pool/Mail -->
-            <div class="d-flex d-md-none gap-2 mb-3">
-                <button class="btn btn-warning btn-sm w-50"
-                        data-bs-toggle="offcanvas"
-                        data-bs-target="#offcanvas-pool">
-                    <i class="fas fa-users"></i>
-                    Pool (${appState.pool.length}) &amp; Mail (${appState.mailList.length})
-                </button>
-                <button class="btn btn-outline-dark btn-sm w-50" onclick="sendMailViaBackend()">
-                    <i class="fas fa-paper-plane"></i> Mail senden
-                </button>
-            </div>
-
-            <!-- Teams Grid -->
-            <div class="row g-3" id="teams-area">
-                ${teamsHtml}
-            </div>
-        </div>
-
-        <!-- MOBILE OFFCANVAS: Pool + Mail von unten -->
-        <div class="offcanvas offcanvas-bottom d-md-none"
-             tabindex="-1"
-             id="offcanvas-pool"
-             style="height:75vh; border-radius:16px 16px 0 0;">
-            <div class="offcanvas-header pb-2"
-                 style="background:#0f3a5d; color:white; border-radius:16px 16px 0 0;">
-                <h6 class="offcanvas-title mb-0">
-                    <i class="fas fa-users"></i> Pool &amp; Mail
-                </h6>
-                <button type="button"
-                        class="btn-close btn-close-white"
-                        data-bs-dismiss="offcanvas"></button>
-            </div>
-            <div class="offcanvas-body p-3" style="overflow-y:auto;">
-                ${sidebarContent}
-            </div>
-        </div>
+      </div>
     `;
 }
 
@@ -469,10 +420,10 @@ function renderTeamCard(team, config) {
             config.zones.length === 1 ? true : s.zone === zone.key
         );
 
-        const limit     = zone.limit;
-        const filled    = shooters.length;
+        const limit = zone.limit;
+        const filled = shooters.length;
         const remaining = Math.max(0, limit - filled);
-        const isFull    = filled >= limit;
+        const isFull = filled >= limit;
 
         let zoneBg = zone.key === 'liegend'
             ? '#e3f2fd'
@@ -490,15 +441,15 @@ function renderTeamCard(team, config) {
         }
 
         const headerColor = isFull ? 'text-success' : 'text-secondary';
-        const headerIcon  = isFull ? '<i class="fas fa-check-circle"></i>' : '';
+        const headerIcon = isFull ? '<i class="fas fa-check-circle"></i>' : '';
 
         return `
             <div class="team-zone p-2 mb-2 border rounded dropzone ${isFull ? 'zone-full' : ''}"
-                 style="background:${zoneBg}; min-height: 60px;"
-                 data-team="${escapeHtml(team.name)}"
-                 data-zone="${escapeHtml(zone.key)}"
-                 data-limit="${limit}"
-                 data-target-type="team">
+                style="background:${zoneBg}; min-height: 60px;"
+                data-team="${escapeHtml(team.name)}"
+                data-zone="${escapeHtml(zone.key)}"
+                data-limit="${limit}"
+                data-target-type="team">
                 ${config.zones.length > 1 ? `
                     <div class="d-flex justify-content-between small fw-bold ${headerColor} mb-2 pe-none">
                         <span>${escapeHtml(zone.label)}</span>
@@ -509,8 +460,8 @@ function renderTeamCard(team, config) {
     }).join('');
 
     const totalShooters = team.shooters.length;
-    const totalSlots    = config.zones.reduce((sum, z) => sum + z.limit, 0);
-    const teamComplete  = totalShooters >= totalSlots;
+    const totalSlots = config.zones.reduce((sum, z) => sum + z.limit, 0);
+    const teamComplete = totalShooters >= totalSlots;
 
     return `
         <div class="col-xl-6 col-12">
@@ -536,9 +487,9 @@ function renderTeamCard(team, config) {
 function renderPlayerItem(player) {
     return `
         <div class="card mb-1 draggable-player border-0 shadow-sm"
-             draggable="true"
-             data-id="${escapeHtml(String(player.id))}"
-             style="border-left: 3px solid var(--primary) !important;">
+            draggable="true"
+            data-id="${escapeHtml(String(player.id))}"
+            style="border-left: 3px solid var(--primary) !important;">
             <div class="card-body p-1 px-2 pointer-events-none">
                 <div class="player-row pointer-events-none">
                     <span class="player-name small fw-bold text-truncate pointer-events-none">
@@ -563,12 +514,13 @@ function renderMailItem(player) {
         </div>`;
 }
 
+
 // =========================================================
 //  DRAG & DROP ENGINE
 // =========================================================
 function initDragAndDrop() {
-    let dragSrcEl  = null;
-    let dragId     = null;
+    let dragSrcEl = null;
+    let dragId = null;
     let touchClone = null;
 
     // --- DESKTOP ---
@@ -576,7 +528,7 @@ function initDragAndDrop() {
         const el = e.target.closest('.draggable-player');
         if (!el) return;
         dragSrcEl = el;
-        dragId    = el.dataset.id;
+        dragId = el.dataset.id;
         e.dataTransfer.effectAllowed = 'move';
         e.dataTransfer.setData('text/plain', dragId);
         setTimeout(() => el.style.opacity = '0.4', 0);
@@ -611,8 +563,8 @@ function initDragAndDrop() {
     document.addEventListener('touchstart', (e) => {
         const el = e.target.closest('.draggable-player');
         if (!el) return;
-        dragId     = el.dataset.id;
-        dragSrcEl  = el;
+        dragId = el.dataset.id;
+        dragSrcEl = el;
         touchClone = el.cloneNode(true);
         touchClone.classList.add('drag-clone');
         document.body.appendChild(touchClone);
@@ -634,22 +586,22 @@ function initDragAndDrop() {
 
     document.addEventListener('touchend', (e) => {
         if (!dragId) return;
-        const touch    = e.changedTouches[0];
+        const touch = e.changedTouches[0];
         const elemBelow = document.elementFromPoint(touch.clientX, touch.clientY);
-        const zone     = elemBelow ? elemBelow.closest('.dropzone') : null;
+        const zone = elemBelow ? elemBelow.closest('.dropzone') : null;
         if (zone) handleDrop(dragId, zone);
         if (touchClone) touchClone.remove();
-        if (dragSrcEl)  dragSrcEl.style.opacity = '1';
+        if (dragSrcEl) dragSrcEl.style.opacity = '1';
         removeDropHighlights();
-        dragId     = null;
+        dragId = null;
         touchClone = null;
-        dragSrcEl  = null;
+        dragSrcEl = null;
     });
 
     function moveClone(x, y) {
         if (touchClone) {
             touchClone.style.left = (x - 20) + 'px';
-            touchClone.style.top  = (y - 20) + 'px';
+            touchClone.style.top = (y - 20) + 'px';
         }
     }
 
@@ -657,6 +609,7 @@ function initDragAndDrop() {
         document.querySelectorAll('.dropzone').forEach(z => z.classList.remove('drag-over'));
     }
 }
+
 
 // =========================================================
 //  LOGIK
@@ -676,10 +629,10 @@ function handleDrop(playerId, targetZone) {
     }
 
     if (targetType === "team") {
-        const limit    = parseInt(targetZone.dataset.limit, 10);
+        const limit = parseInt(targetZone.dataset.limit, 10);
         const teamName = targetZone.dataset.team;
-        const zoneKey  = targetZone.dataset.zone;
-        const team     = appState.teams.find(t => t.name === teamName);
+        const zoneKey = targetZone.dataset.zone;
+        const team = appState.teams.find(t => t.name === teamName);
         if (!team) return;
 
         const currentCount = team.shooters.filter(s =>
@@ -695,7 +648,7 @@ function handleDrop(playerId, targetZone) {
 function movePlayerInState(id, targetTeam, targetZone) {
     appState.isDirty = true;
     let player = null;
-    const sid  = String(id);
+    const sid = String(id);
 
     const poolIdx = appState.pool.findIndex(p => String(p.id) === sid);
     if (poolIdx > -1) {
@@ -738,12 +691,13 @@ function removeFromMail(id) {
     renderContestUI();
 }
 
+
 // =========================================================
 //  UTILS
 // =========================================================
 function addTeamToState(silent = false) {
     const config = CONTEST_CONFIG[appState.activeModule];
-    let nextNum  = 1;
+    let nextNum = 1;
     const existingNums = appState.teams.map(t => {
         const match = t.name.match(/(\d+)$/);
         return match ? parseInt(match[1], 10) : 0;
@@ -770,8 +724,10 @@ function filterPool(val) {
     });
 }
 
+
 // =========================================================
-//  MAIL VIA BACKEND
+//  MAIL VIA BACKEND (GAS / Cloudflare Worker)
+//  GAS erwartet: { recipients, subject, body, pdfBase64, fileName }
 // =========================================================
 async function sendMailViaBackend() {
     const config = CONTEST_CONFIG[appState.activeModule];
@@ -790,21 +746,22 @@ async function sendMailViaBackend() {
         return;
     }
 
-    const btn = document.querySelector('[onclick="sendMailViaBackend()"]');
-    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; }
+    const btn = document.querySelector('.card-header [onclick="sendMailViaBackend()"]');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-paper-plane"></i> Senden'; }
 
     try {
+        // PDF generieren
         const { doc, dateStr } = buildPdfDoc();
         const pdfBase64 = doc.output("datauristring").split(",")[1];
-        const base      = config.fileBase || toSafeFilename(config.pdfTitle || config.title);
-        const fileName  = `${base}_${dateStr}.pdf`;
+        const base = config.fileBase || toSafeFilename(config.pdfTitle || config.title);
+        const fileName = `${base}_${dateStr}.pdf`;
 
         const res = await apiFetch('manager', 'action=sendMail', {
             method: 'POST',
             body: JSON.stringify({
                 recipients: mails,
-                subject:    `Aufgebot ${config.pdfTitle || config.title}`,
-                body:       `Hallo\n\nIm Anhang findest du das Aufgebot für ${config.pdfTitle || config.title}.\n\nFreundliche Grüsse\nSportschützen Muhen`,
+                subject: `Aufgebot ${config.pdfTitle || config.title}`,
+                body: `Hallo\n\nIm Anhang findest du das Aufgebot für ${config.pdfTitle || config.title}.\n\nFreundliche Grüsse\nSportschützen Muhen`,
                 pdfBase64,
                 fileName
             })
@@ -817,24 +774,25 @@ async function sendMailViaBackend() {
 
         if (data.error) throw new Error(data.error);
 
-        alert(`✅ Entwurf erstellt! Bitte in Gmail öffnen, prüfen und senden.\nBis zur Erstellung des Anhanges kann es einige Zeit dauern.\n(${mails.length} Empfänger als BCC)`);
+        alert(`✅ Entwurf erstellt! Bitte in Gmail öffnen, prüfen und senden.\n(${mails.length} Empfänger als BCC)`);
 
     } catch (e) {
         alert("Fehler beim Mail-Versand: " + e.message);
     } finally {
         if (btn) {
             btn.disabled = false;
-            btn.innerHTML = '<i class="fas fa-paper-plane"></i> Senden';
+            btn.innerHTML = '<i class="fas fa-pen"></i> Entwurf';
         }
     }
 }
+
 
 // =========================================================
 //  SAVE
 // =========================================================
 async function saveContest() {
-    const config      = CONTEST_CONFIG[appState.activeModule];
-    const btn         = document.getElementById('btn-save-manager');
+    const config = CONTEST_CONFIG[appState.activeModule];
+    const btn = document.getElementById('btn-save-manager');
     const originalText = btn ? btn.innerText : "Speichern";
     if (btn) { btn.disabled = true; btn.innerText = "Speichere..."; }
 
@@ -842,9 +800,9 @@ async function saveContest() {
     appState.teams.forEach(team => {
         team.shooters.forEach(s => {
             exportData.push({
-                id:       String(s.id),
-                name:     String(s.name || ""),
-                team:     String(team.name || ""),
+                id: String(s.id),
+                name: String(s.name || ""),
+                team: String(team.name || ""),
                 stellung: (appState.activeModule === "gruppe")
                     ? (s.zone === "kniend" ? "Kniend" : "Liegend")
                     : ""
@@ -857,7 +815,7 @@ async function saveContest() {
             method: 'POST',
             body: JSON.stringify({
                 sheetName: config.sheetName,
-                data:      exportData
+                data: exportData          // ← konsistent: immer "data"
             })
         });
 
@@ -879,6 +837,7 @@ async function saveContest() {
         if (btn) { btn.disabled = false; btn.innerText = originalText; }
     }
 }
+
 
 // =========================================================
 //  PDF EXPORT
@@ -909,8 +868,8 @@ function truncateToWidth(doc, text, maxWidth) {
 
 function estimateTeamHeight(team, config) {
     const headerH = 14;
-    const lineH   = 7;
-    let lines     = 0;
+    const lineH = 7;
+    let lines = 0;
     config.zones.forEach(z => {
         const shooters = team.shooters.filter(s =>
             config.zones.length === 1 ? true : s.zone === z.key
@@ -922,12 +881,13 @@ function estimateTeamHeight(team, config) {
 }
 
 function renderContestToPdf(doc, config, opts = {}) {
-    const pdfTitle  = config.pdfTitle || config.title;
-    const dateStr   = opts.dateStr || getDateStr();
-    const twoCol    = opts.twoCol !== false;
+    const pdfTitle = config.pdfTitle || config.title;
+    const dateStr = opts.dateStr || getDateStr();
+    const twoCol = opts.twoCol !== false;
+
     const pageWidth = doc.internal.pageSize.getWidth();
-    const pageHeight= doc.internal.pageSize.getHeight();
-    const margin    = 15;
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const margin = 15;
 
     let yPos = 20;
     doc.setFont("helvetica", "bold");
@@ -943,13 +903,13 @@ function renderContestToPdf(doc, config, opts = {}) {
     doc.text(`Generiert am: ${dateStr}`, margin, yPos);
     yPos += 12;
 
-    const gap  = 10;
+    const gap = 10;
     const colW = twoCol
         ? (pageWidth - (margin * 2) - gap) / 2
         : (pageWidth - (margin * 2));
 
-    let col      = 0;
-    let rowMaxH  = 0;
+    let col = 0;
+    let rowMaxH = 0;
 
     const drawTeam = (team, x, y, w) => {
         doc.setFillColor(240, 242, 245);
@@ -959,7 +919,7 @@ function renderContestToPdf(doc, config, opts = {}) {
         doc.setTextColor(0);
         doc.text(truncateToWidth(doc, team.name, w - 6), x + 2, y + 6);
 
-        let yy  = y + 14;
+        let yy = y + 14;
         doc.setFont("helvetica", "normal");
         doc.setFontSize(10);
         let any = false;
@@ -1003,9 +963,9 @@ function renderContestToPdf(doc, config, opts = {}) {
 
     const teams = appState.teams || [];
     for (let i = 0; i < teams.length; i++) {
-        const team   = teams[i];
+        const team = teams[i];
         const needed = estimateTeamHeight(team, config);
-        const x      = twoCol ? (margin + (col === 1 ? (colW + gap) : 0)) : margin;
+        const x = twoCol ? (margin + (col === 1 ? (colW + gap) : 0)) : margin;
 
         if (yPos + needed > (pageHeight - margin)) {
             doc.addPage();
@@ -1020,7 +980,7 @@ function renderContestToPdf(doc, config, opts = {}) {
             doc.setTextColor(100);
             doc.text(`Generiert am: ${dateStr}`, margin, yPos);
             yPos += 12;
-            col     = 0;
+            col = 0;
             rowMaxH = 0;
         }
 
@@ -1045,16 +1005,16 @@ function buildPdfDoc() {
         throw new Error("jsPDF nicht geladen. Bitte index.html prüfen (CDN Scripts).");
     }
     const { jsPDF } = window.jspdf;
-    const config    = CONTEST_CONFIG[appState.activeModule];
-    const doc       = new jsPDF();
+    const config = CONTEST_CONFIG[appState.activeModule];
+    const doc = new jsPDF();
     return renderContestToPdf(doc, config, { twoCol: true });
 }
 
 async function exportPDF() {
     try {
-        const config      = CONTEST_CONFIG[appState.activeModule];
+        const config = CONTEST_CONFIG[appState.activeModule];
         const { doc, dateStr } = buildPdfDoc();
-        const base        = config.fileBase || toSafeFilename(config.pdfTitle || config.title);
+        const base = config.fileBase || toSafeFilename(config.pdfTitle || config.title);
         doc.save(`${base}_${dateStr}.pdf`);
     } catch (error) {
         alert(error.message);
@@ -1075,7 +1035,7 @@ async function exportAllPDF() {
 async function fetchContestDataForPdf(moduleKey) {
     const config = CONTEST_CONFIG[moduleKey];
     const params = `action=getManagerData&sheetName=${encodeURIComponent(config.sheetName)}`;
-    const res    = await apiFetch('manager', params);
+    const res = await apiFetch('manager', params);
 
     if (!res.ok) {
         const errTxt = await res.text().catch(() => "");
@@ -1104,9 +1064,9 @@ async function buildAllPdfDoc() {
         : JSON.parse(JSON.stringify(appState));
 
     const { jsPDF } = window.jspdf;
-    const doc       = new jsPDF();
-    const dateStr   = getDateStr();
-    const modules   = ["grenzland", "mannschaft", "gruppe"];
+    const doc = new jsPDF();
+    const dateStr = getDateStr();
+    const modules = ["grenzland", "mannschaft", "gruppe"];
 
     for (let i = 0; i < modules.length; i++) {
         if (i > 0) doc.addPage();
@@ -1115,6 +1075,7 @@ async function buildAllPdfDoc() {
     }
 
     appState = prevState;
+
     const managerView = document.getElementById('view-manager');
     if (managerView && managerView.classList.contains('active')) {
         ensureManagerShell();
@@ -1124,21 +1085,21 @@ async function buildAllPdfDoc() {
     return { doc, dateStr };
 }
 
+
 // =========================================================
 //  SMALL HELPERS
 // =========================================================
 function escapeHtml(str) {
     return String(str || "")
-        .replaceAll("&",  "&amp;")
-        .replaceAll("<",  "&lt;")
-        .replaceAll(">",  "&gt;")
-        .replaceAll('"',  "&quot;")
-        .replaceAll("'",  "&#039;");
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
 }
 
 function escapeJs(str) {
     return String(str || "")
         .replaceAll("\\", "\\\\")
-        .replaceAll("'",  "\\'");
+        .replaceAll("'", "\\'");
 }
-
