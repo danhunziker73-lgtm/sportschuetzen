@@ -47,9 +47,11 @@ function renderVermietungCockpit(daten) {
   const naechste = aktive[0];
 
   // Einnahmen berechnen
-  const einnahmen = daten
-    .filter(d => ["03 - Zahlung erhalten","04 - Schlüsselübergabe versandt"].includes(d.status))
-    .reduce((sum, d) => sum + parseFloat((d.mietbetrag || "0").replace(/[^\d.]/g,'')), 0);
+
+const einnahmen = daten
+  .filter(d => d.status === "03 - Zahlung erhalten" || 
+               d.status === "04 - Schlüsselübergabe versandt")
+  .reduce((sum, d) => sum + parseFloat((d.mietbetrag || "0").replace(/[^\d.]/g, '')), 0);
 
   document.getElementById('vermietung-container').innerHTML = `
 
@@ -135,15 +137,17 @@ function renderVermietungCockpit(daten) {
           </div>
           <div style="overflow-x:auto;max-height:350px;overflow-y:auto;">
             <table class="table table-sm table-hover mb-0" id="vermietung-table">
-              <thead style="position:sticky;top:0;background:white;z-index:1;">
-                <tr>
-                  <th>Datum</th>
-                  <th>Name</th>
-                  <th>Vertrag</th>
-                  <th>Status</th>
-                  <th></th>
-                </tr>
-              </thead>
+              <!-- KORREKT – im thead der Tabelle: -->
+<thead style="position:sticky;top:0;background:white;z-index:1;">
+  <tr>
+    <th style="cursor:pointer" onclick="sortVermietung()">Datum ↕</th>
+    <th>Name</th>
+    <th>Vertrag</th>
+    <th>Status</th>
+    <th></th>
+  </tr>
+</thead>
+
               <tbody id="vermietung-tbody">
                 ${renderVermietungRows(daten)}
               </tbody>
@@ -251,6 +255,49 @@ function openVermietungModal(row) {
 
   new bootstrap.Modal(document.getElementById('vermietungModal')).show();
 }
+
+
+let sortAsc = true;
+let aktuellerFilter = 'alle'; // ← NEU
+
+function filterVermietung(filter) {
+  aktuellerFilter = filter; // ← NEU
+  let gefiltert = vermietungDaten;
+  if (filter === 'offen')     gefiltert = vermietungDaten.filter(d => d.status.includes("01"));
+  if (filter === 'gemahnt')   gefiltert = vermietungDaten.filter(d => d.status.includes("02"));
+  if (filter === 'bezahlt')   gefiltert = vermietungDaten.filter(d => d.status.includes("03") || d.status.includes("04"));
+  if (filter === 'storniert') gefiltert = vermietungDaten.filter(d => d.status.includes("05"));
+  document.getElementById('vermietung-tbody').innerHTML = renderVermietungRows(gefiltert);
+}
+
+function sortVermietung() {
+  sortAsc = !sortAsc;
+  // Erst filtern, dann sortieren
+  let basis = vermietungDaten;
+  if (aktuellerFilter !== 'alle') {
+    filterVermietung(aktuellerFilter); // bereits gefiltert rendern
+  }
+  const toDate = s => {
+    const p = (s || "").split(".");
+    return p.length === 3 ? new Date(p[2], p[1]-1, p[0]) : new Date(0);
+  };
+  const sorted = [...document.querySelectorAll('#vermietung-tbody tr')]
+    // Einfacher: direkt auf vermietungDaten arbeiten
+  
+  // Saubere Lösung:
+  let gefiltert = vermietungDaten;
+  if (aktuellerFilter === 'offen')     gefiltert = vermietungDaten.filter(d => d.status.includes("01"));
+  if (aktuellerFilter === 'gemahnt')   gefiltert = vermietungDaten.filter(d => d.status.includes("02"));
+  if (aktuellerFilter === 'bezahlt')   gefiltert = vermietungDaten.filter(d => d.status.includes("03") || d.status.includes("04"));
+  if (aktuellerFilter === 'storniert') gefiltert = vermietungDaten.filter(d => d.status.includes("05"));
+
+  const sorted = [...gefiltert].sort((a, b) => sortAsc
+    ? toDate(a.mietdatum) - toDate(b.mietdatum)
+    : toDate(b.mietdatum) - toDate(a.mietdatum));
+
+  document.getElementById('vermietung-tbody').innerHTML = renderVermietungRows(sorted);
+}
+
 
 async function vermietungAktion(action, row) {
   const labels = {
