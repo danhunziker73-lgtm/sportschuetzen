@@ -59,6 +59,9 @@ async function loadInventarData() {
 
         renderInventarUI(container);
 
+console.log("renderInventarUI Role:", userRole);
+console.log("canDelete inside render:", canDelete());
+        
         const label = document.getElementById('inv-verantwortlicher-label');
         if (label) label.innerText = currentUser;
 
