@@ -344,7 +344,7 @@ function fillInventarDropdowns() {
     if (!inventarState?.mitglieder) return;
 
    d = [...inventarState.mitglieder]
-  .filter(m => m.Status === 'aktiv')  // nur aktive Mitglieder
+  .filter(m => m.Status === 'Aktiv')  // nur aktive Mitglieder
   .sort((a, b) => a.Nachname.localeCompare(b.Nachname));
     
     document.getElementById('select-mitglied').innerHTML =
