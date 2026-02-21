@@ -15,7 +15,7 @@ let bestandSortDir = 'asc';
 
 function canDelete() {
     const role = userRole || localStorage.getItem('portal_role');
-    return role === 'admin' || role === 'materialwart';
+    return ['admin','materialwart','schuetzenmeister'].includes(role);
 }
 // =========================================================
 //  DATUM HELPER
