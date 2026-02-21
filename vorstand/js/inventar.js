@@ -10,7 +10,7 @@ let warenkorb        = [];
 let journalSortCol   = 'datum';   let journalSortDir   = 'desc';
 let protokollSortCol = 'zeit';    let protokollSortDir = 'desc';
 let ausleihenSortCol = 'seit';    let ausleihenSortDir = 'desc';
-let bestandSortCol = 'status';
+let bestandSortCol = 'Status';
 let bestandSortDir = 'asc';
 
 function canDelete() {
