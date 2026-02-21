@@ -142,8 +142,8 @@ let appState = {
 
         @media (max-width: 576px) {
             :root {
-                --mail-max: 22vh;
-                --pool-max: 34vh;
+                --mail-max: 18vh;
+                --pool-max: 45vh;
             }
             .container-fluid.py-3 { padding-top: .5rem !important; padding-bottom: .5rem !important; }
             .sticky-top.no-print { padding: .6rem !important; }
