@@ -401,11 +401,11 @@ function renderContestUI() {
         </div>
     `;
 
-    container.innerHTML = `
-      <div class="col-5 col-md-5 col-lg-4 order-1 mobile-sticky">
-        ${sidebarHtml}
-      </div>
-      <div class="col-7 col-md-7 col-lg-8 order-2">
+  container.innerHTML = `
+  <div class="col-12 col-md-5 col-lg-4 order-3 order-md-1">
+    ${sidebarHtml}
+  </div>
+  <div class="col-12 col-md-7 col-lg-8 order-1 order-md-2">
         <div class="row g-3" id="teams-area">
           ${teamsHtml}
         </div>
