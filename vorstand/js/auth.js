@@ -4,6 +4,7 @@ const WORKER_URL = "https://sportschuetzen-api.dan-hunziker73.workers.dev/";
 // === STATE ===
 let currentUser = null;
 let userRole = null;
+let currentRole = null; // Alias
 
 // === API HELPER (WICHTIG!) ===
 async function apiFetch(module, paramsString, options = {}) {
@@ -34,6 +35,7 @@ async function doLogin() {
         if (data.success) {
             currentUser = data.name;
             userRole = data.role;
+            currentRole = data.role; // ← hinzufügen
             localStorage.setItem('portal_user', currentUser);
             localStorage.setItem('portal_role', userRole);
             showApp();
