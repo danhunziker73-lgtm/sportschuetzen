@@ -140,17 +140,13 @@ let appState = {
             body { background: white; }
         }
 
-        @media (max-width: 576px) {
-            :root {
-                --mail-max: 18vh;
-                --pool-max: 45vh;
-            }
-            .container-fluid.py-3 { padding-top: .5rem !important; padding-bottom: .5rem !important; }
-            .sticky-top.no-print { padding: .6rem !important; }
-            .sidebar-card .card-header { padding: .4rem .55rem; }
-            .sidebar-card .card-body { padding: .45rem; }
-            .drag-clone { width: 170px; }
-        }
+      @media (max-width: 767px) {
+    --mail-max: 20vh;
+    --pool-max: 30vh;
+    .container-fluid.py-3 { padding-top: .5rem !important; }
+    .sticky-top.no-print   { padding: .6rem !important; }
+    .drag-clone            { width: 170px; }
+}
     `;
     document.head.appendChild(style);
 })();
@@ -362,69 +358,106 @@ function processContestData(data, config) {
 //  RENDER UI
 // =========================================================
 function renderContestUI() {
-    const config = CONTEST_CONFIG[appState.activeModule];
-    const container = document.getElementById('manager-inner');
-    if (!container) return;
+  const config = CONTEST_CONFIG[appState.activeModule];
+  const container = document.getElementById('manager-inner');
+  if (!container) return;
 
-    const teamsHtml = appState.teams.map(team => renderTeamCard(team, config)).join('');
+  const teamsHtml = appState.teams.map(team => renderTeamCard(team, config)).join('');
 
-    const sidebarHtml = `
-        <div class="sidebar-stack h-100">
+  const sidebarContent = `
+    <!-- MAIL -->
+    <div class="card shadow-sm border-warning sidebar-card mb-3">
+      <div class="card-header bg-warning text-dark py-2 d-flex justify-content-between align-items-center">
+        <span><i class="fas fa-envelope"></i> Mail Versand</span>
+        <button class="btn btn-sm btn-dark py-0" onclick="sendMailViaBackend()" style="font-size:0.8rem;">
+          <i class="fas fa-paper-plane"></i> Senden
+        </button>
+      </div>
+      <div class="card-body dropzone bg-light overflow-auto mail-body" data-target-type="mail">
+        ${appState.mailList.length === 0
+          ? '<div class="text-center text-muted small mt-3">Schützen hierher ziehen<br>(Kopie)</div>'
+          : ''}
+        ${appState.mailList.map(s => renderMailItem(s)).join('')}
+      </div>
+      <div class="card-footer small text-muted text-center py-1">
+        ${appState.mailList.length} Empfänger
+      </div>
+    </div>
 
-            <!-- MAIL -->
-            <div class="card shadow-sm border-warning sidebar-card">
-                <div class="card-header bg-warning text-dark py-2 d-flex justify-content-between align-items-center">
-                    <span><i class="fas fa-envelope"></i> Mail Versand</span>
-                    <button class="btn btn-sm btn-dark py-0"
-                            onclick="sendMailViaBackend()"
-                            style="font-size:0.8rem;">
-                        <i class="fas fa-paper-plane"></i> Senden
-                    </button>
-                </div>
-                <div class="card-body dropzone bg-light overflow-auto mail-body" data-target-type="mail">
-                    ${appState.mailList.length === 0
-                        ? '<div class="text-center text-muted small mt-3">Schützen hierher ziehen<br>(Kopie)</div>'
-                        : ''}
-                    ${appState.mailList.map(s => renderMailItem(s)).join('')}
-                </div>
-                <div class="card-footer small text-muted text-center py-1">
-                    ${appState.mailList.length} Empfänger
-                </div>
-            </div>
-
-            <!-- POOL -->
-            <div class="card shadow-sm border-secondary sidebar-card">
-                <div class="card-header bg-secondary text-white py-2">
-                    <i class="fas fa-users"></i> Schützen-Pool
-                    <input type="text" class="form-control form-control-sm mt-1"
-                           placeholder="Suchen..."
-                           onkeyup="filterPool(this.value)">
-                </div>
-                <div class="card-body dropzone bg-light overflow-auto pool-body" data-target-type="pool">
-                    ${appState.pool.map(s => renderPlayerItem(s)).join('')}
-                    ${appState.pool.length === 0
-                        ? '<div class="text-muted text-center small mt-3">Alle Schützen eingeteilt</div>'
-                        : ''}
-                </div>
-                <div class="card-footer small text-muted text-center py-1">
-                    ${appState.pool.length} verfügbar
-                </div>
-            </div>
-
-        </div>
-    `;
+    <!-- POOL -->
+    <div class="card shadow-sm border-secondary sidebar-card">
+      <div class="card-header bg-secondary text-white py-2">
+        <i class="fas fa-users"></i> Schützen-Pool
+        <input type="text" class="form-control form-control-sm mt-1"
+               placeholder="Suchen..."
+               onkeyup="filterPool(this.value)">
+      </div>
+      <div class="card-body dropzone bg-light overflow-auto pool-body" data-target-type="pool">
+        ${appState.pool.map(s => renderPlayerItem(s)).join('')}
+        ${appState.pool.length === 0
+          ? '<div class="text-muted text-center small mt-3">Alle Schützen eingeteilt</div>'
+          : ''}
+      </div>
+      <div class="card-footer small text-muted text-center py-1">
+        ${appState.pool.length} verfügbar
+      </div>
+    </div>
+  `;
 
   container.innerHTML = `
-  <div class="col-12 col-md-5 col-lg-4 order-3 order-md-1">
-    ${sidebarHtml}
-  </div>
-  <div class="col-12 col-md-7 col-lg-8 order-1 order-md-2">
-        <div class="row g-3" id="teams-area">
-          ${teamsHtml}
-        </div>
+
+    <!-- DESKTOP: normales 2-Spalten Layout -->
+    <div class="col-md-5 col-lg-4 d-none d-md-block">
+      <div class="sidebar-stack h-100">
+        ${sidebarContent}
       </div>
-    `;
+    </div>
+
+    <!-- DESKTOP + MOBILE: Teams -->
+    <div class="col-12 col-md-7 col-lg-8">
+
+      <!-- MOBILE: Pool/Mail Button -->
+      <div class="d-md-none mb-3 d-flex gap-2">
+        <button class="btn btn-warning btn-sm w-50"
+                data-bs-toggle="offcanvas"
+                data-bs-target="#offcanvas-pool">
+          <i class="fas fa-users"></i>
+          Pool (${appState.pool.length})
+          &amp; Mail (${appState.mailList.length})
+        </button>
+        <button class="btn btn-outline-secondary btn-sm w-50"
+                onclick="sendMailViaBackend()">
+          <i class="fas fa-paper-plane"></i> Mail senden
+        </button>
+      </div>
+
+      <!-- Teams -->
+      <div class="row g-3" id="teams-area">
+        ${teamsHtml}
+      </div>
+    </div>
+
+    <!-- MOBILE OFFCANVAS: Pool + Mail -->
+    <div class="offcanvas offcanvas-bottom d-md-none"
+         tabindex="-1"
+         id="offcanvas-pool"
+         style="height:75vh;border-radius:16px 16px 0 0;">
+      <div class="offcanvas-header pb-1"
+           style="background:#0f3a5d;color:white;border-radius:16px 16px 0 0;">
+        <h6 class="offcanvas-title mb-0">
+          <i class="fas fa-users"></i> Pool &amp; Mail
+        </h6>
+        <button type="button"
+                class="btn-close btn-close-white"
+                data-bs-dismiss="offcanvas"></button>
+      </div>
+      <div class="offcanvas-body p-3" style="overflow-y:auto;">
+        ${sidebarContent}
+      </div>
+    </div>
+  `;
 }
+
 
 function renderTeamCard(team, config) {
     const zonesHtml = config.zones.map((zone) => {
