@@ -3,6 +3,9 @@
 // ============================================================
 
 let vermietungDaten = [];
+let sortAsc = true;
+let aktuellerFilter = 'alle';
+let einnahmenJahr = new Date().getFullYear(); // ← für Jahresfilter
 
 async function loadVermietungData() {
   const container = document.getElementById('vermietung-container');
@@ -23,22 +26,20 @@ async function loadVermietungData() {
 }
 
 function renderVermietungCockpit(daten) {
-  // Statistiken berechnen
   const stats = {
-    offen:     daten.filter(d => d.status === "01 - Mietvertrag versandt").length,
-    gemahnt:   daten.filter(d => d.status === "02 - Mietbetrag gemahnt").length,
-    bezahlt:   daten.filter(d => d.status === "03 - Zahlung erhalten").length,
-    schluessel:daten.filter(d => d.status === "04 - Schlüsselübergabe versandt").length,
-    storniert: daten.filter(d => d.status === "05 - Reservation storniert").length,
+    offen:     daten.filter(d => d.status.includes("01")).length,
+    gemahnt:   daten.filter(d => d.status.includes("02")).length,
+    bezahlt:   daten.filter(d => d.status.includes("03") || d.status.includes("04")).length,
+    storniert: daten.filter(d => d.status.includes("05")).length,
   };
 
   // Nächste Vermietung
-  const heute   = new Date();
-  const aktive  = daten
-    .filter(d => !d.status.includes("storniert") && !d.status.includes("Konflikt"))
+  const heute  = new Date();
+  const aktive = daten
+    .filter(d => !d.status.includes("05") && !d.status.includes("00"))
     .filter(d => {
-      const parts = d.mietdatum.split(".");
-      return parts.length === 3 && new Date(parts[2], parts[1]-1, parts[0]) >= heute;
+      const p = (d.mietdatum || "").split(".");
+      return p.length === 3 && new Date(p[2], p[1]-1, p[0]) >= heute;
     })
     .sort((a, b) => {
       const pa = a.mietdatum.split("."), pb = b.mietdatum.split(".");
@@ -46,12 +47,14 @@ function renderVermietungCockpit(daten) {
     });
   const naechste = aktive[0];
 
-  // Einnahmen berechnen
+  // Einnahmen – gefiltertes Jahr
+  const einnahmen = berechneEinnahmen(daten, einnahmenJahr);
 
-const einnahmen = daten
-  .filter(d => d.status === "03 - Zahlung erhalten" || 
-               d.status === "04 - Schlüsselübergabe versandt")
-  .reduce((sum, d) => sum + parseFloat((d.mietbetrag || "0").replace(/[^\d.]/g, '')), 0);
+  // Verfügbare Jahre für Auswahl
+  const jahre = [...new Set(daten.map(d => {
+    const p = (d.mietdatum || "").split(".");
+    return p.length === 3 ? p[2] : null;
+  }).filter(Boolean))].sort().reverse();
 
   document.getElementById('vermietung-container').innerHTML = `
 
@@ -71,7 +74,7 @@ const einnahmen = daten
       </div>
       <div class="col-6 col-md-2">
         <div class="card border-0 shadow-sm text-center p-3 h-100" style="border-left:4px solid #28a745 !important;">
-          <div style="font-size:2rem;font-weight:bold;color:#28a745">${stats.bezahlt + stats.schluessel}</div>
+          <div style="font-size:2rem;font-weight:bold;color:#28a745">${stats.bezahlt}</div>
           <div class="small text-muted">🟢 Bezahlt</div>
         </div>
       </div>
@@ -81,14 +84,24 @@ const einnahmen = daten
           <div class="small text-muted">⚫ Storniert</div>
         </div>
       </div>
+
+      <!-- EINNAHMEN mit Jahresauswahl -->
       <div class="col-6 col-md-2">
         <div class="card border-0 shadow-sm text-center p-3 h-100" style="border-left:4px solid #0f3a5d !important;">
-          <div style="font-size:1.4rem;font-weight:bold;color:#0f3a5d">CHF ${einnahmen.toFixed(0)}</div>
-          <div class="small text-muted">💰 Einnahmen</div>
+          <div style="font-size:1.2rem;font-weight:bold;color:#0f3a5d" id="einnahmen-betrag">
+            CHF ${einnahmen.toFixed(0)}
+          </div>
+          <div class="small text-muted mb-1">💰 Einnahmen</div>
+          <select class="form-select form-select-sm" onchange="updateEinnahmen(this.value)">
+            ${jahre.map(j => `<option value="${j}" ${j == einnahmenJahr ? 'selected' : ''}>${j}</option>`).join('')}
+          </select>
         </div>
       </div>
+
       <div class="col-6 col-md-2">
-        <div class="card border-0 shadow-sm text-center p-3 h-100" style="border-left:4px solid #6f42c1 !important; cursor:pointer" onclick="triggerClubdeskExport()">
+        <div class="card border-0 shadow-sm text-center p-3 h-100"
+             style="border-left:4px solid #6f42c1 !important; cursor:pointer"
+             onclick="triggerClubdeskExport()">
           <div style="font-size:1.5rem;">📤</div>
           <div class="small text-muted">Clubdesk Export</div>
         </div>
@@ -101,13 +114,13 @@ const einnahmen = daten
       <strong>📅 Nächste Vermietung:</strong>
       ${naechste.mietdatum} – ${naechste.vorname} ${naechste.nachname}
       <span class="badge ms-2" style="background:#0f3a5d">${naechste.vertragsnr}</span>
-      <button class="btn btn-sm btn-outline-primary ms-3" onclick="openVermietungModal(${naechste.row})">Details</button>
-    </div>` : '<div class="alert alert-success mb-4">✅ Keine bevorstehenden Vermietungen</div>'}
+      <button class="btn btn-sm btn-outline-primary ms-3"
+              onclick="openVermietungModal(${naechste.row})">Details</button>
+    </div>`
+    : '<div class="alert alert-success mb-4">✅ Keine bevorstehenden Vermietungen</div>'}
 
     <!-- KALENDER + TABELLE -->
     <div class="row g-4">
-
-      <!-- KALENDER -->
       <div class="col-12 col-lg-5">
         <div class="card border-0 shadow-sm p-3">
           <h5 class="mb-3">📅 Belegungskalender</h5>
@@ -119,35 +132,34 @@ const einnahmen = daten
         </div>
       </div>
 
-      <!-- TABELLE -->
       <div class="col-12 col-lg-7">
         <div class="card border-0 shadow-sm p-3">
           <div class="d-flex justify-content-between align-items-center mb-3">
             <h5 class="mb-0">📋 Alle Reservationen</h5>
             <div class="d-flex gap-2">
-              <select class="form-select form-select-sm" style="width:160px" onchange="filterVermietung(this.value)">
+              <select class="form-select form-select-sm" style="width:160px"
+                      onchange="filterVermietung(this.value)">
                 <option value="alle">Alle</option>
                 <option value="offen">Offen</option>
                 <option value="gemahnt">Gemahnt</option>
                 <option value="bezahlt">Bezahlt</option>
                 <option value="storniert">Storniert</option>
               </select>
-              <button class="btn btn-sm btn-outline-secondary" onclick="loadVermietungData()">🔄</button>
+              <button class="btn btn-sm btn-outline-secondary"
+                      onclick="loadVermietungData()">🔄</button>
             </div>
           </div>
           <div style="overflow-x:auto;max-height:350px;overflow-y:auto;">
-            <table class="table table-sm table-hover mb-0" id="vermietung-table">
-              <!-- KORREKT – im thead der Tabelle: -->
-<thead style="position:sticky;top:0;background:white;z-index:1;">
-  <tr>
-    <th style="cursor:pointer" onclick="sortVermietung()">Datum ↕</th>
-    <th>Name</th>
-    <th>Vertrag</th>
-    <th>Status</th>
-    <th></th>
-  </tr>
-</thead>
-
+            <table class="table table-sm table-hover mb-0">
+              <thead style="position:sticky;top:0;background:white;z-index:1;">
+                <tr>
+                  <th style="cursor:pointer" onclick="sortVermietung()">Datum ↕</th>
+                  <th>Name</th>
+                  <th>Vertrag</th>
+                  <th>Status</th>
+                  <th></th>
+                </tr>
+              </thead>
               <tbody id="vermietung-tbody">
                 ${renderVermietungRows(daten)}
               </tbody>
@@ -163,7 +175,8 @@ const einnahmen = daten
         <div class="modal-content border-0 shadow">
           <div class="modal-header" style="background:#0f3a5d;color:white;">
             <h5 class="modal-title">📄 Reservation Details</h5>
-            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            <button type="button" class="btn-close btn-close-white"
+                    data-bs-dismiss="modal"></button>
           </div>
           <div class="modal-body" id="vermietung-modal-body"></div>
           <div class="modal-footer" id="vermietung-modal-footer"></div>
@@ -173,95 +186,51 @@ const einnahmen = daten
   `;
 }
 
+// Einnahmen-Berechnung mit Jahresfilter
+function berechneEinnahmen(daten, jahr) {
+  return daten
+    .filter(d => {
+      if (!d.status.includes("03") && !d.status.includes("04")) return false;
+      const p = (d.mietdatum || "").split(".");
+      return p.length === 3 && p[2] == jahr;
+    })
+    .reduce((sum, d) => {
+      return sum + parseFloat((d.mietbetrag || "0").replace(/[^\d.]/g, '') || 0);
+    }, 0);
+}
+
+function updateEinnahmen(jahr) {
+  einnahmenJahr = jahr;
+  const einnahmen = berechneEinnahmen(vermietungDaten, jahr);
+  document.getElementById('einnahmen-betrag').innerText = `CHF ${einnahmen.toFixed(0)}`;
+}
+
 function renderVermietungRows(daten) {
+  if (!daten || daten.length === 0) {
+    return '<tr><td colspan="5" class="text-center text-muted py-3">Keine Einträge</td></tr>';
+  }
   return daten.map(d => {
     const statusColor = getStatusColor(d.status);
     const statusLabel = getStatusLabel(d.status);
     return `
       <tr style="cursor:pointer" onclick="openVermietungModal(${d.row})">
-        <td>${d.mietdatum}</td>
-        <td>${d.vorname} ${d.nachname}</td>
-        <td><small class="text-muted">${d.vertragsnr}</small></td>
-        <td><span class="badge" style="background:${statusColor};font-size:0.7rem;">${statusLabel}</span></td>
-        <td><button class="btn btn-xs btn-outline-secondary btn-sm py-0 px-1" onclick="event.stopPropagation();openVermietungModal(${d.row})">›</button></td>
+        <td>${d.mietdatum || '–'}</td>
+        <td>${d.vorname || ''} ${d.nachname || ''}</td>
+        <td><small class="text-muted">${d.vertragsnr || ''}</small></td>
+        <td><span class="badge" style="background:${statusColor};font-size:0.7rem;">
+          ${statusLabel}
+        </span></td>
+        <td>
+          <button class="btn btn-outline-secondary btn-sm py-0 px-1"
+                  onclick="event.stopPropagation();openVermietungModal(${d.row})">›
+          </button>
+        </td>
       </tr>`;
   }).join('');
 }
 
 function filterVermietung(filter) {
-  let gefiltert = vermietungDaten;
-  if (filter === 'offen')     gefiltert = vermietungDaten.filter(d => d.status.includes("01"));
-  if (filter === 'gemahnt')   gefiltert = vermietungDaten.filter(d => d.status.includes("02"));
-  if (filter === 'bezahlt')   gefiltert = vermietungDaten.filter(d => d.status.includes("03") || d.status.includes("04"));
-  if (filter === 'storniert') gefiltert = vermietungDaten.filter(d => d.status.includes("05"));
-  document.getElementById('vermietung-tbody').innerHTML = renderVermietungRows(gefiltert);
-}
-
-function openVermietungModal(row) {
-  const d = vermietungDaten.find(x => x.row === row);
-  if (!d) return;
-
-  const statusColor = getStatusColor(d.status);
-  const istStorniert = d.status.includes("05");
-  const istBezahlt   = d.status.includes("03") || d.status.includes("04");
-
-  document.getElementById('vermietung-modal-body').innerHTML = `
-    <div class="row g-3">
-      <div class="col-md-6">
-        <table class="table table-sm table-borderless">
-          <tr><td class="text-muted fw-bold">Vertragsnummer</td><td>${d.vertragsnr}</td></tr>
-          <tr><td class="text-muted fw-bold">Name</td><td>${d.vorname} ${d.nachname}</td></tr>
-          <tr><td class="text-muted fw-bold">E-Mail</td><td>${d.email}</td></tr>
-          <tr><td class="text-muted fw-bold">Telefon</td><td>${d.telefon}</td></tr>
-          <tr><td class="text-muted fw-bold">Mietdatum</td><td>${d.mietdatum}</td></tr>
-          <tr><td class="text-muted fw-bold">Festbeginn</td><td>${d.festbeginn}</td></tr>
-          <tr><td class="text-muted fw-bold">Mietbetrag</td><td>${d.mietbetrag}</td></tr>
-        </table>
-      </div>
-      <div class="col-md-6">
-        <div class="p-3 rounded mb-3" style="background:${statusColor}22;border-left:4px solid ${statusColor}">
-          <strong>Status:</strong> ${d.status}
-        </div>
-        <table class="table table-sm table-borderless">
-          <tr><td class="text-muted">Vertrag versandt</td><td>${d.datum_vertrag || '–'}</td></tr>
-          <tr><td class="text-muted">Mahnung</td><td>${d.datum_mahnung || '–'}</td></tr>
-          <tr><td class="text-muted">Schlüsselübergabe</td><td>${d.datum_schluessel || '–'}</td></tr>
-          <tr><td class="text-muted">Storniert</td><td>${d.datum_storno || '–'}</td></tr>
-          <tr><td class="text-muted">Clubdesk</td><td>${d.transfer || '–'}</td></tr>
-        </table>
-        ${d.kommentar ? `<div class="alert alert-info p-2 small">💬 ${d.kommentar}</div>` : ''}
-      </div>
-    </div>
-  `;
-
-  document.getElementById('vermietung-modal-footer').innerHTML = `
-    <button class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Schliessen</button>
-    ${!istStorniert && !istBezahlt ? `
-      <button class="btn btn-sm btn-warning" onclick="vermietungAktion('mahnung', ${row})">
-        ❗ Mahnung senden
-      </button>` : ''}
-    ${!istStorniert && !istBezahlt ? `
-      <button class="btn btn-sm btn-success" onclick="vermietungAktion('bestaetigen', ${row})">
-        ✅ Zahlung bestätigen
-      </button>` : ''}
-    <button class="btn btn-sm btn-primary" onclick="vermietungAktion('whatsapp', ${row})">
-      📱 WhatsApp
-    </button>
-    ${!istStorniert ? `
-      <button class="btn btn-sm btn-danger" onclick="vermietungAktion('stornieren', ${row})">
-        ❌ Stornieren
-      </button>` : ''}
-  `;
-
-  new bootstrap.Modal(document.getElementById('vermietungModal')).show();
-}
-
-
-let sortAsc = true;
-let aktuellerFilter = 'alle'; // ← NEU
-
-function filterVermietung(filter) {
-  aktuellerFilter = filter; // ← NEU
+  aktuellerFilter = filter;
   let gefiltert = vermietungDaten;
   if (filter === 'offen')     gefiltert = vermietungDaten.filter(d => d.status.includes("01"));
   if (filter === 'gemahnt')   gefiltert = vermietungDaten.filter(d => d.status.includes("02"));
@@ -272,19 +241,12 @@ function filterVermietung(filter) {
 
 function sortVermietung() {
   sortAsc = !sortAsc;
-  // Erst filtern, dann sortieren
-  let basis = vermietungDaten;
-  if (aktuellerFilter !== 'alle') {
-    filterVermietung(aktuellerFilter); // bereits gefiltert rendern
-  }
   const toDate = s => {
     const p = (s || "").split(".");
     return p.length === 3 ? new Date(p[2], p[1]-1, p[0]) : new Date(0);
   };
-  const sorted = [...document.querySelectorAll('#vermietung-tbody tr')]
-    // Einfacher: direkt auf vermietungDaten arbeiten
-  
-  // Saubere Lösung:
+
+  // Aktuellen Filter anwenden
   let gefiltert = vermietungDaten;
   if (aktuellerFilter === 'offen')     gefiltert = vermietungDaten.filter(d => d.status.includes("01"));
   if (aktuellerFilter === 'gemahnt')   gefiltert = vermietungDaten.filter(d => d.status.includes("02"));
@@ -298,6 +260,62 @@ function sortVermietung() {
   document.getElementById('vermietung-tbody').innerHTML = renderVermietungRows(sorted);
 }
 
+function openVermietungModal(row) {
+  const d = vermietungDaten.find(x => x.row === row);
+  if (!d) return;
+
+  const statusColor  = getStatusColor(d.status);
+  const istStorniert = d.status.includes("05");
+  const istBezahlt   = d.status.includes("03") || d.status.includes("04");
+
+  document.getElementById('vermietung-modal-body').innerHTML = `
+    <div class="row g-3">
+      <div class="col-md-6">
+        <table class="table table-sm table-borderless">
+          <tr><td class="text-muted fw-bold">Vertragsnummer</td><td>${d.vertragsnr}</td></tr>
+          <tr><td class="text-muted fw-bold">Name</td><td>${d.vorname} ${d.nachname}</td></tr>
+          <tr><td class="text-muted fw-bold">E-Mail</td>
+              <td><a href="mailto:${d.email}">${d.email}</a></td></tr>
+          <tr><td class="text-muted fw-bold">Telefon</td>
+              <td><a href="tel:${d.telefon}">${d.telefon}</a></td></tr>
+          <tr><td class="text-muted fw-bold">Mietdatum</td><td>${d.mietdatum}</td></tr>
+          <tr><td class="text-muted fw-bold">Festbeginn</td><td>${d.festbeginn}</td></tr>
+          <tr><td class="text-muted fw-bold">Mietbetrag</td><td>${d.mietbetrag}</td></tr>
+        </table>
+      </div>
+      <div class="col-md-6">
+        <div class="p-3 rounded mb-3"
+             style="background:${statusColor}22;border-left:4px solid ${statusColor}">
+          <strong>Status:</strong> ${d.status}
+        </div>
+        <table class="table table-sm table-borderless">
+          <tr><td class="text-muted">Vertrag versandt</td><td>${d.datum_vertrag || '–'}</td></tr>
+          <tr><td class="text-muted">Mahnung</td><td>${d.datum_mahnung || '–'}</td></tr>
+          <tr><td class="text-muted">Schlüsselübergabe</td><td>${d.datum_schluessel || '–'}</td></tr>
+          <tr><td class="text-muted">Storniert</td><td>${d.datum_storno || '–'}</td></tr>
+          <tr><td class="text-muted">Clubdesk</td><td>${d.transfer || '–'}</td></tr>
+        </table>
+        ${d.kommentar ? `<div class="alert alert-info p-2 small">💬 ${d.kommentar}</div>` : ''}
+      </div>
+    </div>`;
+
+  document.getElementById('vermietung-modal-footer').innerHTML = `
+    <button class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Schliessen</button>
+    ${!istStorniert && !istBezahlt ? `
+      <button class="btn btn-sm btn-warning"
+              onclick="vermietungAktion('mahnung', ${row})">❗ Mahnung</button>` : ''}
+    ${!istStorniert && !istBezahlt ? `
+      <button class="btn btn-sm btn-success"
+              onclick="vermietungAktion('bestaetigen', ${row})">✅ Zahlung bestätigen</button>` : ''}
+    <button class="btn btn-sm btn-primary"
+            onclick="vermietungAktion('whatsapp', ${row})">📱 WhatsApp</button>
+    ${!istStorniert ? `
+      <button class="btn btn-sm btn-danger"
+              onclick="vermietungAktion('stornieren', ${row})">❌ Stornieren</button>` : ''}
+  `;
+
+  new bootstrap.Modal(document.getElementById('vermietungModal')).show();
+}
 
 async function vermietungAktion(action, row) {
   const labels = {
@@ -330,8 +348,8 @@ async function triggerClubdeskExport() {
   showToast(data.success ? "✅ Export gesendet" : "❌ Fehler: " + data.error);
 }
 
-// Hilfsfunktionen
 function getStatusColor(status) {
+  if (!status) return "#6c757d";
   if (status.includes("01")) return "#ffc107";
   if (status.includes("02")) return "#fd7e14";
   if (status.includes("03")) return "#28a745";
@@ -341,6 +359,7 @@ function getStatusColor(status) {
 }
 
 function getStatusLabel(status) {
+  if (!status) return "Unbekannt";
   if (status.includes("01")) return "Offen";
   if (status.includes("02")) return "Gemahnt";
   if (status.includes("03")) return "Bezahlt";
