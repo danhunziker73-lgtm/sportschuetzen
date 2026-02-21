@@ -133,11 +133,11 @@ function renderInventarUI(container) {
                     onclick="localStorage.setItem('inventar-activeTab','liste'); showInventarSection('liste')">
                 ✏️ Bestand &amp; Mitglieder ${canDelete() ? 'ändern/löschen' : 'ändern'}
             </button>
-            ${canDelete() ? `
-            <button class="btn btn-outline-dark nav-btn" id="inv-btn-admin"
-                    onclick="localStorage.setItem('inventar-activeTab','admin'); showInventarSection('admin')">
-                ➕ Bestand &amp; Mitglieder hinzufügen
-            </button>` : ''}
+         ${canAdd() ? `
+<button class="btn btn-outline-dark nav-btn" id="inv-btn-admin"
+        onclick="localStorage.setItem('inventar-activeTab','admin'); showInventarSection('admin')">
+    ➕ Bestand &amp; Mitglieder hinzufügen
+</button>` : ''}
         </div>
 
         <!-- SECTION: BUCHUNG -->
