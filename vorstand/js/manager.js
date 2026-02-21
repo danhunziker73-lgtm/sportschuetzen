@@ -3,31 +3,18 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Turnierleiter – Stufe 2 Pro</title>
+<title>Turnierleiter Pro</title>
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
 
 <style>
+:root { --sidebar-width: 320px; }
 
-:root {
-  --sidebar-width: 320px;
-}
-
-body {
-  background: #f8f9fa;
-}
-
-/* ============================= */
-/* SIDEBAR DESKTOP */
-/* ============================= */
+body { background: #f8f9fa; }
 
 .sidebar-desktop {
   position: sticky;
   top: 1rem;
 }
-
-/* ============================= */
-/* MOBILE SLIDE SIDEBAR */
-/* ============================= */
 
 .mobile-sidebar {
   position: fixed;
@@ -43,9 +30,7 @@ body {
   flex-direction: column;
 }
 
-.mobile-sidebar.open {
-  right: 0;
-}
+.mobile-sidebar.open { right: 0; }
 
 .mobile-sidebar-header {
   padding: 1rem;
@@ -70,52 +55,21 @@ body {
   display: none;
 }
 
-.mobile-overlay.show {
-  display: block;
-}
+.mobile-overlay.show { display: block; }
 
-/* ============================= */
-/* DRAG */
-/* ============================= */
+.player { cursor: grab; }
 
-.player {
-  cursor: grab;
-}
+.dropzone.drag-over { background: #e7f3ff !important; }
 
-.dropzone.drag-over {
-  background-color: #e7f3ff !important;
-}
-
-body.drag-mode .mobile-tab {
-  animation: pulseDrag 1s infinite;
-}
-
-@keyframes pulseDrag {
-  0% { transform: scale(1); }
-  50% { transform: scale(1.05); }
-  100% { transform: scale(1); }
-}
-
-.team-card {
-  min-height: 180px;
-}
-
-/* ============================= */
-/* RESPONSIVE */
-/* ============================= */
+.team-card { min-height: 180px; }
 
 @media (max-width: 768px) {
-  .sidebar-desktop {
-    display: none;
-  }
+  .sidebar-desktop { display: none; }
 }
 
 @media (min-width: 769px) {
-  .mobile-toggle-btn {
-    display: none;
-  }
+  .mobile-toggle-btn { display: none; }
 }
-
 </style>
 </head>
 <body>
@@ -124,17 +78,18 @@ body.drag-mode .mobile-tab {
   <div class="row" id="manager-inner"></div>
 </div>
 
-<div class="mobile-overlay" onclick="closeMobileSidebar()"></div>
+<div class="mobile-overlay" id="mobileOverlay"></div>
 
 <div class="mobile-sidebar" id="mobileSidebar">
   <div class="mobile-sidebar-header">
     <strong>Pool & Mail</strong>
-    <button class="btn btn-sm btn-light" onclick="closeMobileSidebar()">✕</button>
+    <button class="btn btn-sm btn-light" id="closeSidebarBtn">✕</button>
   </div>
   <div class="mobile-sidebar-body" id="mobileSidebarContent"></div>
 </div>
 
 <script>
+document.addEventListener("DOMContentLoaded", function() {
 
 let appState = {
   teams: [
@@ -146,20 +101,18 @@ let appState = {
     { id: 2, name: "Anna" },
     { id: 3, name: "Lukas" }
   ],
-  mailList: [],
-  _dragHoverTimer: null
+  mailList: []
 };
 
 function renderContestUI() {
 
   const container = document.getElementById("manager-inner");
+  if (!container) return;
 
   const teamsHtml = appState.teams.map(team => `
     <div class="col-12 col-md-6">
       <div class="card shadow-sm team-card">
-        <div class="card-header bg-primary text-white">
-          ${team.name}
-        </div>
+        <div class="card-header bg-primary text-white">${team.name}</div>
         <div class="card-body dropzone"
              data-target-type="team"
              data-team-id="${team.id}">
@@ -171,32 +124,28 @@ function renderContestUI() {
 
   const sidebarContent = `
     ${renderMailCard()}
-    <div class="mt-3">
-      ${renderPoolCard()}
-    </div>
+    <div class="mt-3">${renderPoolCard()}</div>
   `;
 
   container.innerHTML = `
     <div class="col-md-4 sidebar-desktop">
       ${sidebarContent}
     </div>
-
     <div class="col-12 col-md-8">
       <div class="d-flex justify-content-end mb-2 mobile-toggle-btn">
-        <button class="btn btn-outline-primary btn-sm"
-                onclick="openMobileSidebar()">
+        <button class="btn btn-outline-primary btn-sm" id="openSidebarBtn">
           ☰ Pool & Mail
         </button>
       </div>
-      <div class="row g-3">
-        ${teamsHtml}
-      </div>
+      <div class="row g-3">${teamsHtml}</div>
     </div>
   `;
 
-  document.getElementById("mobileSidebarContent").innerHTML = sidebarContent;
+  const mobileContent = document.getElementById("mobileSidebarContent");
+  if (mobileContent) mobileContent.innerHTML = sidebarContent;
 
   initDragAndDrop();
+  attachSidebarButtons();
 }
 
 function renderPoolCard() {
@@ -205,8 +154,7 @@ function renderPoolCard() {
       <div class="card-header bg-secondary text-white">
         Pool (${appState.pool.length})
       </div>
-      <div class="card-body dropzone"
-           data-target-type="pool">
+      <div class="card-body dropzone" data-target-type="pool">
         ${appState.pool.map(renderPlayer).join("")}
       </div>
     </div>
@@ -219,8 +167,7 @@ function renderMailCard() {
       <div class="card-header bg-warning">
         Mail (${appState.mailList.length})
       </div>
-      <div class="card-body dropzone"
-           data-target-type="mail">
+      <div class="card-body dropzone" data-target-type="mail">
         ${appState.mailList.map(renderPlayer).join("")}
       </div>
     </div>
@@ -278,11 +225,6 @@ function initDragAndDrop() {
 
     el.addEventListener("dragstart", e => {
       e.dataTransfer.setData("id", el.dataset.id);
-      document.body.classList.add("drag-mode");
-    });
-
-    el.addEventListener("dragend", () => {
-      document.body.classList.remove("drag-mode");
     });
 
   });
@@ -303,25 +245,43 @@ function initDragAndDrop() {
       zone.classList.remove("drag-over");
       const id = e.dataTransfer.getData("id");
       movePlayer(parseInt(id), zone);
-      document.body.classList.remove("drag-mode");
     });
 
   });
-
 }
 
-function openMobileSidebar() {
-  document.getElementById("mobileSidebar").classList.add("open");
-  document.querySelector(".mobile-overlay").classList.add("show");
-}
+function attachSidebarButtons() {
 
-function closeMobileSidebar() {
-  document.getElementById("mobileSidebar").classList.remove("open");
-  document.querySelector(".mobile-overlay").classList.remove("show");
+  const openBtn = document.getElementById("openSidebarBtn");
+  const closeBtn = document.getElementById("closeSidebarBtn");
+  const overlay = document.getElementById("mobileOverlay");
+  const sidebar = document.getElementById("mobileSidebar");
+
+  if (openBtn) {
+    openBtn.onclick = () => {
+      sidebar.classList.add("open");
+      overlay.classList.add("show");
+    };
+  }
+
+  if (closeBtn) {
+    closeBtn.onclick = () => {
+      sidebar.classList.remove("open");
+      overlay.classList.remove("show");
+    };
+  }
+
+  if (overlay) {
+    overlay.onclick = () => {
+      sidebar.classList.remove("open");
+      overlay.classList.remove("show");
+    };
+  }
 }
 
 renderContestUI();
 
+});
 </script>
 
 </body>
