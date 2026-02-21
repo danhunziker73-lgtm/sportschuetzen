@@ -343,9 +343,10 @@ function showInventarSection(id) {
 function fillInventarDropdowns() {
     if (!inventarState?.mitglieder) return;
 
-    const sorted = [...inventarState.mitglieder]
-        .sort((a, b) => (a.Nachname || "").localeCompare(b.Nachname || ""));
-
+   d = [...inventarState.mitglieder]
+  .filter(m => m.Status === 'aktiv')  // nur aktive Mitglieder
+  .sort((a, b) => a.Nachname.localeCompare(b.Nachname));
+    
     document.getElementById('select-mitglied').innerHTML =
         '<option value="">-- wählen --</option>' +
         sorted.map(m => `<option value="${m.ID}">${m.Nachname} ${m.Vorname}</option>`).join('');
