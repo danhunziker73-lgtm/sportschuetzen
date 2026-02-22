@@ -3,169 +3,154 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sportlicher Mietkalender</title>
+<title>Premium Sport Kalender</title>
 
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
 
 <style>
 :root {
-  --primary: #0f172a;
-  --accent: #2563eb;
-  --accent-glow: #3b82f6;
-  --weekend: #e2e8f0;
+  --primary: #1e40af;
+  --primary-light: #3b82f6;
+  --weekend-bg: #f1f5f9;
+  --danger: #dc2626;
   --warning: #f59e0b;
-  --danger: #ef4444;
-  --success: #22c55e;
+  --success: #16a34a;
 }
 
 body {
   font-family: 'Inter', sans-serif;
-  background: radial-gradient(circle at top left, #1e293b, #0f172a);
+  background: #f8fafc;
   display: flex;
   justify-content: center;
-  padding: 60px 16px;
-  color: white;
+  padding: 40px 16px;
 }
 
-.form-card {
-  background: rgba(255,255,255,0.05);
-  backdrop-filter: blur(14px);
+.card {
+  background: white;
   width: 100%;
-  max-width: 900px;
-  padding: 50px;
-  border-radius: 24px;
-  box-shadow: 0 30px 80px rgba(0,0,0,0.6);
+  max-width: 950px;
+  padding: 40px;
+  border-radius: 20px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.08);
 }
 
 h1 {
-  font-weight: 700;
   margin-bottom: 10px;
-  letter-spacing: 0.5px;
 }
 
 .subtitle {
-  color: #94a3b8;
-  margin-bottom: 40px;
+  color: #64748b;
+  margin-bottom: 30px;
 }
 
 .flatpickr-calendar {
-  background: transparent !important;
   box-shadow: none !important;
-}
-
-.flatpickr-months {
-  color: white;
 }
 
 .flatpickr-day {
   border-radius: 12px;
   transition: all 0.2s ease;
+  font-weight: 500;
 }
 
 .flatpickr-day:hover {
   transform: translateY(-3px);
-  background: var(--accent);
+  background: var(--primary-light);
   color: white;
-  box-shadow: 0 6px 18px rgba(37,99,235,0.4);
 }
 
 .flatpickr-day.selected {
-  background: var(--accent);
-  box-shadow: 0 0 0 4px rgba(59,130,246,0.4);
+  background: var(--primary);
+  color: white;
+  box-shadow: 0 0 0 4px rgba(59,130,246,0.3);
 }
 
 .flatpickr-day.weekend {
-  background: var(--weekend);
-  color: #0f172a;
+  background: var(--weekend-bg);
   font-weight: 600;
 }
 
-.flatpickr-day.today {
-  border: 2px solid var(--accent);
-}
-
-.flatpickr-day.provisional {
+.flatpickr-day.fix-day {
+  background: #fee2e2 !important;
+  color: var(--danger) !important;
   position: relative;
 }
 
-.flatpickr-day.provisional::after {
+.flatpickr-day.fix-day::after {
+  content: "✕";
+  position: absolute;
+  top: 4px;
+  right: 6px;
+  font-size: 10px;
+  font-weight: bold;
+}
+
+.flatpickr-day.provisional-day {
+  position: relative;
+}
+
+.flatpickr-day.provisional-day::after {
   content: "";
   position: absolute;
   inset: 4px;
   border-radius: 10px;
   border: 2px solid var(--warning);
-  animation: pulse 2s infinite;
+  animation: pulse 1.5s infinite;
 }
 
 @keyframes pulse {
   0% { opacity: 1; }
-  50% { opacity: 0.3; }
+  50% { opacity: 0.4; }
   100% { opacity: 1; }
 }
 
 .status-box {
-  margin-top: 30px;
-  padding: 18px;
-  border-radius: 16px;
+  margin-top: 25px;
+  padding: 16px;
+  border-radius: 14px;
   font-weight: 600;
   display: none;
-  transform: translateY(10px);
-  opacity: 0;
-  transition: all 0.3s ease;
+  animation: fadeUp 0.3s ease;
 }
 
-.status-box.show {
-  display: block;
-  transform: translateY(0);
-  opacity: 1;
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
-.status-success {
-  background: rgba(34,197,94,0.15);
-  color: var(--success);
-}
-
-.status-warning {
-  background: rgba(245,158,11,0.15);
-  color: var(--warning);
-}
-
-.status-danger {
-  background: rgba(239,68,68,0.15);
-  color: var(--danger);
-}
+.status-success { background: #ecfdf5; color: var(--success); }
+.status-warning { background: #fff7ed; color: var(--warning); }
+.status-danger { background: #fef2f2; color: var(--danger); }
 
 button {
-  margin-top: 30px;
+  margin-top: 25px;
   width: 100%;
-  padding: 18px;
-  border-radius: 18px;
+  padding: 16px;
+  border-radius: 14px;
   border: none;
-  font-size: 16px;
   font-weight: 700;
-  background: linear-gradient(90deg, var(--accent), var(--accent-glow));
+  background: var(--primary);
   color: white;
   cursor: pointer;
-  transition: 0.3s ease;
+  transition: 0.2s;
 }
 
 button:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(59,130,246,0.4);
+  background: var(--primary-light);
 }
 </style>
 </head>
 <body>
 
-<div class="form-card">
-  <h1>Wunschtermin wählen</h1>
+<div class="card">
+  <h1>Termin wählen</h1>
   <div class="subtitle">Reservierung nur für einzelne Tage</div>
 
-  <input type="text" id="calendar" readonly>
+  <div id="calendar"></div>
 
   <div id="statusBox" class="status-box"></div>
-
   <button id="submitBtn" disabled>Reservieren</button>
 </div>
 
@@ -178,13 +163,13 @@ let fixDates = {};
 let provisionalDates = {};
 
 function convertToISO(dateStr) {
-  const [day, month, year] = dateStr.split(".");
-  return `${year}-${month.padStart(2,'0')}-${day.padStart(2,'0')}`;
+  const [d,m,y] = dateStr.split(".");
+  return `${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`;
 }
 
 async function loadData() {
-  const response = await fetch(WORKER_TERMINE_URL);
-  const data = await response.json();
+  const res = await fetch(WORKER_TERMINE_URL);
+  const data = await res.json();
 
   data.forEach(entry => {
     const iso = convertToISO(entry.datum);
@@ -195,60 +180,75 @@ async function loadData() {
   initCalendar();
 }
 
+function showStatus(type, message) {
+  const box = document.getElementById("statusBox");
+  box.className = "status-box " + type;
+  box.innerHTML = message;
+  box.style.display = "block";
+}
+
 function initCalendar() {
-  flatpickr("#calendar", {
+  const fp = flatpickr("#calendar", {
     inline: true,
     showMonths: window.innerWidth > 768 ? 2 : 1,
-    locale: {
-      firstDayOfWeek: 1
-    },
+    locale: { firstDayOfWeek: 1 },
     minDate: "today",
-    dateFormat: "Y-m-d",
-    disable: Object.keys(fixDates),
+    disable: [],
 
-    onDayCreate: function(dObj, dStr, fp, dayElem) {
-      const dateStr = dayElem.dateObj.toISOString().split("T")[0];
+    onDayCreate: function(_,__,___,dayElem) {
+      const iso = dayElem.dateObj.toISOString().split("T")[0];
       const day = dayElem.dateObj.getDay();
 
       if (day === 0 || day === 6) {
         dayElem.classList.add("weekend");
       }
 
-      if (provisionalDates[dateStr]) {
-        dayElem.classList.add("provisional");
-        dayElem.title = provisionalDates[dateStr];
+      if (fixDates[iso]) {
+        dayElem.classList.add("fix-day");
       }
 
-      if (fixDates[dateStr]) {
-        dayElem.title = "Belegt: " + fixDates[dateStr];
+      if (provisionalDates[iso]) {
+        dayElem.classList.add("provisional-day");
       }
+
+      dayElem.addEventListener("click", () => {
+        if (fixDates[iso]) {
+          showStatus("status-danger", "❌ Bereits reserviert: " + fixDates[iso]);
+          document.getElementById("submitBtn").disabled = true;
+        }
+        else if (provisionalDates[iso]) {
+          showStatus("status-warning", "⚠ Provisorische Belegung: " + provisionalDates[iso]);
+          document.getElementById("submitBtn").disabled = false;
+        }
+      });
     },
 
     onChange: function(selectedDates) {
-      const statusBox = document.getElementById("statusBox");
-      const submitBtn = document.getElementById("submitBtn");
-
       if (!selectedDates.length) return;
 
       const iso = selectedDates[0].toISOString().split("T")[0];
 
-      statusBox.className = "status-box show";
+      if (!fixDates[iso] && !provisionalDates[iso]) {
+        showStatus("status-success", "✓ Termin verfügbar.");
+        document.getElementById("submitBtn").disabled = false;
+      }
+    }
+  });
 
-      if (fixDates[iso]) {
-        statusBox.classList.add("status-danger");
-        statusBox.innerHTML = "❌ Bereits reserviert: " + fixDates[iso];
-        submitBtn.disabled = true;
-      }
-      else if (provisionalDates[iso]) {
-        statusBox.classList.add("status-warning");
-        statusBox.innerHTML = "⚠ Provisorische Belegung – manuelle Abklärung nötig.";
-        submitBtn.disabled = false;
-      }
-      else {
-        statusBox.classList.add("status-success");
-        statusBox.innerHTML = "✓ Termin verfügbar.";
-        submitBtn.disabled = false;
-      }
+  // Swipe Support (Mobile)
+  let startX = 0;
+
+  fp.calendarContainer.addEventListener("touchstart", e => {
+    startX = e.touches[0].clientX;
+  });
+
+  fp.calendarContainer.addEventListener("touchend", e => {
+    const endX = e.changedTouches[0].clientX;
+    const diff = startX - endX;
+
+    if (Math.abs(diff) > 50) {
+      if (diff > 0) fp.nextMonth();
+      else fp.prevMonth();
     }
   });
 }
