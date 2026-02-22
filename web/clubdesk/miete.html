@@ -3,8 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Mietanfrage</title>
+<title>Mietanfrage Premium</title>
+
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
 
 <style>
 body {
@@ -18,14 +20,14 @@ body {
 .form-card {
   background: white;
   width: 100%;
-  max-width: 600px;
+  max-width: 650px;
   padding: 50px;
-  border-radius: 20px;
-  box-shadow: 0 20px 60px rgba(0,0,0,0.08);
+  border-radius: 24px;
+  box-shadow: 0 25px 70px rgba(0,0,0,0.08);
 }
 
 h1 {
-  margin-bottom: 10px;
+  margin-bottom: 8px;
   font-weight: 600;
 }
 
@@ -35,54 +37,60 @@ h1 {
 }
 
 .input-group {
-  margin-bottom: 28px;
+  margin-bottom: 30px;
 }
 
 label {
-  display: block;
   font-weight: 600;
-  margin-bottom: 8px;
+  display: block;
+  margin-bottom: 10px;
   font-size: 14px;
 }
 
 input {
   width: 100%;
-  padding: 14px;
-  border-radius: 10px;
+  padding: 16px;
+  border-radius: 14px;
   border: 1px solid #d1d5db;
   font-size: 16px;
-  transition: 0.2s ease;
+  transition: 0.25s ease;
 }
 
 input:focus {
   border-color: #6366f1;
   outline: none;
-  box-shadow: 0 0 0 3px rgba(99,102,241,0.15);
+  box-shadow: 0 0 0 4px rgba(99,102,241,0.15);
 }
 
-.status-message {
-  margin-top: 10px;
+.status-box {
+  margin-top: 15px;
+  padding: 14px;
+  border-radius: 12px;
   font-size: 14px;
   font-weight: 500;
+  display: none;
 }
 
 .status-available {
+  background: #ecfdf5;
   color: #16a34a;
 }
 
 .status-booked {
+  background: #fef2f2;
   color: #dc2626;
 }
 
 .status-warning {
+  background: #fff7ed;
   color: #d97706;
 }
 
 button {
-  margin-top: 20px;
+  margin-top: 30px;
   width: 100%;
-  padding: 16px;
-  border-radius: 12px;
+  padding: 18px;
+  border-radius: 16px;
   border: none;
   font-size: 16px;
   font-weight: 600;
@@ -104,72 +112,102 @@ button:hover {
   <div class="subtitle">Wunschtermin auswählen</div>
 
   <div class="input-group">
-    <label for="date">Datum</label>
-    <input type="date" id="date" required>
-    <div id="status" class="status-message"></div>
+    <label for="dateRange">Mietzeitraum</label>
+    <input type="text" id="dateRange" placeholder="Zeitraum wählen" readonly>
+    <div id="statusBox" class="status-box"></div>
   </div>
 
-  <button type="submit">Anfrage senden</button>
+  <button id="submitBtn" disabled>Anfrage senden</button>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+
 <script>
-const bookings = [
-  { start: "2026-03-10", end: "2026-03-12" },
-  { start: "2026-03-18", end: "2026-03-20" }
-];
+const WORKER_TERMINE_URL = "https://termine.dan-hunziker73.workers.dev?action=getTermine";
 
-const bufferDays = 1;
+let fixDates = [];
+let provisionalDates = [];
 
-const dateInput = document.getElementById("date");
-const statusDiv = document.getElementById("status");
-
-function checkAvailability(selectedDate) {
-  const date = new Date(selectedDate);
-
-  for (let booking of bookings) {
-    const start = new Date(booking.start);
-    const end = new Date(booking.end);
-
-    const startBuffer = new Date(start);
-    startBuffer.setDate(startBuffer.getDate() - bufferDays);
-
-    const endBuffer = new Date(end);
-    endBuffer.setDate(endBuffer.getDate() + bufferDays);
-
-    // Direkt belegt
-    if (date >= start && date <= end) {
-      return "booked";
-    }
-
-    // Im Pufferbereich
-    if (date >= startBuffer && date <= endBuffer) {
-      return "warning";
-    }
-  }
-
-  return "available";
+function convertToISO(dateStr) {
+  const [day, month, year] = dateStr.split(".");
+  return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
 }
 
-dateInput.addEventListener("change", function() {
-  const result = checkAvailability(this.value);
+async function loadBookings() {
+  const response = await fetch(WORKER_TERMINE_URL);
+  const data = await response.json();
 
-  statusDiv.className = "status-message";
+  data.forEach(entry => {
+    const isoDate = convertToISO(entry.datum);
 
-  if (result === "available") {
-    statusDiv.textContent = "✓ Termin verfügbar";
-    statusDiv.classList.add("status-available");
-  }
+    if (entry.status === "fix") {
+      fixDates.push(isoDate);
+    }
 
-  if (result === "booked") {
-    statusDiv.textContent = "✕ Termin bereits belegt";
-    statusDiv.classList.add("status-booked");
-  }
+    if (entry.status === "provisorisch") {
+      provisionalDates.push(isoDate);
+    }
+  });
 
-  if (result === "warning") {
-    statusDiv.textContent = "⚠ Termin direkt angrenzend – nur auf Anfrage möglich";
-    statusDiv.classList.add("status-warning");
-  }
-});
+  initCalendar();
+}
+
+function initCalendar() {
+  flatpickr("#dateRange", {
+    mode: "range",
+    minDate: "today",
+    dateFormat: "Y-m-d",
+    disable: fixDates,
+    onDayCreate: function(dObj, dStr, fp, dayElem) {
+      const dateStr = dayElem.dateObj.toISOString().split("T")[0];
+
+      if (provisionalDates.includes(dateStr)) {
+        dayElem.style.background = "#fff7ed";
+        dayElem.style.color = "#d97706";
+      }
+    },
+    onChange: function(selectedDates) {
+      const statusBox = document.getElementById("statusBox");
+      const submitBtn = document.getElementById("submitBtn");
+
+      if (selectedDates.length < 2) {
+        statusBox.style.display = "none";
+        submitBtn.disabled = true;
+        return;
+      }
+
+      let hasProvisional = false;
+
+      let current = new Date(selectedDates[0]);
+      const end = selectedDates[1];
+
+      while (current <= end) {
+        const iso = current.toISOString().split("T")[0];
+
+        if (provisionalDates.includes(iso)) {
+          hasProvisional = true;
+          break;
+        }
+
+        current.setDate(current.getDate() + 1);
+      }
+
+      statusBox.style.display = "block";
+
+      if (hasProvisional) {
+        statusBox.className = "status-box status-warning";
+        statusBox.innerHTML = "⚠ Zeitraum enthält provisorische Vereinsbelegung – manuelle Prüfung erforderlich.";
+      } else {
+        statusBox.className = "status-box status-available";
+        statusBox.innerHTML = "✓ Zeitraum verfügbar.";
+      }
+
+      submitBtn.disabled = false;
+    }
+  });
+}
+
+loadBookings();
 </script>
 
 </body>
