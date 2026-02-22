@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mietvertrag</title>
+<style>
+body {
+  font-family: Inter, sans-serif;
+  background: #f4f6f9;
+  display: flex;
+  justify-content: center;
+  padding: 40px 16px;
+}
+
+.form-container {
+  width: 100%;
+  max-width: 650px;
+  background: white;
+  padding: 40px;
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+}
+
+h1 {
+  margin-bottom: 8px;
+}
+
+.subtitle {
+  color: #666;
+  margin-bottom: 30px;
+}
+
+.input-group {
+  position: relative;
+  margin-bottom: 28px;
+}
+
+input, select {
+  width: 100%;
+  padding: 16px 12px;
+  border: 1px solid #dcdcdc;
+  border-radius: 8px;
+  font-size: 16px;
+}
+
+input:focus, select:focus {
+  outline: none;
+  border-color: #3f51b5;
+}
+
+button {
+  width: 100%;
+  padding: 16px;
+  border-radius: 10px;
+  font-size: 16px;
+  background: #3f51b5;
+  color: white;
+  border: none;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+button:hover {
+  background: #303f9f;
+}
+</style>
+</head>
+<body>
+
+<div class="form-container">
+  <h1>Mietvertrag</h1>
+  <div class="subtitle">Dauer: ca. 2 Minuten</div>
+
+  <select required>
+    <option value="">Anrede auswählen</option>
+    <option>Herr</option>
+    <option>Frau</option>
+    <option>Divers</option>
+  </select>
+
+  <input type="text" placeholder="Vorname" required>
+  <input type="text" placeholder="Nachname" required>
+  <input type="email" placeholder="E-Mail-Adresse" required>
+  <input type="text" placeholder="Straße" required>
+  <input type="text" placeholder="PLZ" required>
+  <input type="text" placeholder="Wohnort" required>
+
+  <button type="submit">Weiter</button>
+</div>
+
+</body>
+</html>
