@@ -3,114 +3,156 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Premium Mietkalender</title>
+<title>Sportlicher Mietkalender</title>
 
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
 
 <style>
+:root {
+  --primary: #0f172a;
+  --accent: #2563eb;
+  --accent-glow: #3b82f6;
+  --weekend: #e2e8f0;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+  --success: #22c55e;
+}
+
 body {
   font-family: 'Inter', sans-serif;
-  background: linear-gradient(135deg, #f8fafc, #eef2f7);
+  background: radial-gradient(circle at top left, #1e293b, #0f172a);
   display: flex;
   justify-content: center;
   padding: 60px 16px;
+  color: white;
 }
 
 .form-card {
-  background: white;
+  background: rgba(255,255,255,0.05);
+  backdrop-filter: blur(14px);
   width: 100%;
-  max-width: 650px;
+  max-width: 900px;
   padding: 50px;
   border-radius: 24px;
-  box-shadow: 0 25px 70px rgba(0,0,0,0.08);
+  box-shadow: 0 30px 80px rgba(0,0,0,0.6);
 }
 
 h1 {
-  margin-bottom: 12px;
-  font-weight: 600;
+  font-weight: 700;
+  margin-bottom: 10px;
+  letter-spacing: 0.5px;
 }
 
 .subtitle {
-  color: #6b7280;
-  margin-bottom: 35px;
+  color: #94a3b8;
+  margin-bottom: 40px;
+}
+
+.flatpickr-calendar {
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.flatpickr-months {
+  color: white;
+}
+
+.flatpickr-day {
+  border-radius: 12px;
+  transition: all 0.2s ease;
+}
+
+.flatpickr-day:hover {
+  transform: translateY(-3px);
+  background: var(--accent);
+  color: white;
+  box-shadow: 0 6px 18px rgba(37,99,235,0.4);
+}
+
+.flatpickr-day.selected {
+  background: var(--accent);
+  box-shadow: 0 0 0 4px rgba(59,130,246,0.4);
+}
+
+.flatpickr-day.weekend {
+  background: var(--weekend);
+  color: #0f172a;
+  font-weight: 600;
+}
+
+.flatpickr-day.today {
+  border: 2px solid var(--accent);
+}
+
+.flatpickr-day.provisional {
+  position: relative;
+}
+
+.flatpickr-day.provisional::after {
+  content: "";
+  position: absolute;
+  inset: 4px;
+  border-radius: 10px;
+  border: 2px solid var(--warning);
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% { opacity: 1; }
+  50% { opacity: 0.3; }
+  100% { opacity: 1; }
 }
 
 .status-box {
-  margin-top: 20px;
-  padding: 16px;
-  border-radius: 14px;
-  font-size: 14px;
-  font-weight: 500;
+  margin-top: 30px;
+  padding: 18px;
+  border-radius: 16px;
+  font-weight: 600;
   display: none;
+  transform: translateY(10px);
   opacity: 0;
-  transform: translateY(8px);
   transition: all 0.3s ease;
 }
 
 .status-box.show {
   display: block;
-  opacity: 1;
   transform: translateY(0);
+  opacity: 1;
 }
 
-.status-available {
-  background: #ecfdf5;
-  color: #16a34a;
-}
-
-.status-booked {
-  background: #fef2f2;
-  color: #dc2626;
+.status-success {
+  background: rgba(34,197,94,0.15);
+  color: var(--success);
 }
 
 .status-warning {
-  background: #fff7ed;
-  color: #d97706;
+  background: rgba(245,158,11,0.15);
+  color: var(--warning);
 }
 
-.flatpickr-day.weekend {
-  background: #f1f5f9;
-  font-weight: 600;
-}
-
-.flatpickr-day.today {
-  border: 2px solid #6366f1;
-}
-
-.flatpickr-day.provisional {
-  background: #fff7ed !important;
-  animation: pulse 2s infinite;
-}
-
-@keyframes pulse {
-  0% { box-shadow: 0 0 0 0 rgba(217,119,6,0.4); }
-  70% { box-shadow: 0 0 0 6px rgba(217,119,6,0); }
-  100% { box-shadow: 0 0 0 0 rgba(217,119,6,0); }
-}
-
-.flatpickr-day:hover {
-  transform: scale(1.15);
-  transition: 0.2s ease;
-  z-index: 2;
+.status-danger {
+  background: rgba(239,68,68,0.15);
+  color: var(--danger);
 }
 
 button {
   margin-top: 30px;
   width: 100%;
   padding: 18px;
-  border-radius: 16px;
+  border-radius: 18px;
   border: none;
   font-size: 16px;
-  font-weight: 600;
-  background: #6366f1;
+  font-weight: 700;
+  background: linear-gradient(90deg, var(--accent), var(--accent-glow));
   color: white;
   cursor: pointer;
   transition: 0.3s ease;
 }
 
 button:hover {
-  background: #4f46e5;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(59,130,246,0.4);
 }
 </style>
 </head>
@@ -118,7 +160,7 @@ button:hover {
 
 <div class="form-card">
   <h1>Wunschtermin wählen</h1>
-  <div class="subtitle">Reservierung nur für einzelne Tage möglich</div>
+  <div class="subtitle">Reservierung nur für einzelne Tage</div>
 
   <input type="text" id="calendar" readonly>
 
@@ -146,14 +188,8 @@ async function loadData() {
 
   data.forEach(entry => {
     const iso = convertToISO(entry.datum);
-
-    if (entry.status === "fix") {
-      fixDates[iso] = entry.titel;
-    }
-
-    if (entry.status === "provisorisch") {
-      provisionalDates[iso] = entry.titel;
-    }
+    if (entry.status === "fix") fixDates[iso] = entry.titel;
+    if (entry.status === "provisorisch") provisionalDates[iso] = entry.titel;
   });
 
   initCalendar();
@@ -161,29 +197,33 @@ async function loadData() {
 
 function initCalendar() {
   flatpickr("#calendar", {
+    inline: true,
+    showMonths: window.innerWidth > 768 ? 2 : 1,
+    locale: {
+      firstDayOfWeek: 1
+    },
     minDate: "today",
     dateFormat: "Y-m-d",
     disable: Object.keys(fixDates),
+
     onDayCreate: function(dObj, dStr, fp, dayElem) {
       const dateStr = dayElem.dateObj.toISOString().split("T")[0];
       const day = dayElem.dateObj.getDay();
 
-      // Wochenende hervorheben
       if (day === 0 || day === 6) {
         dayElem.classList.add("weekend");
       }
 
-      // Provisorische Tage
       if (provisionalDates[dateStr]) {
         dayElem.classList.add("provisional");
         dayElem.title = provisionalDates[dateStr];
       }
 
-      // Fix-Tage Tooltip
       if (fixDates[dateStr]) {
         dayElem.title = "Belegt: " + fixDates[dateStr];
       }
     },
+
     onChange: function(selectedDates) {
       const statusBox = document.getElementById("statusBox");
       const submitBtn = document.getElementById("submitBtn");
@@ -195,17 +235,17 @@ function initCalendar() {
       statusBox.className = "status-box show";
 
       if (fixDates[iso]) {
-        statusBox.classList.add("status-booked");
-        statusBox.innerHTML = "❌ Bereits fix reserviert: " + fixDates[iso];
+        statusBox.classList.add("status-danger");
+        statusBox.innerHTML = "❌ Bereits reserviert: " + fixDates[iso];
         submitBtn.disabled = true;
       }
       else if (provisionalDates[iso]) {
         statusBox.classList.add("status-warning");
-        statusBox.innerHTML = "⚠ Provisorisch reserviert (" + provisionalDates[iso] + ") – manuelle Abklärung nötig.";
+        statusBox.innerHTML = "⚠ Provisorische Belegung – manuelle Abklärung nötig.";
         submitBtn.disabled = false;
       }
       else {
-        statusBox.classList.add("status-available");
+        statusBox.classList.add("status-success");
         statusBox.innerHTML = "✓ Termin verfügbar.";
         submitBtn.disabled = false;
       }
