@@ -60,11 +60,13 @@ function navTo(viewId, el) {
     if (viewId === 'resultate' && typeof loadResultateData === 'function') loadResultateData();
     if (viewId === 'manager'   && typeof loadContestData   === 'function') loadContestData();
     if (viewId === 'vermietung' && typeof loadVermietungData === 'function') loadVermietungData();
+    // NEU: Jahresmeisterschaften laden
+    if (viewId === 'jahresmeisterschaft' && typeof loadJahresmeisterschaftData === 'function') loadJahresmeisterschaftData();
+    if (viewId === 'jahresmeisterschaft-kk' && typeof loadJahresmeisterschaftKKData === 'function') loadJahresmeisterschaftKKData();
 
 }
 
   
-
 
 function toggleSidebar() {
     document.getElementById('sidebar').classList.toggle('show');
