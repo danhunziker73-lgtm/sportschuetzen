@@ -3,91 +3,174 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Mietvertrag</title>
+<title>Mietanfrage</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+
 <style>
 body {
-  font-family: Inter, sans-serif;
-  background: #f4f6f9;
+  font-family: 'Inter', sans-serif;
+  background: linear-gradient(135deg, #f8fafc, #eef2f7);
   display: flex;
   justify-content: center;
-  padding: 40px 16px;
+  padding: 60px 16px;
 }
 
-.form-container {
-  width: 100%;
-  max-width: 650px;
+.form-card {
   background: white;
-  padding: 40px;
-  border-radius: 16px;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+  width: 100%;
+  max-width: 600px;
+  padding: 50px;
+  border-radius: 20px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.08);
 }
 
 h1 {
-  margin-bottom: 8px;
+  margin-bottom: 10px;
+  font-weight: 600;
 }
 
 .subtitle {
-  color: #666;
-  margin-bottom: 30px;
+  color: #6b7280;
+  margin-bottom: 40px;
 }
 
 .input-group {
-  position: relative;
   margin-bottom: 28px;
 }
 
-input, select {
-  width: 100%;
-  padding: 16px 12px;
-  border: 1px solid #dcdcdc;
-  border-radius: 8px;
-  font-size: 16px;
+label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 8px;
+  font-size: 14px;
 }
 
-input:focus, select:focus {
+input {
+  width: 100%;
+  padding: 14px;
+  border-radius: 10px;
+  border: 1px solid #d1d5db;
+  font-size: 16px;
+  transition: 0.2s ease;
+}
+
+input:focus {
+  border-color: #6366f1;
   outline: none;
-  border-color: #3f51b5;
+  box-shadow: 0 0 0 3px rgba(99,102,241,0.15);
+}
+
+.status-message {
+  margin-top: 10px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.status-available {
+  color: #16a34a;
+}
+
+.status-booked {
+  color: #dc2626;
+}
+
+.status-warning {
+  color: #d97706;
 }
 
 button {
+  margin-top: 20px;
   width: 100%;
   padding: 16px;
-  border-radius: 10px;
-  font-size: 16px;
-  background: #3f51b5;
-  color: white;
+  border-radius: 12px;
   border: none;
+  font-size: 16px;
+  font-weight: 600;
+  background: #6366f1;
+  color: white;
   cursor: pointer;
-  transition: 0.2s;
+  transition: 0.3s ease;
 }
 
 button:hover {
-  background: #303f9f;
+  background: #4f46e5;
 }
 </style>
 </head>
 <body>
 
-<div class="form-container">
-  <h1>Mietvertrag</h1>
-  <div class="subtitle">Dauer: ca. 2 Minuten</div>
+<div class="form-card">
+  <h1>Mietanfrage</h1>
+  <div class="subtitle">Wunschtermin auswählen</div>
 
-  <select required>
-    <option value="">Anrede auswählen</option>
-    <option>Herr</option>
-    <option>Frau</option>
-    <option>Divers</option>
-  </select>
+  <div class="input-group">
+    <label for="date">Datum</label>
+    <input type="date" id="date" required>
+    <div id="status" class="status-message"></div>
+  </div>
 
-  <input type="text" placeholder="Vorname" required>
-  <input type="text" placeholder="Nachname" required>
-  <input type="email" placeholder="E-Mail-Adresse" required>
-  <input type="text" placeholder="Straße" required>
-  <input type="text" placeholder="PLZ" required>
-  <input type="text" placeholder="Wohnort" required>
-
-  <button type="submit">Weiter</button>
+  <button type="submit">Anfrage senden</button>
 </div>
+
+<script>
+const bookings = [
+  { start: "2026-03-10", end: "2026-03-12" },
+  { start: "2026-03-18", end: "2026-03-20" }
+];
+
+const bufferDays = 1;
+
+const dateInput = document.getElementById("date");
+const statusDiv = document.getElementById("status");
+
+function checkAvailability(selectedDate) {
+  const date = new Date(selectedDate);
+
+  for (let booking of bookings) {
+    const start = new Date(booking.start);
+    const end = new Date(booking.end);
+
+    const startBuffer = new Date(start);
+    startBuffer.setDate(startBuffer.getDate() - bufferDays);
+
+    const endBuffer = new Date(end);
+    endBuffer.setDate(endBuffer.getDate() + bufferDays);
+
+    // Direkt belegt
+    if (date >= start && date <= end) {
+      return "booked";
+    }
+
+    // Im Pufferbereich
+    if (date >= startBuffer && date <= endBuffer) {
+      return "warning";
+    }
+  }
+
+  return "available";
+}
+
+dateInput.addEventListener("change", function() {
+  const result = checkAvailability(this.value);
+
+  statusDiv.className = "status-message";
+
+  if (result === "available") {
+    statusDiv.textContent = "✓ Termin verfügbar";
+    statusDiv.classList.add("status-available");
+  }
+
+  if (result === "booked") {
+    statusDiv.textContent = "✕ Termin bereits belegt";
+    statusDiv.classList.add("status-booked");
+  }
+
+  if (result === "warning") {
+    statusDiv.textContent = "⚠ Termin direkt angrenzend – nur auf Anfrage möglich";
+    statusDiv.classList.add("status-warning");
+  }
+});
+</script>
 
 </body>
 </html>
