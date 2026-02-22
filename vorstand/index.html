@@ -109,6 +109,11 @@
                      onclick="navTo('vermietung', this)">
                     <i class="fas fa-key"></i> Vermietung
                 </div>
+                <!-- NEU: Jahresmeisterschaft KK im Seitenmenü -->
+                <div class="nav-link role-protected" data-roles="admin,schuetzenmeister"
+                     onclick="navTo('jahresmeisterschaft', this)">
+                    <i class="fas fa-medal"></i> Jahresmeisterschaft KK
+                </div>
 
                 <div class="mt-auto border-top p-3">
                     <button class="btn btn-outline-danger w-100 btn-sm" onclick="doLogout()">
@@ -154,6 +159,22 @@
                             <p class="small text-muted">Ranglisten & Auswertung</p>
                         </div>
                     </div>
+                    <!-- NEU: Kachel für Vermietung -->
+                    <div class="col-md-4 role-protected" data-roles="admin,vorstand,vermieter">
+                        <div class="card p-3 shadow-sm border-0 h-100"
+                             onclick="navTo('vermietung')" style="cursor:pointer">
+                            <h5>🏠 Vermietung</h5>
+                            <p class="small text-muted">Schützenhaus Vermietung verwalten</p>
+                        </div>
+                    </div>
+                    <!-- NEU: Kachel für Jahresmeisterschaft KK -->
+                    <div class="col-md-4 role-protected" data-roles="admin,schuetzenmeister">
+                        <div class="card p-3 shadow-sm border-0 h-100"
+                             onclick="navTo('jahresmeisterschaft')" style="cursor:pointer">
+                            <h5>🏅 Jahresmeisterschaft KK</h5>
+                            <p class="small text-muted">Kleinkaliber Meisterschaft verwalten</p>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -194,18 +215,27 @@
                 <div id="manager-container"></div>
             </div>
 
-        
-           <!-- VERMIETUNG -->
-<div id="view-vermietung" class="module-view">
-  <div class="d-flex justify-content-between align-items-center mb-3">
-    <h2>🏠 Vermietung Cockpit</h2>
-    <button class="btn btn-sm btn-outline-secondary" onclick="loadVermietungData()">
-      🔄 Aktualisieren
-    </button>
-  </div>
-  <div id="vermietung-container"></div>
-</div>
+            <!-- VERMIETUNG -->
+            <div id="view-vermietung" class="module-view">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h2>🏠 Vermietung Cockpit</h2>
+                    <button class="btn btn-sm btn-outline-secondary" onclick="loadVermietungData()">
+                        🔄 Aktualisieren
+                    </button>
+                </div>
+                <div id="vermietung-container"></div>
+            </div>
 
+            <!-- NEU: JAHRESMEISTERSCHAFT KK -->
+            <div id="view-jahresmeisterschaft" class="module-view">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h2>🏅 Jahresmeisterschaft KK</h2>
+                    <button class="btn btn-sm btn-outline-secondary" onclick="loadJahresmeisterschaftData()">
+                        🔄 Aktualisieren
+                    </button>
+                </div>
+                <div id="jahresmeisterschaft-container"></div>
+            </div>
 
         </main>
     </div>
@@ -219,6 +249,8 @@
 <script src="js/manager.js"></script>
 <script src="js/resultate.js"></script>
 <script src="js/vermietung.js"></script>
+<!-- NEU: Skript für Jahresmeisterschaft (falls benötigt) -->
+<!-- <script src="js/jahresmeisterschaft.js"></script> -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
 </body>
