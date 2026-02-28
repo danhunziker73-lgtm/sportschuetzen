@@ -1065,8 +1065,15 @@ function renderMailStep() {
         : 'btn btn-primary';
 
     if (mailWizard.step === 1) {
-        const moduleLabels = { grenzland: '🛡️ Grenzland-Schützen', mannschaft: '👥 Mannschaft-Schützen', gruppe: '🎯 Gruppe-Schützen' };
-        body.innerHTML = `
+     // In renderMailStep() Step 1, Labels anpassen:
+const moduleLabels = {
+    grenzland:  '🛡️ Grenzland-Schützen (nur eingeteilt)',
+    mannschaft: '👥 Mannschaft-Schützen (nur eingeteilt)',
+    gruppe:     '🎯 Gruppe-Schützen (nur eingeteilt)'
+};
+// allMembers:
+'👤 Alle Mitglieder (inkl. nicht eingeteilt)'
+    body.innerHTML = `
             <h6 class="fw-bold mb-3">Empfänger-Gruppen</h6>
             ${Object.entries(moduleLabels).map(([key, label]) => {
                 const cached = mailWizard.cachedModules[key];
@@ -1183,9 +1190,14 @@ function mailWizardNext() {
 
 function mailWizardBack() {
     if (mailWizard.step <= 1) return;
+    // Wenn von Step 3 zurück → Ausschlüsse zurücksetzen
+    if (mailWizard.step === 3) {
+        mailWizard.excludedIds = new Set();
+    }
     mailWizard.step--;
     renderMailStep();
 }
+
 
 function buildRecipientList() {
     const seen = new Set();
@@ -1228,16 +1240,36 @@ async function executeMailSend() {
     btnNext.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sende…';
 
     try {
-        const pdfsToAttach = Object.entries(mailWizard.pdfAttachments)
-            .filter(([k, v]) => v && k !== 'none').map(([k]) => k);
+        // In executeMailSend():
+const pdfsToAttach = Object.entries(mailWizard.pdfAttachments)
+    .filter(([k, v]) => v && k !== 'none').map(([k]) => k);
 
-        let pdfBase64 = null, fileName = null;
-        if (pdfsToAttach.length > 0 && window.jspdf?.jsPDF) {
-            // PDF für aktives Modul generieren (vereinfacht)
-            const { doc, dateStr } = buildPdfDoc();
-            pdfBase64 = doc.output('datauristring').split(',')[1];
-            fileName = `Aufgebot_${dateStr}.pdf`;
-        }
+const attachments = [];
+for (const key of pdfsToAttach) {
+    const { doc, dateStr } = buildPdfDoc(key);
+    const cfg = CONTEST_CONFIG[key];
+    attachments.push({
+        pdfBase64: doc.output('datauristring').split(',')[1],
+        fileName: `${cfg.fileBase}_${dateStr}.pdf`
+    });
+}
+
+// In executeMailSend(), vor dem API-Call:
+const moduleNames = {
+    grenzland: 'Grenzland Cup',
+    mannschaft: 'Mannschafts-Meisterschaft',
+    gruppe: 'Gruppen-Meisterschaft'
+};
+const selectedModules = Object.entries(mailWizard.recipientGroups)
+    .filter(([k, v]) => v && k !== 'allMembers')
+    .map(([k]) => moduleNames[k] || k);
+
+const subject = `Aufgebot ${selectedModules.join(' & ')}`;
+
+const pdfList = pdfsToAttach.map(k => `• ${moduleNames[k]}`).join('\n');
+const bodyText = `Hallo\n\nIm Anhang findest du das Aufgebot für:\n${selectedModules.map(n => `• ${n}`).join('\n')}\n\n`
+    + (pdfList ? `Angehängte PDFs:\n${pdfList}\n\n` : '')
+    + `Freundliche Grüsse\nSportschützen Muhen`;
 
         const config = CONTEST_CONFIG[appState.activeModule];
         const res = await apiFetch('manager', 'action=sendMail', {
@@ -1401,7 +1433,7 @@ function renderContestToPdf(doc, config, opts = {}) {
     doc.setFontSize(16);
     doc.setTextColor(13, 110, 253);
     const titleLines = doc.splitTextToSize(String(pdfTitle), pageWidth - margin * 2);
-    doc.text(titleLines, margin, yPos);
+    doc.text(titleLines, 40, 18);  // x=40 = neben Logo (25mm breit + margin)
     yPos += (titleLines.length * 7) + 4;
 
     doc.setFont("helvetica", "normal");
@@ -1507,20 +1539,32 @@ function renderContestToPdf(doc, config, opts = {}) {
     return { doc, dateStr, title: pdfTitle };
 }
 
-function buildPdfDoc() {
-
-    if (!window.jspdf || !window.jspdf.jsPDF) {
-        throw new Error("jsPDF nicht geladen. Bitte index.html prüfen (CDN Scripts).");
-    }
+function buildPdfDoc(moduleKey) {
+    if (!window.jspdf?.jsPDF) throw new Error("jsPDF nicht geladen.");
     const { jsPDF } = window.jspdf;
-    const config = CONTEST_CONFIG[appState.activeModule];
+
+    const key = moduleKey || appState.activeModule;
+    const config = CONTEST_CONFIG[key];
     const doc = new jsPDF();
 
-       doc.addImage(LOGO_BASE64, 'PNG', 10, 8, 25, 25); // x, y, breite, höhe in mm
- 
-    
-    return renderContestToPdf(doc, config, { twoCol: true });
+    // Temporär Teams aus Cache laden falls anderes Modul
+    const originalTeams = appState.teams;
+    const originalModule = appState.activeModule;
+    if (moduleKey && mailWizard.cachedModules[moduleKey]) {
+        appState.teams = mailWizard.cachedModules[moduleKey].teams;
+        appState.activeModule = moduleKey;
+    }
+
+    doc.addImage(LOGO_BASE64, 'PNG', 10, 8, 25, 12);
+    const result = renderContestToPdf(doc, config, { twoCol: true });
+
+    // Wiederherstellen
+    appState.teams = originalTeams;
+    appState.activeModule = originalModule;
+
+    return result;
 }
+
 
 async function exportPDF() {
     try {
