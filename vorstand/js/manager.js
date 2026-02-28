@@ -1011,8 +1011,8 @@ const mailWizard = {
     cachedModules: { grenzland: null, mannschaft: null, gruppe: null }
 };
 
-function openMailWizard() {
-    // Aktives Modul vorselektieren
+
+async function openMailWizard() {
     mailWizard.step = 1;
     mailWizard.recipientGroups = { grenzland: false, mannschaft: false, gruppe: false, allMembers: false };
     mailWizard.recipientGroups[appState.activeModule] = true;
@@ -1022,7 +1022,38 @@ function openMailWizard() {
     mailWizard.excludedIds = new Set();
     mailWizard.resolvedRecipients = [];
 
-    // Modal ins DOM einfügen falls noch nicht vorhanden
+    // ── NEU: Alle Module vorladen ──────────────────────────────────
+    const allKeys = ['grenzland', 'mannschaft', 'gruppe'];
+    const toLoad = allKeys.filter(k => !mailWizard.cachedModules[k]);
+    if (toLoad.length > 0) {
+        // Modal sofort zeigen (mit Ladeindikator)
+        showMailModal();
+        renderMailStep(); // zeigt Step 1 mit "nicht geladen"-Badges
+        // Im Hintergrund alle fehlenden Module laden
+        await Promise.allSettled(
+            toLoad.map(async key => {
+                try {
+                    const config = await fetchContestDataForPdf(key);
+                    mailWizard.cachedModules[key] = {
+                        teams: JSON.parse(JSON.stringify(appState.teams)),
+                        pool:  JSON.parse(JSON.stringify(appState.pool))
+                    };
+                } catch(e) {
+                    console.warn(`Modul ${key} konnte nicht geladen werden:`, e);
+                }
+            })
+        );
+        // State wiederherstellen
+        // (fetchContestDataForPdf überschreibt appState – danach aktives Modul neu laden)
+        await loadContestData(appState.activeModule);
+        renderMailStep(); // Step 1 neu rendern mit allen Badges
+        return;
+    }
+    showMailModal();
+    // ──────────────────────────────────────────────────────────────
+}
+
+function showMailModal() {
     if (!document.getElementById('mailWizardModal')) {
         document.body.insertAdjacentHTML('beforeend', `
             <div class="modal fade" id="mailWizardModal" tabindex="-1">
@@ -1043,10 +1074,13 @@ function openMailWizard() {
             </div>
         `);
     }
-
     renderMailStep();
     bootstrap.Modal.getOrCreateInstance(document.getElementById('mailWizardModal')).show();
 }
+
+
+
+
 
 function renderMailStep() {
     const body = document.getElementById('mail-wizard-body');
