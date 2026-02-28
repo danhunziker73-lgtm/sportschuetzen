@@ -1366,13 +1366,18 @@ async function executeMailSend() {
             + `Freundliche Grüsse\nSportschützen Muhen`;
 
         // ✅ FIX: apiFetch gibt bereits geparsten JSON zurück – kein res.text()!
-        const res = await apiFetch('manager', 'action=sendMail', {
+// ✅ KORREKTE Version:
+const res = await apiFetch('manager', 'action=sendMail', {
     method: 'POST',
-    body: JSON.stringify({ recipients: mails, subject, mailBody: bodyText, attachments })
+    body: JSON.stringify({
+        recipients: mails,
+        subject,
+        mailBody: bodyText,
+        attachments
+    })
 });
-const data = JSON.parse(await res.text());
+const data = JSON.parse(await res.text());  // ← res.text() korrekt, weil apiFetch ein Response-Objekt zurückgibt
 if (data.error) throw new Error(data.error);
-Zwei Änderungen:
 
         bootstrap.Modal.getInstance(document.getElementById('mailWizardModal')).hide();
         showToast(`✅ Entwurf für ${mails.length} Empfänger erstellt!`, 'success');
