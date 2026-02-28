@@ -368,6 +368,44 @@ let appState = {
             .mobile-tab-content { display: contents; }
             .mobile-sticky { position: sticky; top: calc(var(--toolbar-h) + .5rem); align-self: flex-start; }
         }
+
+/* ── Desktop: Pool links (schmal), Teams rechts (breit) ── */
+@media (min-width: 768px) {
+  .manager-split {
+    display: grid;
+    grid-template-columns: 220px 1fr;
+    gap: 12px;
+    height: calc(100dvh - var(--toolbar-h) - 80px);
+    overflow: hidden;
+  }
+  .pool-scroll-area {
+    overflow-y: auto;
+    height: 100%;
+    border-right: 1px solid #dee2e6;
+    padding-right: 6px;
+  }
+  .teams-scroll-area {
+    overflow-y: auto;
+    height: 100%;
+  }
+  .pool-body {
+    overflow: visible !important;
+    max-height: none !important;
+  }
+  .sidebar-card {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+  .sidebar-card .card-body {
+    flex: 1;
+    overflow: visible;
+  }
+}
+
+
+
+        
     `;
     document.head.appendChild(style);
 })();
