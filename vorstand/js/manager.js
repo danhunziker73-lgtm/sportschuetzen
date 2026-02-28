@@ -656,35 +656,40 @@ console.log("renderContestUI läuft");
 
   const teamsHtml = appState.teams.map(team => renderTeamCard(team, config)).join('');
 
-  container.innerHTML = `
-    <div class="manager-split col-12">
-      <div class="pool-scroll-area">
-        <div class="sidebar-stack">
-          <div class="card shadow-sm border-secondary sidebar-card">
-            <div class="card-header bg-secondary text-white py-2">
-              <i class="fas fa-users"></i> Pool
-              <input type="text" class="form-control form-control-sm mt-1"
-                placeholder="Suchen…" onkeyup="filterPool(this.value)">
-            </div>
-            <div class="card-body dropzone bg-light pool-body" data-target-type="pool">
-              ${appState.pool.map(renderPlayerItem).join('')}
-              ${appState.pool.length === 0
-                ? '<div class="text-muted text-center small mt-3 py-3">Alle eingeteilt ✓</div>'
-                : ''}
-            </div>
-            <div class="card-footer small text-muted text-center py-1">
-              ${appState.pool.length} verfügbar
-            </div>
+container.innerHTML = `
+  <div class="manager-split col-12">
+    <!-- POOL: links, schmal -->
+    <div class="pool-scroll-area">
+      <div class="sidebar-stack">
+        <div class="card shadow-sm border-secondary sidebar-card">
+          <div class="card-header bg-secondary text-white py-2">
+            <i class="fas fa-users"></i> Pool
+            <input type="text" class="form-control form-control-sm mt-1"
+              placeholder="Suchen..."
+              onkeyup="filterPool(this.value)">
+          </div>
+          <div class="card-body dropzone bg-light pool-body"
+            data-target-type="pool">
+            ${appState.pool.map(renderPlayerItem).join('')}
+            ${appState.pool.length === 0
+              ? '<div class="text-muted text-center small mt-3 py-3">Alle eingeteilt</div>'
+              : ''}
+          </div>
+          <div class="card-footer small text-muted text-center py-1">
+            ${appState.pool.length} verfügbar
           </div>
         </div>
       </div>
-      <div class="teams-scroll-area">
-        <div class="row g-3" id="teams-area">
-          ${teamsHtml}
-        </div>
+    </div>
+
+    <!-- TEAMS: rechts, breit -->
+    <div class="teams-scroll-area">
+      <div class="row g-3" id="teams-area">
+        ${teamsHtml}
       </div>
     </div>
-  `;
+  </div>`;
+
 
   requestAnimationFrame(() => {
     const ps = document.querySelector('.pool-scroll-area');
