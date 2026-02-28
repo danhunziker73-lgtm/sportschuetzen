@@ -89,7 +89,15 @@ async function loadTermineData() {
   try {
     const res = await apiFetch('termine', 'action=loadAdminData');
     adminState = await res.json();
-    originalAdminState = JSON.parse(JSON.stringify(adminState));
+
+    // Leere Orte-Zeilen rausfiltern (entstehen durch Sheet-Padding)
+if (adminState.dropdowns?.orteMitMaps) {
+  adminState.dropdowns.orteMitMaps = adminState.dropdowns.orteMitMaps
+    .filter(p => p?.[0]?.trim() || p?.[1]?.trim());
+}
+
+originalAdminState = JSON.parse(JSON.stringify(adminState));
+
 
     renderTermineUI(document.getElementById('termine-ui'));
 
