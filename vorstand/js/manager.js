@@ -1319,7 +1319,7 @@ function buildRecipientList() {
 
 async function executeMailSend() {
     const final = mailWizard.resolvedRecipients.filter(p => !mailWizard.excludedIds.has(p.id));
-    const mails = final.map(p => p.email);
+    const mails = final.map(p => p.email).filter(Boolean);
     if (!mails.length) { alert('Keine Empfänger.'); return; }
 
     const btnNext = document.getElementById('mail-btn-next');
@@ -1327,44 +1327,55 @@ async function executeMailSend() {
     btnNext.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sende…';
 
     try {
-        // In executeMailSend():
-const pdfsToAttach = Object.entries(mailWizard.pdfAttachments)
-    .filter(([k, v]) => v && k !== 'none').map(([k]) => k);
+        const moduleNames = {
+            grenzland: 'Grenzland Cup',
+            mannschaft: 'Mannschafts-Meisterschaft',
+            gruppe: 'Gruppen-Meisterschaft'
+        };
 
+        const selectedModules = Object.entries(mailWizard.recipientGroups)
+            .filter(([k, v]) => v && k !== 'allMembers')
+            .map(([k]) => moduleNames[k] || k);
 
-// In executeMailSend(), vor dem API-Call:
-const moduleNames = {
-    grenzland: 'Grenzland Cup',
-    mannschaft: 'Mannschafts-Meisterschaft',
-    gruppe: 'Gruppen-Meisterschaft'
-};
-const selectedModules = Object.entries(mailWizard.recipientGroups)
-    .filter(([k, v]) => v && k !== 'allMembers')
-    .map(([k]) => moduleNames[k] || k);
+        const subject = `Aufgebot ${selectedModules.join(' & ')}`;
 
-const subject = `Aufgebot ${selectedModules.join(' & ')}`;
+        const pdfsToAttach = Object.entries(mailWizard.pdfAttachments)
+            .filter(([k, v]) => v && k !== 'none')
+            .map(([k]) => k);
 
-const pdfList = pdfsToAttach.map(k => `• ${moduleNames[k]}`).join('\n');
-const bodyText = `Hallo\n\nIm Anhang findest du das Aufgebot für:\n${selectedModules.map(n => `• ${n}`).join('\n')}\n\n`
-    + (pdfList ? `Angehängte PDFs:\n${pdfList}\n\n` : '')
-    + `Freundliche Grüsse\nSportschützen Muhen`;
+        // ✅ FIX: PDFs generieren und als Base64 aufbauen
+        const attachments = [];
+        for (const key of pdfsToAttach) {
+            try {
+                const { doc } = buildPdfDoc(key);  // ← Rückgabe muss Objekt sein (Fix #4)
+                const pdfBase64 = doc.output('datauristring').split(',')[1];
+                const config = CONTEST_CONFIG[key];
+                attachments.push({
+                    pdfBase64,
+                    fileName: `${config?.fileBase || key}.pdf`
+                });
+            } catch (err) {
+                console.error(`PDF-Fehler für ${key}:`, err);
+                throw new Error(`PDF konnte nicht generiert werden: ${key}`);
+            }
+        }
 
-        const config = CONTEST_CONFIG[appState.activeModule];
+        const pdfList = pdfsToAttach.map(k => `• ${moduleNames[k]}`).join('\n');
+        const bodyText = `Hallo\n\nIm Anhang findest du das Aufgebot für:\n${selectedModules.map(n => `• ${n}`).join('\n')}\n\n`
+            + (pdfList ? `Angehängte PDFs:\n${pdfList}\n\n` : '')
+            + `Freundliche Grüsse\nSportschützen Muhen`;
 
+        // ✅ FIX: apiFetch gibt bereits geparsten JSON zurück – kein res.text()!
+        const data = await apiFetch('manager', { action: 'sendMail' }, {
+            method: 'POST',
+            body: JSON.stringify({
+                recipients: mails,
+                subject,
+                mailBody: bodyText,   // ✅ FIX: 'mailBody' statt 'body'
+                attachments           // ✅ FIX: jetzt korrekt befüllt
+            })
+        });
 
-
-        
-        const res = await apiFetch('manager', { action: 'sendMail' }, {
-    method: 'POST',
-    body: JSON.stringify({
-        recipients: mails,
-        subject,
-        body:        bodyText,
-        attachments  // ← Array mit { pdfBase64, fileName }
-    })
-});
-
-        const data = JSON.parse(await res.text());
         if (data.error) throw new Error(data.error);
 
         bootstrap.Modal.getInstance(document.getElementById('mailWizardModal')).hide();
