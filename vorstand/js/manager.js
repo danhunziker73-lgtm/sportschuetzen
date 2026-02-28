@@ -553,12 +553,14 @@ function renderContestUI() {
   const container = document.getElementById('manager-inner');
   if (!container) return;
 
+  // Scroll-Positionen merken
+  const poolScroll = document.querySelector('.pool-scroll-area')?.scrollTop || 0;
+  const teamsScroll = document.querySelector('.teams-scroll-area')?.scrollTop || 0;
+
   const teamsHtml = appState.teams.map(team => renderTeamCard(team, config)).join('');
 
   container.innerHTML = `
     <div class="manager-split col-12">
-
-      <!-- POOL (links, schmal) -->
       <div class="pool-scroll-area">
         <div class="sidebar-stack">
           <div class="card shadow-sm border-secondary sidebar-card">
@@ -579,16 +581,21 @@ function renderContestUI() {
           </div>
         </div>
       </div>
-
-      <!-- TEAMS (rechts) -->
       <div class="teams-scroll-area">
         <div class="row g-3" id="teams-area">
           ${teamsHtml}
         </div>
       </div>
-
     </div>
   `;
+
+  // Scroll-Positionen wiederherstellen
+  requestAnimationFrame(() => {
+    const ps = document.querySelector('.pool-scroll-area');
+    const ts = document.querySelector('.teams-scroll-area');
+    if (ps) ps.scrollTop = poolScroll;
+    if (ts) ts.scrollTop = teamsScroll;
+  });
 }
 
 
@@ -738,43 +745,55 @@ function initDragAndDrop() {
     });
 
     // --- MOBILE TOUCH ---
-    document.addEventListener('touchstart', (e) => {
-        const el = e.target.closest('.draggable-player');
-        if (!el) return;
-        dragId = el.dataset.id;
-        dragSrcEl = el;
-        touchClone = el.cloneNode(true);
-        touchClone.classList.add('drag-clone');
-        document.body.appendChild(touchClone);
-        const touch = e.touches[0];
-        moveClone(touch.clientX, touch.clientY);
-        el.style.opacity = '0.4';
-    }, { passive: false });
+   // --- MOBILE TOUCH ---
+let touchTimer = null;
+const LONG_PRESS_MS = 300; // ms halten bis Drag startet
 
-    document.addEventListener('touchmove', (e) => {
-        if (!dragId || !touchClone) return;
-        e.preventDefault();
-        const touch = e.touches[0];
-        moveClone(touch.clientX, touch.clientY);
-        removeDropHighlights();
-        const elemBelow = document.elementFromPoint(touch.clientX, touch.clientY);
-        const zone = elemBelow ? elemBelow.closest('.dropzone') : null;
-        if (zone) zone.classList.add('drag-over');
-    }, { passive: false });
+document.addEventListener('touchstart', (e) => {
+  const el = e.target.closest('.draggable-player');
+  if (!el) return;
 
-    document.addEventListener('touchend', (e) => {
-        if (!dragId) return;
-        const touch = e.changedTouches[0];
-        const elemBelow = document.elementFromPoint(touch.clientX, touch.clientY);
-        const zone = elemBelow ? elemBelow.closest('.dropzone') : null;
-        if (zone) handleDrop(dragId, zone);
-        if (touchClone) touchClone.remove();
-        if (dragSrcEl) dragSrcEl.style.opacity = '1';
-        removeDropHighlights();
-        dragId = null;
-        touchClone = null;
-        dragSrcEl = null;
-    });
+  touchTimer = setTimeout(() => {
+    dragId = el.dataset.id;
+    dragSrcEl = el;
+    touchClone = el.cloneNode(true);
+    touchClone.classList.add('drag-clone');
+    document.body.appendChild(touchClone);
+    const touch = e.touches[0];
+    moveClone(touch.clientX, touch.clientY);
+    el.style.opacity = '0.4';
+    if (navigator.vibrate) navigator.vibrate(30); // Feedback: Drag aktiv
+  }, LONG_PRESS_MS);
+}, { passive: true }); // passive:true → Scroll läuft normal
+
+document.addEventListener('touchmove', (e) => {
+  if (touchTimer) {
+    // Finger bewegt sich vor Long-Press → kein Drag, normaler Scroll
+    clearTimeout(touchTimer);
+    touchTimer = null;
+  }
+  if (!dragId || !touchClone) return;
+  e.preventDefault();
+  const touch = e.touches[0];
+  moveClone(touch.clientX, touch.clientY);
+  removeDropHighlights();
+  const elemBelow = document.elementFromPoint(touch.clientX, touch.clientY);
+  const zone = elemBelow ? elemBelow.closest('.dropzone') : null;
+  if (zone) zone.classList.add('drag-over');
+}, { passive: false });
+
+document.addEventListener('touchend', (e) => {
+  if (touchTimer) { clearTimeout(touchTimer); touchTimer = null; }
+  if (!dragId) return;
+  const touch = e.changedTouches[0];
+  const elemBelow = document.elementFromPoint(touch.clientX, touch.clientY);
+  const zone = elemBelow ? elemBelow.closest('.dropzone') : null;
+  if (zone) handleDrop(dragId, zone);
+  if (touchClone) touchClone.remove();
+  if (dragSrcEl) dragSrcEl.style.opacity = '1';
+  removeDropHighlights();
+  dragId = null; touchClone = null; dragSrcEl = null;
+});
 
     function moveClone(x, y) {
         if (touchClone) {
