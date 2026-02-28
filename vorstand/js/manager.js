@@ -549,160 +549,48 @@ function processContestData(data, config) {
 //  RENDER UI (Tab-System für Mobile)
 // =========================================================
 function renderContestUI() {
-    const config = CONTEST_CONFIG[appState.activeModule];
-    const container = document.getElementById('manager-inner');
-    if (!container) return;
+  const config = CONTESTCONFIG[appState.activeModule];
+  const container = document.getElementById('manager-inner');
+  if (!container) return;
 
-    const teamsHtml = appState.teams.map(team => renderTeamCard(team, config)).join('');
+  const teamsHtml = appState.teams.map(team => renderTeamCard(team, config)).join('');
 
-    // Globaler State für aktiven Tab auf Mobile (Pool ist Default)
-    const activeTab = window._managerMobileTab || 'pool';
+  container.innerHTML = `
+    <div class="manager-split col-12">
 
-    const sidebarHtml = `
-        <div class="sidebar-stack h-100">
-            
-            <!-- Mobile Tabs Navigation (Desktop: Hidden) -->
-            <div class="mobile-tabs">
-                <button class="mobile-tab-btn ${activeTab === 'pool' ? 'active' : ''}" 
-                        onclick="switchMobileTab('pool')">
-                    <i class="fas fa-users"></i> Pool (${appState.pool.length})
-                </button>
-                <button class="mobile-tab-btn ${activeTab === 'mail' ? 'active' : ''}" 
-                        onclick="switchMobileTab('mail')">
-                    <i class="fas fa-envelope"></i> Mail (${appState.mailList.length})
-                </button>
+      <!-- POOL (links, schmal) -->
+      <div class="pool-scroll-area">
+        <div class="sidebar-stack">
+          <div class="card shadow-sm border-secondary sidebar-card">
+            <div class="card-header bg-secondary text-white py-2">
+              <i class="fas fa-users"></i> Pool
+              <input type="text" class="form-control form-control-sm mt-1"
+                placeholder="Suchen…" onkeyup="filterPool(this.value)">
             </div>
-
-            <div class="mobile-tab-content">
-                <!-- POOL SECTION -->
-                <div id="section-pool" class="card shadow-sm border-secondary sidebar-card mb-3" 
-                     style="display: ${activeTab === 'pool' || window.innerWidth >= 768 ? 'block' : 'none'};">
-                    <div class="card-header bg-secondary text-white py-2">
-                        <i class="fas fa-users"></i> Schützen-Pool
-                        <input type="text" class="form-control form-control-sm mt-1"
-                               placeholder="Suchen..." onkeyup="filterPool(this.value)">
-                    </div>
-                    <div class="card-body dropzone bg-light pool-body" data-target-type="pool">
-                        ${appState.pool.map(s => renderPlayerItem(s)).join('')}
-                        ${appState.pool.length === 0
-                            ? '<div class="text-muted text-center small mt-3 py-3">Alle eingeteilt 🎉</div>'
-                            : ''}
-                    </div>
-                    <div class="card-footer small text-muted text-center py-1 d-none d-md-block">
-                        ${appState.pool.length} verfügbar
-                    </div>
-                </div>
-
-                <!-- MAIL SECTION -->
-                <div id="section-mail" class="card shadow-sm border-warning sidebar-card"
-                     style="display: ${activeTab === 'mail' || window.innerWidth >= 768 ? 'block' : 'none'};">
-                    <div class="card-header bg-warning text-dark py-2 d-flex justify-content-between align-items-center">
-                        <span><i class="fas fa-envelope"></i> Mail Versand</span>
-                        <button class="btn btn-sm btn-dark py-0" onclick="sendMailViaBackend()" style="font-size:0.8rem;">
-                            <i class="fas fa-paper-plane"></i> Senden
-                        </button>
-                    </div>
-                    <div class="card-body dropzone bg-light mail-body" data-target-type="mail">
-                        ${appState.mailList.length === 0
-                            ? '<div class="text-center text-muted small mt-3 py-3">Schützen hierher ziehen<br>(Kopie)</div>'
-                            : ''}
-                        ${appState.mailList.map(s => renderMailItem(s)).join('')}
-                    </div>
-                    <div class="card-footer small text-muted text-center py-1 d-none d-md-block">
-                        ${appState.mailList.length} Empfänger
-                    </div>
-                </div>
+            <div class="card-body dropzone bg-light pool-body" data-target-type="pool">
+              ${appState.pool.map(renderPlayerItem).join('')}
+              ${appState.pool.length === 0
+                ? '<div class="text-muted text-center small mt-3 py-3">Alle eingeteilt ✓</div>'
+                : ''}
             </div>
-
-        </div>
-    `;
-
- container.innerHTML = `
-  <div class="manager-split col-12">
-
-    <!-- POOL (links, schmal) -->
-    <div class="pool-scroll-area">
-      <div class="sidebar-stack">
-        <div class="card shadow-sm border-secondary sidebar-card">
-          <div class="card-header bg-secondary text-white py-2">
-            <i class="fas fa-users"></i> Pool
-            <input type="text" class="form-control form-control-sm mt-1"
-              placeholder="Suchen…" onkeyup="filterPool(this.value)">
-          </div>
-          <div class="card-body dropzone bg-light pool-body" data-target-type="pool">
-            ${appState.pool.map(renderPlayerItem).join('')}
-            ${appState.pool.length === 0
-              ? '<div class="text-muted text-center small mt-3 py-3">Alle eingeteilt ✓</div>'
-              : ''}
-          </div>
-          <div class="card-footer small text-muted text-center py-1">
-            ${appState.pool.length} verfügbar
+            <div class="card-footer small text-muted text-center py-1">
+              ${appState.pool.length} verfügbar
+            </div>
           </div>
         </div>
       </div>
-    </div>
 
-    <!-- TEAMS (rechts) -->
-    <div class="teams-scroll-area">
-      <div class="row g-3" id="teams-area">
-        ${teamsHtml}
+      <!-- TEAMS (rechts) -->
+      <div class="teams-scroll-area">
+        <div class="row g-3" id="teams-area">
+          ${teamsHtml}
+        </div>
       </div>
+
     </div>
-
-  </div>
-`;
-
-
-    // Swipe Navigation für Touch-Geräte in der Sticky Area
-    initSwipeNavigation();
+  `;
 }
 
-// Hilfsfunktion für Tab-Wechsel
-window.switchMobileTab = function(tabName) {
-    window._managerMobileTab = tabName;
-    
-    // Haptic Feedback beim Tab-Wechsel
-    if (navigator.vibrate) navigator.vibrate(10);
-    
-    document.querySelectorAll('.mobile-tab-btn').forEach(b => b.classList.remove('active'));
-    event.currentTarget.classList.add('active');
-    
-    if (tabName === 'pool') {
-        document.getElementById('section-pool').style.display = 'block';
-        document.getElementById('section-mail').style.display = 'none';
-    } else {
-        document.getElementById('section-mail').style.display = 'block';
-        document.getElementById('section-pool').style.display = 'none';
-    }
-};
-
-// Touch-Swipe Support (Option 5)
-function initSwipeNavigation() {
-    const stickyArea = document.querySelector('.mobile-sticky');
-    if (!stickyArea) return;
-
-    let touchStartX = 0;
-    
-    stickyArea.addEventListener('touchstart', e => {
-        touchStartX = e.changedTouches[0].screenX;
-    }, {passive: true});
-
-    stickyArea.addEventListener('touchend', e => {
-        if (window.innerWidth >= 768) return; // Nur auf Mobile
-        
-        const touchEndX = e.changedTouches[0].screenX;
-        const diff = touchEndX - touchStartX;
-        
-        // Swipe Right (zurück zu Pool)
-        if (diff > 50 && window._managerMobileTab === 'mail') {
-            document.querySelector('.mobile-tab-btn').click(); 
-        }
-        // Swipe Left (hin zu Mail)
-        else if (diff < -50 && window._managerMobileTab === 'pool') {
-            document.querySelectorAll('.mobile-tab-btn')[1].click();
-        }
-    }, {passive: true});
-}
 
 function renderTeamCard(team, config) {
     const zonesHtml = config.zones.map((zone) => {
