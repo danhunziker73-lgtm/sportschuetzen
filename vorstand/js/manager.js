@@ -836,8 +836,20 @@ document.addEventListener('touchend', (e) => {
   dragId = null; touchClone = null; dragSrcEl = null;
 });
 
+}
 
 
+
+function moveClone(x, y) {
+    if (touchClone) {
+        touchClone.style.left = (x - 20) + 'px';
+        touchClone.style.top  = (y - 20) + 'px';
+    }
+}
+
+function removeDropHighlights() {
+    document.querySelectorAll('.dropzone').forEach(z => z.classList.remove('drag-over'));
+}
 // =========================================================
 //  LOGIK
 // =========================================================
