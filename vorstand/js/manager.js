@@ -549,6 +549,8 @@ function processContestData(data, config) {
 //  RENDER UI (Tab-System für Mobile)
 // =========================================================
 function renderContestUI() {
+    console.log(typeof CONTESTCONFIG); // sollte "object" zurückgeben
+
   const config = CONTESTCONFIG[appState.activeModule];
   const container = document.getElementById('manager-inner');
   if (!container) return;
