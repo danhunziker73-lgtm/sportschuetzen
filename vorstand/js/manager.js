@@ -550,7 +550,7 @@ function processContestData(data, config) {
 // =========================================================
 function renderContestUI() {
   console.log(typeof CONTEST_CONFIG); // sollte "object" zurückgeben
-
+console.log("renderContestUI läuft");
   const config = CONTEST_CONFIG[appState.activeModule];
   const container = document.getElementById('manager-inner');
   if (!container) return;
