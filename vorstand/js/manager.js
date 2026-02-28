@@ -182,10 +182,15 @@ let appState = {
             overflow: auto;
             border: 2px dashed #ccc;
         }
-        .pool-body {
-            max-height: var(--pool-max);
-            overflow: auto;
-        }
+     .pool-body {
+    overflow: visible;             /* Mobile: kein eigener Scroll-Container */
+}
+@media (min-width: 768px) {
+    .pool-body {
+        max-height: var(--pool-max);
+        overflow: auto;
+    }
+}
 
         /* --- Skeleton Loading --- */
         .skeleton-block {
@@ -304,7 +309,21 @@ let appState = {
   font-size: 0.75rem;
   max-width: 110px;   /* passt zur 150px Spalte minus Padding/Handle */
 }
-
+.sidebar-card {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+  .pool-body {
+    flex: 1;
+    overflow-y: auto;
+    max-height: none !important;   /* überschreibt Desktop-Wert */
+  }
+  /* pool-scroll-area selbst NICHT mehr scrollen – die Card scrollt intern */
+  .pool-scroll-area {
+    overflow-y: visible !important;
+    height: auto !important;
+  }
 /* Teams – Namen in Karten */
 .teams-scroll-area .player-name {
   max-width: calc(100% - 30px);
