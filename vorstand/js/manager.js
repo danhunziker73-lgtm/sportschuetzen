@@ -401,6 +401,16 @@ let appState = {
     flex: 1;
     overflow: visible;
   }
+
+  .pool-scroll-area .player-name {
+    font-size: 0.8rem;
+    max-width: 170px;
+  }
+  .pool-scroll-area .draggable-player .card-body {
+    padding: 5px 8px 5px 22px !important;
+  }
+}
+  
 }
 
 
