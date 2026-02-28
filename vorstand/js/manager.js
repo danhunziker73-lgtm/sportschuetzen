@@ -78,16 +78,16 @@ let appState = {
         }
 
         /* --- Drag & Drop --- */
-        .draggable-player {
-            cursor: grab;
-            user-select: none;
-            touch-action: none;
-            transition: transform 0.15s ease, box-shadow 0.15s ease;
-            position: relative;
-            min-height: 48px; /* Touch-Target Optimierung */
-            display: flex;
-            align-items: center;
-        }
+     .draggable-player {
+    cursor: grab;
+    user-select: none;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    position: relative;
+    min-height: 48px;
+    display: flex;
+    align-items: center;
+    touch-action: manipulation; /* WICHTIG */
+}
         .draggable-player:active { 
             cursor: grabbing; 
             transform: scale(0.98);
@@ -125,6 +125,14 @@ let appState = {
             background-color: #f8f9fa !important;
             border: 1px solid #dee2e6 !important;
         }
+
+.pool-scroll-area {
+    box-shadow: inset -3px 0 0 #dee2e6;
+}
+
+.teams-scroll-area {
+    box-shadow: inset 3px 0 0 #dee2e6;
+}
 
         .ghost-slot {
             border: 2px dashed #cbd5e1 !important;
@@ -744,9 +752,11 @@ function initDragAndDrop() {
     });
 
     // --- MOBILE TOUCH ---
-   // --- MOBILE TOUCH ---
+// =====================================================
+// MOBILE TOUCH FIXED VERSION
+// =====================================================
 let touchTimer = null;
-const LONG_PRESS_MS = 300; // ms halten bis Drag startet
+const LONG_PRESS_MS = 300;
 
 document.addEventListener('touchstart', (e) => {
   const el = e.target.closest('.draggable-player');
@@ -755,56 +765,69 @@ document.addEventListener('touchstart', (e) => {
   touchTimer = setTimeout(() => {
     dragId = el.dataset.id;
     dragSrcEl = el;
+
     touchClone = el.cloneNode(true);
     touchClone.classList.add('drag-clone');
     document.body.appendChild(touchClone);
+
     const touch = e.touches[0];
     moveClone(touch.clientX, touch.clientY);
+
     el.style.opacity = '0.4';
-    if (navigator.vibrate) navigator.vibrate(30); // Feedback: Drag aktiv
+
+    if (navigator.vibrate) navigator.vibrate(30);
   }, LONG_PRESS_MS);
-}, { passive: true }); // passive:true → Scroll läuft normal
+
+}, { passive: true }); // scroll bleibt erlaubt
 
 document.addEventListener('touchmove', (e) => {
+
+  // Wenn Long Press noch nicht ausgelöst wurde → Scroll normal
   if (touchTimer) {
-    // Finger bewegt sich vor Long-Press → kein Drag, normaler Scroll
-    clearTimeout(touchTimer);
-    touchTimer = null;
+    return; // NICHT clearTimeout
   }
+
+  // Nur wenn Drag aktiv
   if (!dragId || !touchClone) return;
-  e.preventDefault();
+
+  e.preventDefault(); // jetzt Scroll blockieren
+
   const touch = e.touches[0];
   moveClone(touch.clientX, touch.clientY);
+
   removeDropHighlights();
+
   const elemBelow = document.elementFromPoint(touch.clientX, touch.clientY);
   const zone = elemBelow ? elemBelow.closest('.dropzone') : null;
+
   if (zone) zone.classList.add('drag-over');
+
 }, { passive: false });
 
 document.addEventListener('touchend', (e) => {
-  if (touchTimer) { clearTimeout(touchTimer); touchTimer = null; }
+
+  if (touchTimer) {
+    clearTimeout(touchTimer);
+    touchTimer = null;
+  }
+
   if (!dragId) return;
+
   const touch = e.changedTouches[0];
   const elemBelow = document.elementFromPoint(touch.clientX, touch.clientY);
   const zone = elemBelow ? elemBelow.closest('.dropzone') : null;
+
   if (zone) handleDrop(dragId, zone);
+
   if (touchClone) touchClone.remove();
   if (dragSrcEl) dragSrcEl.style.opacity = '1';
+
   removeDropHighlights();
-  dragId = null; touchClone = null; dragSrcEl = null;
+
+  dragId = null;
+  touchClone = null;
+  dragSrcEl = null;
 });
-
-    function moveClone(x, y) {
-        if (touchClone) {
-            touchClone.style.left = (x - 20) + 'px';
-            touchClone.style.top = (y - 20) + 'px';
-        }
-    }
-
-    function removeDropHighlights() {
-        document.querySelectorAll('.dropzone').forEach(z => z.classList.remove('drag-over'));
-    }
-}
 
 
 // =========================================================
