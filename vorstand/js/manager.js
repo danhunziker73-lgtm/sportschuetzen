@@ -88,11 +88,23 @@ let appState = {
     align-items: center;
     touch-action: manipulation; /* WICHTIG */
 }
-        .draggable-player:active { 
-            cursor: grabbing; 
-            transform: scale(0.98);
-        }
-        
+     /* Drag Handle – nur dieser Bereich triggert Drag */
+.drag-handle {
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 22px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: grab;
+  touch-action: none;   /* NUR hier Touch-Drag, Rest scrollt */
+  color: #adb5bd;
+  font-size: 13px;
+  z-index: 1;
+}
+/* Player selbst scrollt normal */
+.draggable-player {
+  touch-action: pan-y;  /* pan-y statt manipulation/none */
+}
+
         /* Drag Handle Icon */
         .draggable-player::before {
             content: '⋮⋮';
@@ -285,6 +297,25 @@ let appState = {
     border-right: 1px solid #dee2e6;
     padding-right: 4px;
   }
+  /* Pool – kompakte Namen */
+.pool-scroll-area .player-name {
+  font-size: 0.75rem;
+  max-width: 110px;   /* passt zur 150px Spalte minus Padding/Handle */
+}
+
+/* Teams – Namen in Karten */
+.teams-scroll-area .player-name {
+  max-width: calc(100% - 30px);
+}
+
+/* Generell für alle player-name */
+.player-name {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
   .teams-scroll-area {
     overflow-y: scroll;
     -webkit-overflow-scrolling: touch;
@@ -677,19 +708,22 @@ function renderTeamCard(team, config) {
 }
 
 function renderPlayerItem(player) {
-    return `
-        <div class="card mb-1 draggable-player border-0 shadow-sm"
-            draggable="true"
-            data-id="${escapeHtml(String(player.id))}"
-            style="border-left: 3px solid var(--primary) !important;">
-            <div class="card-body p-1 px-2 pointer-events-none">
-                <div class="player-row pointer-events-none">
-                    <span class="player-name small fw-bold text-truncate pointer-events-none">
-                        ${escapeHtml(player.name)}
-                    </span>
-                </div>
-            </div>
-        </div>`;
+  return `
+    <div class="card mb-1 draggable-player border-0 shadow-sm"
+         draggable="true"
+         data-id="${escapeHtml(String(player.id))}"
+         style="border-left: 3px solid var(--primary) !important; overflow:hidden;">
+      <div class="drag-handle">⠿</div>
+      <div class="card-body p-1 px-2 pointer-events-none" style="padding-left:26px !important;">
+        <div class="player-row pointer-events-none">
+          <span class="player-name small fw-bold pointer-events-none"
+                style="display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:100%;">
+            ${escapeHtml(player.name)}
+          </span>
+        </div>
+      </div>
+    </div>
+  `;
 }
 
 function renderMailItem(player) {
@@ -755,78 +789,45 @@ function initDragAndDrop() {
 // =====================================================
 // MOBILE TOUCH FIXED VERSION
 // =====================================================
-let touchTimer = null;
-const LONG_PRESS_MS = 300;
-
+// --- MOBILE TOUCH ---
 document.addEventListener('touchstart', (e) => {
-  const el = e.target.closest('.draggable-player');
-  if (!el) return;
+  const handle = e.target.closest('.drag-handle');
+  const el = handle ? handle.closest('.draggable-player') : null;
+  if (!el) return; // kein Handle → normaler Scroll
 
-  touchTimer = setTimeout(() => {
-    dragId = el.dataset.id;
-    dragSrcEl = el;
-
-    touchClone = el.cloneNode(true);
-    touchClone.classList.add('drag-clone');
-    document.body.appendChild(touchClone);
-
-    const touch = e.touches[0];
-    moveClone(touch.clientX, touch.clientY);
-
-    el.style.opacity = '0.4';
-
-    if (navigator.vibrate) navigator.vibrate(30);
-  }, LONG_PRESS_MS);
-
-}, { passive: true }); // scroll bleibt erlaubt
-
-document.addEventListener('touchmove', (e) => {
-
-  // Wenn Long Press noch nicht ausgelöst wurde → Scroll normal
-  if (touchTimer) {
-    return; // NICHT clearTimeout
-  }
-
-  // Nur wenn Drag aktiv
-  if (!dragId || !touchClone) return;
-
-  e.preventDefault(); // jetzt Scroll blockieren
-
+  e.preventDefault(); // Drag startet sofort beim Handle-Touch
+  dragId = el.dataset.id;
+  dragSrcEl = el;
+  touchClone = el.cloneNode(true);
+  touchClone.classList.add('drag-clone');
+  document.body.appendChild(touchClone);
   const touch = e.touches[0];
   moveClone(touch.clientX, touch.clientY);
+  el.style.opacity = '0.4';
+  if (navigator.vibrate) navigator.vibrate(25);
+}, { passive: false });
 
+document.addEventListener('touchmove', (e) => {
+  if (!dragId || !touchClone) return;
+  e.preventDefault();
+  const touch = e.touches[0];
+  moveClone(touch.clientX, touch.clientY);
   removeDropHighlights();
-
   const elemBelow = document.elementFromPoint(touch.clientX, touch.clientY);
   const zone = elemBelow ? elemBelow.closest('.dropzone') : null;
-
   if (zone) zone.classList.add('drag-over');
-
 }, { passive: false });
 
 document.addEventListener('touchend', (e) => {
-
-  if (touchTimer) {
-    clearTimeout(touchTimer);
-    touchTimer = null;
-  }
-
   if (!dragId) return;
-
   const touch = e.changedTouches[0];
   const elemBelow = document.elementFromPoint(touch.clientX, touch.clientY);
   const zone = elemBelow ? elemBelow.closest('.dropzone') : null;
-
   if (zone) handleDrop(dragId, zone);
-
   if (touchClone) touchClone.remove();
   if (dragSrcEl) dragSrcEl.style.opacity = '1';
-
   removeDropHighlights();
-
-  dragId = null;
-  touchClone = null;
-  dragSrcEl = null;
+  dragId = null; touchClone = null; dragSrcEl = null;
 });
 
 
