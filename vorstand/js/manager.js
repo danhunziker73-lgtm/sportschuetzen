@@ -1351,15 +1351,7 @@ const bodyText = `Hallo\n\nIm Anhang findest du das Aufgebot für:\n${selectedMo
 
         const config = CONTEST_CONFIG[appState.activeModule];
 
-        const attachments = [];
-for (const key of pdfsToAttach) {
-    const { doc, dateStr } = buildPdfDoc(key);
-    const cfg = CONTEST_CONFIG[key];
-    attachments.push({
-        pdfBase64: doc.output('datauristring').split(',')[1],
-        fileName: `${cfg.fileBase}_${dateStr}.pdf`
-    });
-}
+
 
         
         const res = await apiFetch('manager', { action: 'sendMail' }, {
