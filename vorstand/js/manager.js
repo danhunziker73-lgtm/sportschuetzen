@@ -1478,30 +1478,28 @@ function renderContestToPdf(doc, config, opts = {}) {
         );
     };
 
-    // ── HEADER: Logo allein links oben ──────────────────────────────
-    // Logo wird hier gezeichnet (NICHT in buildPdfDoc!)
-    doc.addImage(LOGO_BASE64, 'PNG', margin, 6, 22, 22);
+  // ── HEADER: Logo allein links oben ──────────────────────────────
+doc.addImage(LOGO_BASE64, 'PNG', margin, 6, 22, 22);
 
-    // Vereinsname rechts neben Logo
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(8);
-    doc.setTextColor(150, 150, 150);
-    doc.text('Sportschützen Muhen', margin + 26, 13);
-    doc.setFontSize(7);
-    doc.text(String(currentYear), margin + 26, 19);
+// "Saison 2026" — gleiche Grösse und Farbe wie Titel, zentriert
+doc.setFont('helvetica', 'bold');
+doc.setFontSize(16);
+doc.setTextColor(13, 110, 253);
+doc.text(`Saison ${currentYear}`, pageWidth / 2, 20, { align: 'center' });
 
-    // Trennlinie
-    doc.setDrawColor(210, 210, 210);
-    doc.line(margin, 31, pageWidth - margin, 31);
+// Trennlinie
+doc.setDrawColor(210, 210, 210);
+doc.line(margin, 31, pageWidth - margin, 31);
 
-    // Titel unter Linie
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(16);
-    doc.setTextColor(13, 110, 253);
-    const titleLines = doc.splitTextToSize(String(pdfTitle), pageWidth - margin * 2);
-    doc.text(titleLines, margin, 40);
+// Titel unter Linie
+doc.setFont('helvetica', 'bold');
+doc.setFontSize(16);
+doc.setTextColor(13, 110, 253);
+const titleLines = doc.splitTextToSize(String(pdfTitle), pageWidth - margin * 2);
+doc.text(titleLines, margin, 40);
 
-    let yPos = titleLines.length * 7 + 44;
+let yPos = titleLines.length * 7 + 44;
+
 
     // Footer Seite 1
     drawFooter();
