@@ -382,16 +382,20 @@ function renderGVList() {
     }
 
     // Standard → Input mit Placeholder
+    // Standard → Input mit Placeholder
+    const isDateField = ph === 'tt.mm.jjjj';
+    const displayValue = isDateField ? isoToDisplay(value) : value;
+
     return `
       <div class="mb-2">
         <label class="form-label small fw-bold mb-0">${escapeHtml(label)}</label>
         <input type="text" class="form-control form-control-sm"
-          value="${escapeHtml(value)}"
+          value="${escapeHtml(displayValue)}"
           placeholder="${escapeHtml(ph)}"
-          onchange="adminState.platzhalter[${i}].inhalt=this.value">
+          onchange="adminState.platzhalter[${i}].inhalt = ${isDateField} ? displayToIso(this.value) : this.value">
       </div>
     `;
-  }).join('');
+
 }
 
 function addGVMail(idx, email) {
@@ -747,6 +751,29 @@ function bindTermineEventsOnce() {
     renderTermineList();
   });
 
+  function isoToDisplay(v) {
+  if (!v) return '';
+  const s = String(v).trim();
+  // yyyy-mm-dd → tt.mm.jjjj
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+    const [y, m, d] = s.split('-');
+    return `${parseInt(d,10)}.${parseInt(m,10)}.${y}`;
+  }
+  return s; // bereits im richtigen Format
+}
+
+function displayToIso(v) {
+  if (!v) return '';
+  const s = String(v).trim();
+  // tt.mm.jjjj → yyyy-mm-dd (für konsistente Speicherung)
+  if (/^\d{1,2}\.\d{1,2}\.\d{4}$/.test(s)) {
+    const [d, m, y] = s.split('.');
+    return `${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`;
+  }
+  return s;
+}
+
+  
   // CLICK (Löschen)
   root.addEventListener('click', (e) => {
     const btn = e.target.closest('button[data-action="remove"]');
