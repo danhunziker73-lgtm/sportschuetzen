@@ -841,17 +841,20 @@ document.addEventListener('touchmove', (e) => {
 document.addEventListener('touchend', (e) => {
   if (!dragId) return;
   const touch = e.changedTouches[0];
+
+  // ← Clone ZUERST verstecken, damit elementFromPoint die Zone darunter trifft
+  if (touchClone) touchClone.style.display = 'none';
+
   const elemBelow = document.elementFromPoint(touch.clientX, touch.clientY);
   const zone = elemBelow ? elemBelow.closest('.dropzone') : null;
   if (zone) handleDrop(dragId, zone);
+
+  // Cleanup
   if (touchClone) touchClone.remove();
   if (dragSrcEl) dragSrcEl.style.opacity = '1';
   removeDropHighlights();
-
-  // ← DIESE ZWEI ZEILEN FEHLEN:
   document.querySelectorAll('.drag-clone').forEach(el => el.remove());
   document.querySelectorAll('.draggable-player').forEach(el => el.style.opacity = '1');
-
   dragId = null; touchClone = null; dragSrcEl = null;
 });
 
@@ -1060,10 +1063,27 @@ async function sendMailViaBackend() {
 // =========================================================
 async function saveContest() {
     const config = CONTEST_CONFIG[appState.activeModule];
-    const btn = document.getElementById('btn-save-manager');
-    const originalText = btn ? btn.innerText : "Speichern";
-    if (btn) { btn.disabled = true; btn.innerText = "Speichere..."; }
+    // ← beide Button-IDs abfangen (Desktop + FAB)
+    const btn = document.getElementById('btn-save-manager-desktop');
+    const fabSaveBtn = document.querySelector('.fab-item.bg-success');
 
+    const setLoading = () => {
+        if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Speichert…'; }
+        if (fabSaveBtn) { fabSaveBtn.disabled = true; }
+    };
+    const setSuccess = () => {
+        if (btn) { btn.innerHTML = '<i class="fas fa-check"></i> Gespeichert!'; btn.classList.replace('btn-success','btn-outline-success'); }
+        setTimeout(() => {
+            if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-save"></i> Speichern'; btn.classList.replace('btn-outline-success','btn-success'); }
+            if (fabSaveBtn) fabSaveBtn.disabled = false;
+        }, 2000);
+    };
+    const setError = () => {
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-save"></i> Speichern'; }
+        if (fabSaveBtn) fabSaveBtn.disabled = false;
+    };
+
+    setLoading();
     const exportData = [];
     appState.teams.forEach(team => {
         team.shooters.forEach(s => {
@@ -1072,8 +1092,7 @@ async function saveContest() {
                 name: String(s.name || ""),
                 team: String(team.name || ""),
                 stellung: (appState.activeModule === "gruppe")
-                    ? (s.zone === "kniend" ? "Kniend" : "Liegend")
-                    : ""
+                    ? (s.zone === "kniend" ? "Kniend" : "Liegend") : ""
             });
         });
     });
@@ -1081,30 +1100,21 @@ async function saveContest() {
     try {
         const res = await apiFetch('manager', 'action=saveManagerData', {
             method: 'POST',
-            body: JSON.stringify({
-                sheetName: config.sheetName,
-                data: exportData          // ← konsistent: immer "data"
-            })
+            body: JSON.stringify({ sheetName: config.sheetName, data: exportData })
         });
-
         const txt = await res.text();
         let data;
         try { data = JSON.parse(txt); }
         catch { throw new Error("Speichern: Backend-Antwort ist kein JSON"); }
-
         if (data.error) throw new Error(data.error);
-
         appState.isDirty = false;
-        if (btn) {
-            btn.innerText = "✅ OK";
-            setTimeout(() => { btn.innerText = originalText; btn.disabled = false; }, 1200);
-        }
-
+        setSuccess();
     } catch (e) {
         alert("Fehler beim Speichern: " + e.message);
-        if (btn) { btn.disabled = false; btn.innerText = originalText; }
+        setError();
     }
 }
+
 
 
 // =========================================================
