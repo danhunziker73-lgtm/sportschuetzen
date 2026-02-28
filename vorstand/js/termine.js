@@ -395,7 +395,7 @@ function renderGVList() {
           onchange="adminState.platzhalter[${i}].inhalt = ${isDateField} ? displayToIso(this.value) : this.value">
       </div>
     `;
-  }
+   }).join(''); 
 }
 
 function addGVMail(idx, email) {
