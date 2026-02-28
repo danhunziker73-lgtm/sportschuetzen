@@ -1331,15 +1331,6 @@ async function executeMailSend() {
 const pdfsToAttach = Object.entries(mailWizard.pdfAttachments)
     .filter(([k, v]) => v && k !== 'none').map(([k]) => k);
 
-const attachments = [];
-for (const key of pdfsToAttach) {
-    const { doc, dateStr } = buildPdfDoc(key);
-    const cfg = CONTEST_CONFIG[key];
-    attachments.push({
-        pdfBase64: doc.output('datauristring').split(',')[1],
-        fileName: `${cfg.fileBase}_${dateStr}.pdf`
-    });
-}
 
 // In executeMailSend(), vor dem API-Call:
 const moduleNames = {
