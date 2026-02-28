@@ -751,6 +751,22 @@ function bindTermineEventsOnce() {
     renderTermineList();
   });
 
+
+
+  
+  // CLICK (Löschen)
+  root.addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-action="remove"]');
+    if (!btn) return;
+
+    if (!btn.closest('#termine-body')) return;
+
+    const tr = btn.closest('tr[data-id]');
+    if (!tr) return;
+
+    removeTerminById(tr.dataset.id);
+  });
+}
   function isoToDisplay(v) {
   if (!v) return '';
   const s = String(v).trim();
@@ -772,22 +788,6 @@ function displayToIso(v) {
   }
   return s;
 }
-
-  
-  // CLICK (Löschen)
-  root.addEventListener('click', (e) => {
-    const btn = e.target.closest('button[data-action="remove"]');
-    if (!btn) return;
-
-    if (!btn.closest('#termine-body')) return;
-
-    const tr = btn.closest('tr[data-id]');
-    if (!tr) return;
-
-    removeTerminById(tr.dataset.id);
-  });
-}
-
 
 function applyOrtMapById(id, ortName) {
   const idx = adminState.termine.findIndex(t => String(t.id) === String(id));
