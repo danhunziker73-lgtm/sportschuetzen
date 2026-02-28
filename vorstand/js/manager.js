@@ -1396,7 +1396,7 @@ function renderContestToPdf(doc, config, opts = {}) {
     const pageHeight = doc.internal.pageSize.getHeight();
     const margin = 15;
 
-    let yPos = 20;
+    let yPos = 38;
     doc.setFont("helvetica", "bold");
     doc.setFontSize(16);
     doc.setTextColor(13, 110, 253);
@@ -1509,13 +1509,16 @@ function renderContestToPdf(doc, config, opts = {}) {
 
 function buildPdfDoc() {
 
-    doc.addImage(LOGO_BASE64, 'PNG', 10, 8, 25, 25); // x, y, breite, höhe in mm
     if (!window.jspdf || !window.jspdf.jsPDF) {
         throw new Error("jsPDF nicht geladen. Bitte index.html prüfen (CDN Scripts).");
     }
     const { jsPDF } = window.jspdf;
     const config = CONTEST_CONFIG[appState.activeModule];
     const doc = new jsPDF();
+
+       doc.addImage(LOGO_BASE64, 'PNG', 10, 8, 25, 25); // x, y, breite, höhe in mm
+ 
+    
     return renderContestToPdf(doc, config, { twoCol: true });
 }
 
