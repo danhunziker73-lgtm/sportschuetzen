@@ -1454,124 +1454,178 @@ function estimateTeamHeight(team, config) {
 }
 
 function renderContestToPdf(doc, config, opts = {}) {
-    const pdfTitle = config.pdfTitle || config.title;
-    const dateStr = opts.dateStr || getDateStr();
-    const twoCol = opts.twoCol !== false;
+    const pdfTitle = config.pdfTitle || config.title || 'Aufgebot';
+    const twoCol   = opts.twoCol !== false;
+    const pageW    = doc.internal.pageSize.getWidth();
+    const pageH    = doc.internal.pageSize.getHeight();
+    const margin   = 14;
 
-    const pageWidth = doc.internal.pageSize.getWidth();
-    const pageHeight = doc.internal.pageSize.getHeight();
-    const margin = 15;
+    // Datum
+    const now      = new Date();
+    const dateStr  = `${now.getDate().toString().padStart(2,'0')}.${(now.getMonth()+1).toString().padStart(2,'0')}.${now.getFullYear()}`;
 
-    let yPos = 38;
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(16);
-    doc.setTextColor(13, 110, 253);
-    const titleLines = doc.splitTextToSize(String(pdfTitle), pageWidth - margin * 2);
-    doc.text(titleLines, 40, 18);  // x=40 = neben Logo (25mm breit + margin)
-    yPos += (titleLines.length * 7) + 4;
-
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(10);
-    doc.setTextColor(100);
-    doc.text(`Generiert am: ${dateStr}`, margin, yPos);
-    yPos += 12;
-
-    const gap = 10;
-    const colW = twoCol
-        ? (pageWidth - (margin * 2) - gap) / 2
-        : (pageWidth - (margin * 2));
-
-    let col = 0;
-    let rowMaxH = 0;
-
-    const drawTeam = (team, x, y, w) => {
-        doc.setFillColor(240, 242, 245);
-        doc.rect(x, y, w, 8, 'F');
-        doc.setFont("helvetica", "bold");
-        doc.setFontSize(11);
-        doc.setTextColor(0);
-        doc.text(truncateToWidth(doc, team.name, w - 6), x + 2, y + 6);
-
-        let yy = y + 14;
-        doc.setFont("helvetica", "normal");
-        doc.setFontSize(10);
-        let any = false;
-
-        if (!team.shooters || team.shooters.length === 0) {
-            doc.setTextColor(150);
-            doc.text("- Keine Schützen -", x + 2, yy);
-            yy += 7;
-            any = true;
-        } else {
-            config.zones.forEach(zone => {
-                const shooters = team.shooters.filter(s =>
-                    config.zones.length === 1 ? true : s.zone === zone.key
-                );
-                if (config.zones.length > 1) {
-                    doc.setTextColor(80);
-                    doc.setFont("helvetica", "bold");
-                    doc.setFontSize(9);
-                    doc.text(`${zone.label}:`, x + 2, yy);
-                    doc.setFont("helvetica", "normal");
-                    doc.setFontSize(10);
-                    yy += 6;
-                }
-                shooters.forEach(s => {
-                    doc.setTextColor(0);
-                    doc.text(truncateToWidth(doc, "- " + String(s.name || ""), w - 6), x + 2, yy);
-                    yy += 7;
-                    any = true;
-                });
-            });
-        }
-
-        if (!any) {
-            doc.setTextColor(150);
-            doc.text("- Keine Daten -", x + 2, yy);
-            yy += 7;
-        }
-
-        return yy - y;
+    // ── FOOTER-Funktion ─────────────────────────────────────────────
+    const drawFooter = () => {
+        const y = pageH - 8;
+        doc.setDrawColor(210, 210, 210);
+        doc.line(margin, y - 4, pageW - margin, y - 4);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(7);
+        doc.setTextColor(160, 160, 160);
+        doc.text(`Generiert am ${dateStr}`, margin, y);
+        doc.text(
+            `Seite ${doc.internal.getCurrentPageInfo().pageNumber}`,
+            pageW - margin, y, { align: 'right' }
+        );
     };
 
+    // ── HEADER: Logo oben links ─────────────────────────────────────
+    doc.addImage(LOGO_BASE64, 'PNG', margin, 8, 22, 22);
+
+    // Vereinsname rechts neben Logo
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(150, 150, 150);
+    doc.text('Sportschützen Muhen', margin + 26, 14);
+
+    // Horizontale Trennlinie
+    doc.setDrawColor(210, 210, 210);
+    doc.line(margin, 33, pageW - margin, 33);
+
+    // ── TITEL unter Linie ───────────────────────────────────────────
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(18);
+    doc.setTextColor(13, 110, 253);
+    const titleLines = doc.splitTextToSize(String(pdfTitle), pageW - margin * 2);
+    doc.text(titleLines, margin, 43);
+
+    // Untertitel
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.setTextColor(150, 150, 150);
+    doc.text('Saison 2025/2026 · Aufgebot', margin, 51);
+
+    // Footer Seite 1
+    drawFooter();
+
+    // ── TEAMS ────────────────────────────────────────────────────────
+    let yPos = 60;
     const teams = appState.teams || [];
-    for (let i = 0; i < teams.length; i++) {
-        const team = teams[i];
-        const needed = estimateTeamHeight(team, config);
-        const x = twoCol ? (margin + (col === 1 ? (colW + gap) : 0)) : margin;
 
-        if (yPos + needed > (pageHeight - margin)) {
-            doc.addPage();
-            yPos = 20;
-            doc.setFont("helvetica", "bold");
-            doc.setFontSize(14);
-            doc.setTextColor(13, 110, 253);
-            doc.text(String(pdfTitle), margin, yPos);
-            yPos += 12;
-            doc.setFont("helvetica", "normal");
-            doc.setFontSize(10);
-            doc.setTextColor(100);
-            doc.text(`Generiert am: ${dateStr}`, margin, yPos);
-            yPos += 12;
-            col = 0;
-            rowMaxH = 0;
+    // Hilfsfunktion: neue Seite mit Mini-Header
+    const addNewPage = () => {
+        drawFooter();
+        doc.addPage();
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(10);
+        doc.setTextColor(13, 110, 253);
+        doc.text(String(pdfTitle), margin, 12);
+        doc.setDrawColor(210, 210, 210);
+        doc.line(margin, 15, pageW - margin, 15);
+        yPos = 22;
+        drawFooter();
+    };
+
+    // Spalten-Setup
+    const colCount  = twoCol ? 2 : 1;
+    const colWidth  = (pageW - margin * 2 - (twoCol ? 6 : 0)) / colCount;
+    const colStartX = [margin, twoCol ? margin + colWidth + 6 : margin];
+
+    let col = 0; // aktuelle Spalte (0 = links, 1 = rechts)
+    let colY = [yPos, yPos]; // Y-Position pro Spalte
+
+    // Zeilen-Höhen
+    const rowH       = 6.5;
+    const headerH    = 9;
+    const teamTitleH = 8;
+    const teamGapH   = 5;
+
+    teams.forEach((team, ti) => {
+        const members = team.members || [];
+        const blockH  = teamTitleH + headerH + members.length * rowH + teamGapH;
+
+        // Wenn Block nicht mehr auf aktuelle Spalte passt
+        if (colY[col] + blockH > pageH - margin - 14) {
+            if (twoCol && col === 0) {
+                // Zur rechten Spalte wechseln
+                col = 1;
+            } else {
+                // Neue Seite
+                addNewPage();
+                col = 0;
+                colY = [yPos, yPos];
+            }
         }
 
-        const usedH = drawTeam(team, x, yPos, colW);
-        rowMaxH = Math.max(rowMaxH, usedH);
+        const x = colStartX[col];
+        let y   = colY[col];
 
+        // Teamname-Box
+        doc.setFillColor(240, 243, 248);
+        doc.setDrawColor(200, 210, 225);
+        doc.roundedRect(x, y, colWidth, teamTitleH, 2, 2, 'FD');
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(10);
+        doc.setTextColor(30, 60, 110);
+        doc.text(String(team.name || `Team ${ti + 1}`), x + 3, y + 5.8);
+        y += teamTitleH;
+
+        // Spalten-Header (Pos / Name / Scheibe)
+        doc.setFillColor(220, 230, 245);
+        doc.rect(x, y, colWidth, headerH, 'F');
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(8);
+        doc.setTextColor(60, 80, 120);
+        const posW   = 10;
+        const schW   = 18;
+        const nameW  = colWidth - posW - schW - 6;
+        doc.text('Pos', x + 2, y + 5.8);
+        doc.text('Name', x + posW + 2, y + 5.8);
+        doc.text('Scheibe', x + posW + nameW + 4, y + 5.8);
+        y += headerH;
+
+        // Mitglieder
+        members.forEach((m, mi) => {
+            const bg = mi % 2 === 0 ? [255, 255, 255] : [248, 250, 253];
+            doc.setFillColor(...bg);
+            doc.rect(x, y, colWidth, rowH, 'F');
+
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(8.5);
+            doc.setTextColor(40, 40, 40);
+
+            const pos    = String(m.position || mi + 1);
+            const name   = String(m.name || '–');
+            const scheibe = String(m.scheibe || '–');
+
+            doc.text(pos, x + 2, y + 4.5);
+            doc.text(
+                doc.splitTextToSize(name, nameW)[0],
+                x + posW + 2, y + 4.5
+            );
+            doc.text(scheibe, x + posW + nameW + 4, y + 4.5);
+
+            y += rowH;
+        });
+
+        // Rahmen um gesamten Block
+        doc.setDrawColor(200, 210, 225);
+        doc.setLineWidth(0.3);
+        doc.rect(x, colY[col], colWidth, y - colY[col], 'S');
+        doc.setLineWidth(0.2);
+
+        colY[col] = y + teamGapH;
+
+        // Bei einspaltig: col bleibt 0
+        // Bei zweispaltig: abwechseln
         if (twoCol) {
-            if (col === 0) { col = 1; }
-            else { col = 0; yPos += rowMaxH + 6; rowMaxH = 0; }
-        } else {
-            yPos += usedH + 6;
+            col = col === 0 ? 1 : 0;
         }
-    }
-
-    if (twoCol && col === 1) yPos += rowMaxH + 6;
+    });
 
     return { doc, dateStr, title: pdfTitle };
 }
+
 
 function buildPdfDoc(moduleKey) {
     if (!window.jspdf?.jsPDF) throw new Error("jsPDF nicht geladen.");
