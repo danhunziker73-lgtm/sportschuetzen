@@ -549,13 +549,12 @@ function processContestData(data, config) {
 //  RENDER UI (Tab-System für Mobile)
 // =========================================================
 function renderContestUI() {
-    console.log(typeof CONTESTCONFIG); // sollte "object" zurückgeben
+  console.log(typeof CONTEST_CONFIG); // sollte "object" zurückgeben
 
-  const config = CONTESTCONFIG[appState.activeModule];
+  const config = CONTEST_CONFIG[appState.activeModule];
   const container = document.getElementById('manager-inner');
   if (!container) return;
 
-  // Scroll-Positionen merken
   const poolScroll = document.querySelector('.pool-scroll-area')?.scrollTop || 0;
   const teamsScroll = document.querySelector('.teams-scroll-area')?.scrollTop || 0;
 
@@ -591,7 +590,6 @@ function renderContestUI() {
     </div>
   `;
 
-  // Scroll-Positionen wiederherstellen
   requestAnimationFrame(() => {
     const ps = document.querySelector('.pool-scroll-area');
     const ts = document.querySelector('.teams-scroll-area');
@@ -599,7 +597,6 @@ function renderContestUI() {
     if (ts) ts.scrollTop = teamsScroll;
   });
 }
-
 
 function renderTeamCard(team, config) {
     const zonesHtml = config.zones.map((zone) => {
