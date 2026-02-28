@@ -1359,15 +1359,27 @@ const bodyText = `Hallo\n\nIm Anhang findest du das Aufgebot für:\n${selectedMo
     + `Freundliche Grüsse\nSportschützen Muhen`;
 
         const config = CONTEST_CONFIG[appState.activeModule];
-        const res = await apiFetch('manager', 'action=sendMail', {
-            method: 'POST',
-            body: JSON.stringify({
-                recipients: mails,
-                subject: `Aufgebot ${config.pdfTitle || config.title}`,
-                body: `Hallo\n\nIm Anhang findest du das aktuelle Aufgebot.\n\nFreundliche Grüsse\nSportschützen Muhen`,
-                pdfBase64, fileName
-            })
-        });
+
+        const attachments = [];
+for (const key of pdfsToAttach) {
+    const { doc, dateStr } = buildPdfDoc(key);
+    const cfg = CONTEST_CONFIG[key];
+    attachments.push({
+        pdfBase64: doc.output('datauristring').split(',')[1],
+        fileName: `${cfg.fileBase}_${dateStr}.pdf`
+    });
+}
+
+        
+        const res = await apiFetch('manager', { action: 'sendMail' }, {
+    method: 'POST',
+    body: JSON.stringify({
+        recipients: mails,
+        subject,
+        body:        bodyText,
+        attachments  // ← Array mit { pdfBase64, fileName }
+    })
+});
 
         const data = JSON.parse(await res.text());
         if (data.error) throw new Error(data.error);
