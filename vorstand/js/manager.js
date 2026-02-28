@@ -810,56 +810,56 @@ function initDragAndDrop() {
 // MOBILE TOUCH FIXED VERSION
 // =====================================================
 // --- MOBILE TOUCH ---
+// --- MOBILE TOUCH (iOS-safe) ---
+function onTouchMove(e) {
+    if (!dragId || !touchClone) return;
+    e.preventDefault();
+    const touch = e.touches[0];
+    moveClone(touch.clientX, touch.clientY);
+    removeDropHighlights();
+    const elemBelow = document.elementFromPoint(touch.clientX, touch.clientY);
+    const zone = elemBelow ? elemBelow.closest('.dropzone') : null;
+    if (zone) zone.classList.add('drag-over');
+}
+
 document.addEventListener('touchstart', (e) => {
-  const handle = e.target.closest('.drag-handle');
-  const el = handle ? handle.closest('.draggable-player') : null;
-  if (!el) return; // kein Handle → normaler Scroll
+    const handle = e.target.closest('.drag-handle');
+    const el = handle ? handle.closest('.draggable-player') : null;
+    if (!el) return;
 
-  e.preventDefault(); // Drag startet sofort beim Handle-Touch
-  dragId = el.dataset.id;
-  dragSrcEl = el;
-  touchClone = el.cloneNode(true);
-  touchClone.classList.add('drag-clone');
-  document.body.appendChild(touchClone);
-  const touch = e.touches[0];
-  moveClone(touch.clientX, touch.clientY);
-  el.style.opacity = '0.4';
-  if (navigator.vibrate) navigator.vibrate(25);
-}, { passive: false });
+    e.preventDefault();
+    dragId = el.dataset.id;
+    dragSrcEl = el;
+    touchClone = el.cloneNode(true);
+    touchClone.classList.add('drag-clone');
+    document.body.appendChild(touchClone);
+    const touch = e.touches[0];
+    moveClone(touch.clientX, touch.clientY);
+    el.style.opacity = '0.4';
+    if (navigator.vibrate) navigator.vibrate(25);
 
-document.addEventListener('touchmove', (e) => {
-  if (!dragId || !touchClone) return;
-  e.preventDefault();
-  const touch = e.touches[0];
-  moveClone(touch.clientX, touch.clientY);
-  removeDropHighlights();
-  const elemBelow = document.elementFromPoint(touch.clientX, touch.clientY);
-  const zone = elemBelow ? elemBelow.closest('.dropzone') : null;
-  if (zone) zone.classList.add('drag-over');
+    // Erst JETZT touchmove aktivieren → iOS scrollt sonst wieder normal
+    document.addEventListener('touchmove', onTouchMove, { passive: false });
 }, { passive: false });
 
 document.addEventListener('touchend', (e) => {
-  if (!dragId) return;
-  const touch = e.changedTouches[0];
+    if (!dragId) return;
+    const touch = e.changedTouches[0];
+    if (touchClone) touchClone.style.display = 'none';
+    const elemBelow = document.elementFromPoint(touch.clientX, touch.clientY);
+    const zone = elemBelow ? elemBelow.closest('.dropzone') : null;
+    if (zone) handleDrop(dragId, zone);
+    if (touchClone) touchClone.remove();
+    if (dragSrcEl) dragSrcEl.style.opacity = '1';
+    removeDropHighlights();
+    document.querySelectorAll('.drag-clone').forEach(el => el.remove());
+    document.querySelectorAll('.draggable-player').forEach(el => el.style.opacity = '1');
+    dragId = null; touchClone = null; dragSrcEl = null;
 
-  // ← Clone ZUERST verstecken, damit elementFromPoint die Zone darunter trifft
-  if (touchClone) touchClone.style.display = 'none';
-
-  const elemBelow = document.elementFromPoint(touch.clientX, touch.clientY);
-  const zone = elemBelow ? elemBelow.closest('.dropzone') : null;
-  if (zone) handleDrop(dragId, zone);
-
-  // Cleanup
-  if (touchClone) touchClone.remove();
-  if (dragSrcEl) dragSrcEl.style.opacity = '1';
-  removeDropHighlights();
-  document.querySelectorAll('.drag-clone').forEach(el => el.remove());
-  document.querySelectorAll('.draggable-player').forEach(el => el.style.opacity = '1');
-  dragId = null; touchClone = null; dragSrcEl = null;
+    // Listener wieder entfernen → iOS scrollt wieder frei
+    document.removeEventListener('touchmove', onTouchMove);
 });
-
 }
-
 
 
 function moveClone(x, y) {
@@ -1063,23 +1063,30 @@ async function sendMailViaBackend() {
 // =========================================================
 async function saveContest() {
     const config = CONTEST_CONFIG[appState.activeModule];
-    // ← beide Button-IDs abfangen (Desktop + FAB)
     const btn = document.getElementById('btn-save-manager-desktop');
-    const fabSaveBtn = document.querySelector('.fab-item.bg-success');
+    const fabSaveBtn = document.querySelector('#fab-container .fab-item.bg-success');
 
     const setLoading = () => {
         if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Speichert…'; }
-        if (fabSaveBtn) { fabSaveBtn.disabled = true; }
+        if (fabSaveBtn) fabSaveBtn.disabled = true;
     };
     const setSuccess = () => {
-        if (btn) { btn.innerHTML = '<i class="fas fa-check"></i> Gespeichert!'; btn.classList.replace('btn-success','btn-outline-success'); }
-        setTimeout(() => {
-            if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-save"></i> Speichern'; btn.classList.replace('btn-outline-success','btn-success'); }
-            if (fabSaveBtn) fabSaveBtn.disabled = false;
-        }, 2000);
+        // Desktop-Button
+        if (btn) {
+            btn.disabled = false;
+            btn.className = 'btn btn-outline-success btn-sm fw-bold';
+            btn.innerHTML = '<i class="fas fa-check"></i> Gespeichert!';
+            setTimeout(() => {
+                btn.className = 'btn btn-success btn-sm fw-bold';
+                btn.innerHTML = '<i class="fas fa-save"></i> Speichern';
+            }, 2000);
+        }
+        if (fabSaveBtn) fabSaveBtn.disabled = false;
+        // Toast für Mobile
+        showToast('✅ Gespeichert!', 'success');
     };
     const setError = () => {
-        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-save"></i> Speichern'; }
+        if (btn) { btn.disabled = false; btn.className = 'btn btn-success btn-sm fw-bold'; btn.innerHTML = '<i class="fas fa-save"></i> Speichern'; }
         if (fabSaveBtn) fabSaveBtn.disabled = false;
     };
 
@@ -1088,11 +1095,9 @@ async function saveContest() {
     appState.teams.forEach(team => {
         team.shooters.forEach(s => {
             exportData.push({
-                id: String(s.id),
-                name: String(s.name || ""),
+                id: String(s.id), name: String(s.name || ""),
                 team: String(team.name || ""),
-                stellung: (appState.activeModule === "gruppe")
-                    ? (s.zone === "kniend" ? "Kniend" : "Liegend") : ""
+                stellung: appState.activeModule === "gruppe" ? (s.zone === "kniend" ? "Kniend" : "Liegend") : ""
             });
         });
     });
@@ -1104,8 +1109,7 @@ async function saveContest() {
         });
         const txt = await res.text();
         let data;
-        try { data = JSON.parse(txt); }
-        catch { throw new Error("Speichern: Backend-Antwort ist kein JSON"); }
+        try { data = JSON.parse(txt); } catch { throw new Error("Speichern: Backend-Antwort ist kein JSON"); }
         if (data.error) throw new Error(data.error);
         appState.isDirty = false;
         setSuccess();
@@ -1143,6 +1147,25 @@ function truncateToWidth(doc, text, maxWidth) {
     }
     return out.length ? (out + "...") : "";
 }
+
+function showToast(message, type = 'success') {
+    const existing = document.getElementById('manager-toast');
+    if (existing) existing.remove();
+    const bg = type === 'success' ? '#198754' : '#dc3545';
+    const toast = document.createElement('div');
+    toast.id = 'manager-toast';
+    toast.style.cssText = `
+        position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%);
+        background: ${bg}; color: white; padding: 10px 20px; border-radius: 8px;
+        font-weight: bold; z-index: 9999; box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        font-size: 15px; pointer-events: none;
+        animation: fadeInUp 0.2s ease;
+    `;
+    toast.textContent = message;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 2500);
+}
+
 
 function estimateTeamHeight(team, config) {
     const headerH = 14;
