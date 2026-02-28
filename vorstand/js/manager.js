@@ -7,6 +7,20 @@
 //  - Primärschlüssel: NUMERISCHE Mitglieder-ID
 // =========================================================
 
+
+
+// manager.js
+document.addEventListener('DOMContentLoaded', () => {
+    const managerContainer = document.getElementById('manager-container');
+    if (managerContainer) {
+        // Initialisiere deinen Manager hier
+        loadContestData('grenzland'); // Beispiel: Daten laden
+    } else {
+        console.warn("Manager-Container nicht gefunden!");
+    }
+});
+
+
 // === KONFIGURATION ===
 const CONTEST_CONFIG = {
     "grenzland": {
