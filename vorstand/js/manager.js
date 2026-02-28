@@ -326,8 +326,7 @@ let appState = {
   .pool-scroll-area .draggable-player .card-body {
     padding: 4px 6px 4px 20px !important;
   }
-  .pool-scroll-area .player-name {
-    font-size: 0.78rem;
+ 
   }
   /* Mobile Tabs + Sticky weg, nicht mehr nötig */
   .mobile-tabs { display: none; }
@@ -827,8 +826,14 @@ document.addEventListener('touchend', (e) => {
   if (touchClone) touchClone.remove();
   if (dragSrcEl) dragSrcEl.style.opacity = '1';
   removeDropHighlights();
+
+  // ← DIESE ZWEI ZEILEN FEHLEN:
+  document.querySelectorAll('.drag-clone').forEach(el => el.remove());
+  document.querySelectorAll('.draggable-player').forEach(el => el.style.opacity = '1');
+
   dragId = null; touchClone = null; dragSrcEl = null;
 });
+
 
 
 // =========================================================
