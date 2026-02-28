@@ -320,10 +320,10 @@ function renderGVList() {
 
   const pickPlaceholder = (label) => {
     const l = String(label || '').toLowerCase();
-    if (l.includes('datum') && l.includes('gv') && l.includes('vorjahr')) return 'tt.mm.jjjj';
-    if (l.includes('datum') && l.includes('abmeldung')) return 'tt.mm.jjjj';
-    if (l.includes('mahndatum')) return 'tt.mm.jjjj';
-    if (l.includes('datum') && l.includes('gv')) return 'tt.mm.jjjj';
+    if (l.includes('datum') && l.includes('gv') && l.includes('vorjahr')) return 'dd.mm.jjjj';
+    if (l.includes('datum') && l.includes('abmeldung')) return 'dd.mm.jjjj';
+    if (l.includes('mahndatum')) return 'dd.mm.jjjj';
+    if (l.includes('datum') && l.includes('gv')) return 'dd.mm.jjjj';
     if (l.includes('zeit') && l.includes('gv')) return 'hh:mm';
     return '';
   };
@@ -773,7 +773,8 @@ function bindTermineEventsOnce() {
   // yyyy-mm-dd → tt.mm.jjjj
   if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
     const [y, m, d] = s.split('-');
-    return `${parseInt(d,10)}.${parseInt(m,10)}.${y}`;
+    return `${String(parseInt(d,10)).padStart(2,'0')}.${String(parseInt(m,10)).padStart(2,'0')}.${y}`;
+
   }
   return s; // bereits im richtigen Format
 }
