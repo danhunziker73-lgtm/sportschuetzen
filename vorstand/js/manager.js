@@ -288,7 +288,7 @@ let appState = {
         }
 
         /* --- MOBILE SPECIFIC (< 768px) --- */
-      @media (max-width: 767px) {
+@media (max-width: 767px) {
   .manager-split {
     display: grid;
     grid-template-columns: 150px 1fr;
@@ -296,72 +296,63 @@ let appState = {
     height: calc(100dvh - var(--toolbar-h) - 80px);
     overflow: hidden;
   }
+
+  /* Pool-Spalte: direkt scrollbar, simpel */
   .pool-scroll-area {
     overflow-y: scroll;
     -webkit-overflow-scrolling: touch;
-    overscroll-behavior: contain;
+    overscroll-behavior-y: contain;
     height: 100%;
     border-right: 1px solid #dee2e6;
     padding-right: 4px;
   }
-  /* Pool – kompakte Namen */
-.pool-scroll-area .player-name {
-  font-size: 0.75rem;
-  max-width: 110px;   /* passt zur 150px Spalte minus Padding/Handle */
-}
-.sidebar-card {
+
+  /* sidebar-card nimmt gesamte Höhe, scrollt NICHT selbst */
+  .sidebar-card {
     height: 100%;
     display: flex;
     flex-direction: column;
+    overflow: visible;
   }
+
+  /* pool-body: kein eigener Scroll – das macht pool-scroll-area */
   .pool-body {
+    overflow: visible !important;
+    max-height: none !important;
     flex: 1;
-    overflow-y: auto;
-    max-height: none !important;   /* überschreibt Desktop-Wert */
   }
-  /* pool-scroll-area selbst NICHT mehr scrollen – die Card scrollt intern */
-  .pool-scroll-area {
-    overflow-y: visible !important;
-    height: auto !important;
-  }
-/* Teams – Namen in Karten */
-.teams-scroll-area .player-name {
-  max-width: calc(100% - 30px);
-}
 
-/* Generell für alle player-name */
-.player-name {
-  display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
+  /* Teams-Spalte: scrollbar */
   .teams-scroll-area {
     overflow-y: scroll;
     -webkit-overflow-scrolling: touch;
-    overscroll-behavior: contain;
+    overscroll-behavior-y: contain;
     height: 100%;
   }
-  /* Pool-Karten kompakter auf Mobile */
+
+  /* Kompakte Namen */
+  .pool-scroll-area .player-name {
+    font-size: 0.75rem;
+    max-width: 110px;
+  }
+  .teams-scroll-area .player-name {
+    max-width: calc(100% - 30px);
+  }
+  .player-name {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
   .pool-scroll-area .draggable-player .card-body {
     padding: 4px 6px 4px 20px !important;
   }
- 
-  }
-  /* Mobile Tabs + Sticky weg, nicht mehr nötig */
+
   .mobile-tabs { display: none; }
   .mobile-sticky { position: static; border-bottom: none; }
-  /* Desktop Sidebar Headers wieder sichtbar */
   .sidebar-card .card-header { display: flex; }
 }
-@media (min-width: 768px) {
-  .manager-split { display: contents; }
-  .pool-scroll-area, .teams-scroll-area { overflow: visible; height: auto; }
-}
 
-            
-         
                  
                     
                     
