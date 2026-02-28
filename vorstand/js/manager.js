@@ -1366,17 +1366,13 @@ async function executeMailSend() {
             + `Freundliche Grüsse\nSportschützen Muhen`;
 
         // ✅ FIX: apiFetch gibt bereits geparsten JSON zurück – kein res.text()!
-        const data = await apiFetch('manager', { action: 'sendMail' }, {
-            method: 'POST',
-            body: JSON.stringify({
-                recipients: mails,
-                subject,
-                mailBody: bodyText,   // ✅ FIX: 'mailBody' statt 'body'
-                attachments           // ✅ FIX: jetzt korrekt befüllt
-            })
-        });
-
-        if (data.error) throw new Error(data.error);
+        const res = await apiFetch('manager', 'action=sendMail', {
+    method: 'POST',
+    body: JSON.stringify({ recipients: mails, subject, mailBody: bodyText, attachments })
+});
+const data = JSON.parse(await res.text());
+if (data.error) throw new Error(data.error);
+Zwei Änderungen:
 
         bootstrap.Modal.getInstance(document.getElementById('mailWizardModal')).hide();
         showToast(`✅ Entwurf für ${mails.length} Empfänger erstellt!`, 'success');
