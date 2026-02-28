@@ -261,58 +261,54 @@ let appState = {
         }
 
         /* --- MOBILE SPECIFIC (< 768px) --- */
-        @media (max-width: 767px) {
-            .mobile-sticky {
-                position: sticky;
-                top: calc(var(--toolbar-h) - 10px);
-                z-index: 850;
-                background: white;
-                padding-bottom: 10px;
-                border-bottom: 1px solid #eee;
-                margin-bottom: 15px;
-            }
-            
-            /* Mobile Tab Navigation */
-            .mobile-tabs {
-                display: flex;
-                width: 100%;
-                border-radius: 8px;
-                overflow: hidden;
-                border: 1px solid var(--primary);
-                margin-bottom: 10px;
-            }
-            .mobile-tab-btn {
-                flex: 1;
-                background: white;
-                color: var(--primary);
-                border: none;
-                padding: 8px 0;
-                font-weight: 600;
-                font-size: 14px;
-                transition: background 0.2s, color 0.2s;
-            }
-            .mobile-tab-btn.active {
-                background: var(--primary);
-                color: white;
-            }
+      @media (max-width: 767px) {
+  .manager-split {
+    display: grid;
+    grid-template-columns: 150px 1fr;
+    gap: 8px;
+    height: calc(100dvh - var(--toolbar-h) - 80px);
+    overflow: hidden;
+  }
+  .pool-scroll-area {
+    overflow-y: scroll;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    height: 100%;
+    border-right: 1px solid #dee2e6;
+    padding-right: 4px;
+  }
+  .teams-scroll-area {
+    overflow-y: scroll;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    height: 100%;
+  }
+  /* Pool-Karten kompakter auf Mobile */
+  .pool-scroll-area .draggable-player .card-body {
+    padding: 4px 6px 4px 20px !important;
+  }
+  .pool-scroll-area .player-name {
+    font-size: 0.78rem;
+  }
+  /* Mobile Tabs + Sticky weg, nicht mehr nötig */
+  .mobile-tabs { display: none; }
+  .mobile-sticky { position: static; border-bottom: none; }
+  /* Desktop Sidebar Headers wieder sichtbar */
+  .sidebar-card .card-header { display: flex; }
+}
+@media (min-width: 768px) {
+  .manager-split { display: contents; }
+  .pool-scroll-area, .teams-scroll-area { overflow: visible; height: auto; }
+}
 
-            /* Container Heights for Mobile */
-            .mobile-tab-content {
-                max-height: 35vh;
-                overflow-y: auto;
-                border-radius: 8px;
-                box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);
-            }
-            .pool-body, .mail-body { max-height: none; }
             
-            /* Smaller Desktop Sidebar hides tabs */
-            .sidebar-card { border: none !important; box-shadow: none !important; }
-            .sidebar-card .card-header { display: none; } /* Versteckt Desktop Header auf Mobile */
-            
-            .drag-clone { width: 180px; }
-            .fab-container { bottom: 16px; right: 16px; }
-        }
-        
+         
+                 
+                    
+                    
+                    
+                    
+       
         /* Desktop Hides Mobile Tabs */
         @media (min-width: 768px) {
             .mobile-tabs { display: none; }
@@ -621,16 +617,41 @@ function renderContestUI() {
         </div>
     `;
 
-    container.innerHTML = `
-      <div class="col-12 col-md-5 col-lg-4 order-1 mobile-sticky bg-white pt-2 pt-md-0">
-        ${sidebarHtml}
-      </div>
-      <div class="col-12 col-md-7 col-lg-8 order-2 teams-area">
-        <div class="row g-3" id="teams-area">
-          ${teamsHtml}
+ container.innerHTML = `
+  <div class="manager-split col-12">
+
+    <!-- POOL (links, schmal) -->
+    <div class="pool-scroll-area">
+      <div class="sidebar-stack">
+        <div class="card shadow-sm border-secondary sidebar-card">
+          <div class="card-header bg-secondary text-white py-2">
+            <i class="fas fa-users"></i> Pool
+            <input type="text" class="form-control form-control-sm mt-1"
+              placeholder="Suchen…" onkeyup="filterPool(this.value)">
+          </div>
+          <div class="card-body dropzone bg-light pool-body" data-target-type="pool">
+            ${appState.pool.map(renderPlayerItem).join('')}
+            ${appState.pool.length === 0
+              ? '<div class="text-muted text-center small mt-3 py-3">Alle eingeteilt ✓</div>'
+              : ''}
+          </div>
+          <div class="card-footer small text-muted text-center py-1">
+            ${appState.pool.length} verfügbar
+          </div>
         </div>
       </div>
-    `;
+    </div>
+
+    <!-- TEAMS (rechts) -->
+    <div class="teams-scroll-area">
+      <div class="row g-3" id="teams-area">
+        ${teamsHtml}
+      </div>
+    </div>
+
+  </div>
+`;
+
 
     // Swipe Navigation für Touch-Geräte in der Sticky Area
     initSwipeNavigation();
