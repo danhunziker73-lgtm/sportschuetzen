@@ -1083,19 +1083,18 @@ async function openMailWizard() {
         showMailModal();
         renderMailStep(); // zeigt Step 1 mit "nicht geladen"-Badges
         // Im Hintergrund alle fehlenden Module laden
-        await Promise.allSettled(
-            toLoad.map(async key => {
-                try {
-                    const config = await fetchContestDataForPdf(key);
-                    mailWizard.cachedModules[key] = {
-                        teams: JSON.parse(JSON.stringify(appState.teams)),
-                        pool:  JSON.parse(JSON.stringify(appState.pool))
-                    };
-                } catch(e) {
-                    console.warn(`Modul ${key} konnte nicht geladen werden:`, e);
-                }
-            })
-        );
+       for (const key of toLoad) {
+    try {
+        await fetchContestDataForPdf(key);
+        mailWizard.cachedModules[key] = {
+            teams: JSON.parse(JSON.stringify(appState.teams)),
+            pool:  JSON.parse(JSON.stringify(appState.pool))
+        };
+    } catch(e) {
+        console.warn(`Modul ${key} konnte nicht geladen werden:`, e);
+    }
+}
+
         // State wiederherstellen
         // (fetchContestDataForPdf überschreibt appState – danach aktives Modul neu laden)
         await loadContestData(appState.activeModule);
@@ -1319,6 +1318,17 @@ function buildRecipientList() {
 
 async function executeMailSend() {
     const final = mailWizard.resolvedRecipients.filter(p => !mailWizard.excludedIds.has(p.id));
+
+    console.log('[Mail] cachedModules Teams:', {
+    grenzland:  mailWizard.cachedModules.grenzland?.teams?.map(t => t.name),
+    mannschaft: mailWizard.cachedModules.mannschaft?.teams?.map(t => t.name),
+    gruppe:     mailWizard.cachedModules.gruppe?.teams?.map(t => t.name)
+});
+console.log('[Mail] Empfänger:', final.map(p => p.email));
+console.log('[Mail] PDFs:', Object.entries(mailWizard.pdfAttachments).filter(([k,v])=>v&&k!=='none').map(([k])=>k));
+
+
+    
     const mails = final.map(p => p.email).filter(Boolean);
     if (!mails.length) { alert('Keine Empfänger.'); return; }
 
