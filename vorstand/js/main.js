@@ -64,6 +64,10 @@ function navTo(viewId, el) {
     // NEU: Jahresmeisterschaften laden
     if (viewId === 'jahresmeisterschaft' && typeof loadJahresmeisterschaftData === 'function') loadJahresmeisterschaftData();
     if (viewId === 'jahresmeisterschaft-kk' && typeof loadJahresmeisterschaftKKData === 'function') loadJahresmeisterschaftKKData();
+    // In navTo() ergänzen:
+    if (viewId === 'mail'          && typeof loadMailData          === 'function') loadMailData();
+    if (viewId === 'jahresbeitrag' && typeof loadJahresbeitragData === 'function') loadJahresbeitragData();
+    if (viewId === 'mitglieder'    && typeof loadMitgliederData    === 'function') loadMitgliederData();
 
 }
 
