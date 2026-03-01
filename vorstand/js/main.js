@@ -5,6 +5,7 @@ window.onload = () => {
     if (savedUser && savedRole) {
         currentUser = savedUser;
         userRole = savedRole;
+             currentRole = savedRole; // ← das fehlt aktuell
         showApp();
     } else {
         document.getElementById('login-screen').style.display = 'flex';
