@@ -12,6 +12,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
+
     <style>
         :root { --primary: #0f3a5d; --secondary: #1e293b; --bg: #f3f4f6; }
         body { background-color: var(--bg); font-family: 'Segoe UI', sans-serif; height: 100vh; overflow: hidden; }
@@ -116,7 +117,26 @@
                      onclick="navTo('jahresmeisterschaft', this)">
                     <i class="fas fa-medal"></i> Jahresmeisterschaft KK
                 </div>
+<!-- NEU: Mail (alle Rollen) -->
+<div class="nav-link" onclick="navTo('mail', this)">
+    <i class="fas fa-envelope"></i> Mail
+</div>
 
+<!-- NEU: Jahresbeitrag -->
+<div class="nav-link role-protected" 
+     data-roles="admin,kassier,schuetzenmeister"
+     onclick="navTo('jahresbeitrag', this)">
+    <i class="fas fa-coins"></i> Jahresbeitrag
+</div>
+
+<!-- NEU: Mitglieder -->
+<div class="nav-link role-protected" 
+     data-roles="admin,kassier,vorstand,schuetzenmeister"
+     onclick="navTo('mitglieder', this)">
+    <i class="fas fa-users"></i> Mitglieder
+</div>
+
+               
                 <div class="mt-auto border-top p-3">
                     <button class="btn btn-outline-danger w-100 btn-sm" onclick="doLogout()">
                         <i class="fas fa-sign-out-alt"></i> Abmelden
@@ -177,6 +197,38 @@
                             <p class="small text-muted">Kleinkaliber Meisterschaft verwalten</p>
                         </div>
                     </div>
+                <!-- Mail (alle sehen es) -->
+<div class="col-md-4">
+    <div class="card p-3 shadow-sm border-0 h-100"
+         onclick="navTo('mail')" style="cursor:pointer">
+        <h5>📧 Mail</h5>
+        <p class="small text-muted">Nachrichten & Kommunikation</p>
+    </div>
+</div>
+
+<!-- Jahresbeitrag -->
+<div class="col-md-4 role-protected" 
+     data-roles="admin,kassier,schuetzenmeister">
+    <div class="card p-3 shadow-sm border-0 h-100"
+         onclick="navTo('jahresbeitrag')" style="cursor:pointer">
+        <h5>💰 Jahresbeitrag</h5>
+        <p class="small text-muted">Beiträge einsehen</p>
+    </div>
+</div>
+
+<!-- Mitglieder -->
+<div class="col-md-4 role-protected" 
+     data-roles="admin,kassier,vorstand,schuetzenmeister">
+    <div class="card p-3 shadow-sm border-0 h-100"
+         onclick="navTo('mitglieder')" style="cursor:pointer">
+        <h5>👥 Mitglieder</h5>
+        <p class="small text-muted">Mitgliederliste einsehen</p>
+    </div>
+</div>
+
+                
+                
+                
                 </div>
             </div>
 
@@ -238,6 +290,38 @@
                 </div>
                 <div id="jahresmeisterschaft-container"></div>
             </div>
+<!-- MAIL -->
+<div id="view-mail" class="module-view">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2>📧 Mail</h2>
+        <button class="btn btn-sm btn-outline-secondary" onclick="loadMailData()">
+            🔄 Aktualisieren
+        </button>
+    </div>
+    <div id="mail-container"></div>
+</div>
+
+<!-- JAHRESBEITRAG -->
+<div id="view-jahresbeitrag" class="module-view">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2>💰 Jahresbeitrag</h2>
+        <button class="btn btn-sm btn-outline-secondary" onclick="loadJahresbeitragData()">
+            🔄 Aktualisieren
+        </button>
+    </div>
+    <div id="jahresbeitrag-container"></div>
+</div>
+
+<!-- MITGLIEDER -->
+<div id="view-mitglieder" class="module-view">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2>👥 Mitglieder</h2>
+        <button class="btn btn-sm btn-outline-secondary" onclick="loadMitgliederData()">
+            🔄 Aktualisieren
+        </button>
+    </div>
+    <div id="mitglieder-container"></div>
+</div>
 
         </main>
     </div>
@@ -251,6 +335,11 @@
 <script src="js/manager.js"></script>
 <script src="js/resultate.js"></script>
 <script src="js/vermietung.js"></script>
+<script src="js/mail.js"></script>
+<script src="js/jahresbeitrag.js"></script>
+<script src="js/mitglieder.js"></script>
+
+    
 <!-- NEU: Skript für Jahresmeisterschaft (falls benötigt) -->
 <!-- <script src="js/jahresmeisterschaft.js"></script> -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
