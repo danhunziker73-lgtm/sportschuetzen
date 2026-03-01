@@ -16,3 +16,33 @@ async function loadMitgliederData() {
     container.innerHTML = `<div class="alert alert-danger">Fehler: ${e.message}</div>`;
   }
 }
+
+function renderMitgliederView(daten) {
+  // Nur Lese-Ansicht (keine Edit/Delete-Buttons)
+  const rows = daten.map(m => `
+    <tr>
+      <td>${m.nachname || ''} ${m.vorname || ''}</td>
+      <td>${m.email || '–'}</td>
+      <td>${m.telefon || '–'}</td>
+      <td><span class="badge bg-${m.status === 'Aktiv' ? 'success' : 'secondary'}">
+        ${m.status || '–'}
+      </span></td>
+    </tr>`).join('');
+
+  document.getElementById('mitglieder-container').innerHTML = `
+    <div class="card border-0 shadow-sm p-3">
+      <div class="table-responsive">
+        <table class="table table-hover table-sm">
+          <thead class="table-dark">
+            <tr>
+              <th>Name</th>
+              <th>E-Mail</th>
+              <th>Telefon</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    </div>`;
+}
