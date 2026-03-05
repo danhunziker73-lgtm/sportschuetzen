@@ -60,23 +60,42 @@ async function loadMailData() {
   document.getElementById('mail-container').innerHTML =
     '<p class="text-muted">⏳ Lade Mitglieder...</p>';
 
-  const res  = await apiFetch('mitglieder', 'action=getAll');
-  const data = await res.json();
-  if (!data.success) {
+  try {
+    const res  = await apiFetch('mitglieder', 'action=getAll');
+    const text = await res.text(); // erst text(), dann manuell parsen
+
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch (e) {
+      document.getElementById('mail-container').innerHTML =
+        `<div class="alert alert-danger">
+           <strong>Antwort konnte nicht geparst werden:</strong><br>
+           <pre style="font-size:0.75rem;max-height:200px;overflow:auto">${text.substring(0,500)}</pre>
+         </div>`;
+      return;
+    }
+
+    if (!data.success) {
+      document.getElementById('mail-container').innerHTML =
+        `<div class="alert alert-danger">GAS-Fehler: ${data.error || JSON.stringify(data)}</div>`;
+      return;
+    }
+
+    _mailAllMembers = data.data.filter(m =>
+      m.IsActive == 1 &&
+      m.Deceased != 1 && m.Deceased !== true &&
+      !m.Vereins_austritt
+    );
+
+    renderMailUI();
+
+  } catch (e) {
     document.getElementById('mail-container').innerHTML =
-      `<div class="alert alert-danger">Fehler: ${data.error}</div>`;
-    return;
+      `<div class="alert alert-danger">Verbindungsfehler: ${e.message}</div>`;
   }
-
-  // Nur aktive, nicht verstorbene, nicht ausgetretene
-  _mailAllMembers = data.data.filter(m =>
-    m.IsActive == 1 &&
-    m.Deceased != 1 && m.Deceased !== true &&
-    !m.Vereins_austritt
-  );
-
-  renderMailUI();
 }
+
 
 // ============================================================
 // UI AUFBAUEN
