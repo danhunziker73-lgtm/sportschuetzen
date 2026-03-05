@@ -167,14 +167,16 @@ function _mailUpdateSelection() {
   MAIL_GRUPPEN_CONFIG.forEach(g => {
     const cb = document.getElementById(`mg-${g.key}`);
     if (cb && cb.checked) {
-      _mailAllMembers.filter(g.filter).forEach(m => {
-        _mailSelected.add(String(m.PersonNumber || ''));
-      });
+      const gefunden = _mailAllMembers.filter(g.filter);
+      console.log(`Gruppe ${g.key}: ${gefunden.length} Mitglieder, Filter:`, g.filter.toString());
+      gefunden.forEach(m => _mailSelected.add(String(m.PersonNumber || '')));
     }
   });
+  console.log('_mailSelected nach Update:', _mailSelected.size);
   _mailRenderSummary();
   _mailRenderPreview();
 }
+
 
 // ============================================================
 // KATEGORIE-LABEL (kontextabhängig)
@@ -224,8 +226,11 @@ function _mailRenderSummary() {
 // ============================================================
 function _mailRenderPreview() {
   const alle = _mailGetAllSelected();
+  console.log('Preview aufgerufen, Anzahl:', alle.length, '_mailSelected:', [..._mailSelected]);
+  
   if (alle.length === 0) {
-    document.getElementById('mail-preview').innerHTML = '';
+    document.getElementById('mail-preview').innerHTML = 
+      '<p class="text-muted small">0 Einträge selektiert</p>';
     return;
   }
 
