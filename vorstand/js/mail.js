@@ -7,15 +7,13 @@ const MAIL_GRUPPEN_CONFIG = [
     key:   'vorstand',
     label: '⭐ Vorstand',
     haupt: true,
-    filter: m => m._istVorstand
+    filter: m => String(m.rabatt_kategorie || '').trim() === 'RA_001'
   },
   {
     key:   'alle',
     label: '⭐ Alle Vereinsmitglieder',
     haupt: true,
-    filter: m => m.IsActive == 1 &&
-                 m.Deceased != 1 && m.Deceased !== true &&
-                 !m.Vereins_austritt
+    filter: m => true  // Basisfilter bereits in _mailAllMembers
   },
   {
     key:   'kk50a',
@@ -45,24 +43,31 @@ const MAIL_GRUPPEN_CONFIG = [
     key:   'passiv',
     label: 'Passivmitglieder',
     haupt: false,
-    filter: m => /passiv/i.test(m._kategorie || '') &&
-                 !/ehren/i.test(m._kategorie || '')
+    filter: m => m.IsPassive == 1 || m.IsPassive === true
   },
 ];
 
 let _mailAllMembers = [];
-let _mailSelected   = new Set(); // PersonNumbers
+let _mailSelected   = new Set();
+let _mailLoaded     = false;  // ← NEU: verhindert Doppel-Load
 
 // ============================================================
 // LADEN
 // ============================================================
-async function loadMailData() {
+async function loadMailData(force = false) {
+  // Nur neu laden wenn forced (Aktualisieren-Button) oder noch nie geladen
+  if (_mailLoaded && !force) return;
+
+  _mailLoaded = false;
+  _mailAllMembers = [];  // ← Reset vor jedem Laden
+  _mailSelected.clear();
+
   document.getElementById('mail-container').innerHTML =
-    '<p class="text-muted">⏳ Lade Mitglieder...</p>';
+    '<p class="text-muted ps-1">⏳ Lade Mitglieder...</p>';
 
   try {
     const res  = await apiFetch('mitglieder', 'action=getAll');
-    const text = await res.text(); // erst text(), dann manuell parsen
+    const text = await res.text();
 
     let data;
     try {
@@ -78,16 +83,22 @@ async function loadMailData() {
 
     if (!data.success) {
       document.getElementById('mail-container').innerHTML =
-        `<div class="alert alert-danger">GAS-Fehler: ${data.error || JSON.stringify(data)}</div>`;
+        `<div class="alert alert-danger">Fehler: ${data.error || JSON.stringify(data)}</div>`;
       return;
     }
 
-    _mailAllMembers = data.data.filter(m =>
-      m.IsActive == 1 &&
-      m.Deceased != 1 && m.Deceased !== true &&
-      !m.Vereins_austritt
-    );
+    // Deduplizieren nach PersonNumber (falls GAS mehrfache Zeilen liefert)
+    const seen = new Set();
+    _mailAllMembers = data.data.filter(m => {
+      const pn = String(m.PersonNumber || m.person_number || '');
+      if (!pn || seen.has(pn)) return false;
+      seen.add(pn);
+      return m.IsActive == 1 &&
+             m.Deceased != 1 && m.Deceased !== true &&
+             !m.Vereins_austritt;
+    });
 
+    _mailLoaded = true;
     renderMailUI();
 
   } catch (e) {
@@ -95,7 +106,6 @@ async function loadMailData() {
       `<div class="alert alert-danger">Verbindungsfehler: ${e.message}</div>`;
   }
 }
-
 
 // ============================================================
 // UI AUFBAUEN
@@ -149,11 +159,15 @@ function renderMailUI() {
               <button class="btn btn-primary" onclick="mailKopieren()">
                 <i class="fas fa-copy me-1"></i> Adressen kopieren
               </button>
-              <button id="btn-mailto" class="btn btn-outline-secondary" 
+              <button id="btn-mailto" class="btn btn-outline-secondary"
                       onclick="mailOpenMailto()" disabled>
                 <i class="fas fa-envelope me-1"></i> In Mail öffnen
               </button>
-              <button class="btn btn-outline-secondary d-none d-md-inline-flex"
+              <button class="btn btn-outline-secondary"
+                      onclick="loadMailData(true)">
+                <i class="fas fa-sync me-1"></i> Aktualisieren
+              </button>
+              <button class="btn btn-outline-secondary"
                       onclick="mailCSV()">
                 <i class="fas fa-download me-1"></i> CSV
               </button>
@@ -161,15 +175,22 @@ function renderMailUI() {
 
             <div id="mail-bcc-hint" class="alert alert-info py-2 small d-none">
               <i class="fas fa-info-circle me-1"></i>
-              Bitte Empfänger ins <strong>BCC-Feld</strong> einfügen –
+              Empfänger bitte ins <strong>BCC-Feld</strong> einfügen –
               so bleiben die Adressen der Mitglieder geschützt.
             </div>
 
             <div id="mail-copy-success" class="alert alert-success py-2 small d-none">
-              <i class="fas fa-check me-1"></i> Adressen in Zwischenablage kopiert!
+              <i class="fas fa-check me-1"></i> Adressen kopiert!
             </div>
 
-            <div id="mail-preview" class="mt-3" style="max-height:320px;overflow-y:auto;"></div>
+            <div id="mail-mailto-hint" class="alert alert-warning py-2 small d-none">
+              <i class="fas fa-exclamation-triangle me-1"></i>
+              Zu viele Empfänger für direkten Mail-Start (&gt;30).
+              Bitte <strong>«Adressen kopieren»</strong> verwenden und manuell ins BCC einfügen.
+            </div>
+
+            <div id="mail-preview" class="mt-3"
+                 style="max-height:340px;overflow-y:auto;"></div>
 
           </div>
         </div>
@@ -182,7 +203,7 @@ function renderMailUI() {
 function gruppenCheckbox(g, count) {
   return `
     <div class="form-check mb-2">
-      <input class="form-check-input" type="checkbox" 
+      <input class="form-check-input" type="checkbox"
              id="mg-${g.key}" onchange="mailGruppeToggle('${g.key}')">
       <label class="form-check-label d-flex justify-content-between" for="mg-${g.key}">
         <span>${g.label}</span>
@@ -195,12 +216,11 @@ function gruppenCheckbox(g, count) {
 // GRUPPENAUSWAHL
 // ============================================================
 function mailGruppeToggle(key) {
-  const cfg    = MAIL_GRUPPEN_CONFIG.find(g => g.key === key);
   const cb     = document.getElementById(`mg-${key}`);
   const isAlle = key === 'alle';
 
   if (isAlle && cb.checked) {
-    // Alle anderen deaktivieren
+    // Alle anderen deaktivieren + sperren
     MAIL_GRUPPEN_CONFIG.forEach(g => {
       if (g.key !== 'alle') {
         const el = document.getElementById(`mg-${g.key}`);
@@ -224,7 +244,7 @@ function _mailUpdateSelection() {
     const cb = document.getElementById(`mg-${g.key}`);
     if (cb && cb.checked) {
       _mailAllMembers.filter(g.filter).forEach(m => {
-        _mailSelected.add(String(m.PersonNumber));
+        _mailSelected.add(String(m.PersonNumber || m.person_number || ''));
       });
     }
   });
@@ -237,93 +257,96 @@ function _mailUpdateSelection() {
 // SUMMARY & VORSCHAU
 // ============================================================
 function _mailRenderSummary() {
-  const selected = _mailGetSelectedMembers();
-  const ohneEmail = selected.filter(m => !m.PrimaryEmail).length;
-  const mitEmail  = selected.length - ohneEmail;
+  const alle      = _mailGetAllSelected();   // inkl. ohne Email
+  const mitEmail  = alle.filter(m => _getEmail(m));
+  const ohneEmail = alle.length - mitEmail.length;
 
-  const summaryEl = document.getElementById('mail-summary');
-  const hintEl    = document.getElementById('mail-bcc-hint');
-  const mailtoBtn = document.getElementById('btn-mailto');
+  const summaryEl  = document.getElementById('mail-summary');
+  const hintEl     = document.getElementById('mail-bcc-hint');
+  const mailtoBtn  = document.getElementById('btn-mailto');
+  const mailtoHint = document.getElementById('mail-mailto-hint');
 
-  if (selected.length === 0) {
+  if (alle.length === 0) {
     summaryEl.innerHTML = '<span class="text-muted">Keine Gruppe gewählt.</span>';
     hintEl.classList.add('d-none');
+    mailtoHint.classList.add('d-none');
     mailtoBtn.disabled = true;
     return;
   }
 
   const warnHtml = ohneEmail > 0
     ? `<span class="text-warning ms-2">
-         <i class="fas fa-exclamation-triangle"></i> 
-         ${ohneEmail} ohne E-Mail (werden ausgeschlossen)
+         <i class="fas fa-exclamation-triangle"></i>
+         ${ohneEmail} ohne E-Mail
        </span>`
     : '';
 
-  summaryEl.innerHTML = `
-    <strong>${selected.length} Empfänger</strong> gewählt, 
-    ${mitEmail} mit E-Mail${warnHtml}`;
+  summaryEl.innerHTML =
+    `<strong>${alle.length} Empfänger</strong> gewählt, 
+     ${mitEmail.length} mit E-Mail${warnHtml}`;
 
   hintEl.classList.remove('d-none');
-  mailtoBtn.disabled = mitEmail > 20;
-  if (mitEmail > 20) {
-    mailtoBtn.title = 'Liste zu gross für direkten Mail-Start (>20 Empfänger) – bitte «Adressen kopieren» verwenden';
-  }
+
+  const zuViele = mitEmail.length > 30;
+  mailtoBtn.disabled = zuViele;
+  mailtoHint.classList.toggle('d-none', !zuViele);
 }
 
 function _mailRenderPreview() {
-  const selected = _mailGetSelectedMembers();
-  if (selected.length === 0) {
+  const alle = _mailGetAllSelected();
+  if (alle.length === 0) {
     document.getElementById('mail-preview').innerHTML = '';
     return;
   }
 
-  const rows = selected.map(m => {
-    const name  = [m.FirstName, m.LastName].filter(Boolean).join(' ') || `(${m.PersonNumber})`;
-    const email = m.PrimaryEmail
-      ? `<span class="text-success">${m.PrimaryEmail}</span>`
+  const rows = alle.map(m => {
+    const name  = _getName(m);
+    const email = _getEmail(m)
+      ? `<span class="text-success">${_getEmail(m)}</span>`
       : `<span class="text-warning"><i class="fas fa-exclamation-triangle"></i> keine E-Mail</span>`;
-    const gruppen = _mailGetGruppenFuerPerson(m);
+    const kat = String(m._kategorie || (m.IsPassive == 1 ? 'Passiv' : '')).trim() || '–';
     return `<tr>
       <td class="small">${name}</td>
       <td class="small">${email}</td>
-      <td class="small text-muted">${gruppen}</td>
+      <td class="small text-muted">${kat}</td>
     </tr>`;
   }).join('');
 
   document.getElementById('mail-preview').innerHTML = `
-    <table class="table table-sm table-hover">
+    <table class="table table-sm table-hover mb-0">
       <thead class="table-light">
-        <tr>
-          <th>Name</th><th>E-Mail</th><th>Gruppe(n)</th>
-        </tr>
+        <tr><th>Name</th><th>E-Mail</th><th>Kategorie</th></tr>
       </thead>
       <tbody>${rows}</tbody>
     </table>`;
 }
 
-function _mailGetGruppenFuerPerson(m) {
-  return MAIL_GRUPPEN_CONFIG
-    .filter(g => {
-      const cb = document.getElementById(`mg-${g.key}`);
-      return cb && cb.checked && g.filter(m);
-    })
-    .map(g => g.label.replace(/⭐\s*/,''))
-    .join(', ');
-}
-
 // ============================================================
 // HILFSFUNKTIONEN
 // ============================================================
-function _mailGetSelectedMembers() {
+function _getEmail(m) {
+  return (m.PrimaryEmail || m.primary_email || m.Email || '').trim();
+}
+
+function _getName(m) {
+  const fn = m.FirstName || m.first_name || '';
+  const ln = m.LastName  || m.last_name  || '';
+  return [fn, ln].filter(Boolean).join(' ') || `(${m.PersonNumber || m.person_number})`;
+}
+
+function _mailGetAllSelected() {
   return _mailAllMembers.filter(m =>
-    _mailSelected.has(String(m.PersonNumber)) && m.PrimaryEmail
+    _mailSelected.has(String(m.PersonNumber || m.person_number || ''))
   );
 }
 
+function _mailGetSelectedWithEmail() {
+  return _mailGetAllSelected().filter(m => _getEmail(m));
+}
+
 function _mailGetEmailList() {
-  return _mailGetSelectedMembers()
-    .map(m => m.PrimaryEmail)
-    .filter(Boolean)
+  return _mailGetSelectedWithEmail()
+    .map(m => _getEmail(m))
     .join('; ');
 }
 
@@ -332,34 +355,41 @@ function _mailGetEmailList() {
 // ============================================================
 function mailKopieren() {
   const liste = _mailGetEmailList();
-  if (!liste) return;
-
+  if (!liste) {
+    alert('Keine E-Mail-Adressen in der Auswahl.');
+    return;
+  }
   navigator.clipboard.writeText(liste).then(() => {
     const el = document.getElementById('mail-copy-success');
     el.classList.remove('d-none');
     setTimeout(() => el.classList.add('d-none'), 3000);
+  }).catch(() => {
+    // Fallback für ältere Browser
+    prompt('Adressen markieren und kopieren (Ctrl+C):', liste);
   });
 }
 
 function mailOpenMailto() {
   const liste = _mailGetEmailList();
   if (!liste) return;
-  window.location.href = `mailto:?bcc=${encodeURIComponent(liste)}`;
+  // Semikolon → Komma für mailto-Standard
+  const bcc = liste.split('; ').join(',');
+  window.open(`mailto:?bcc=${encodeURIComponent(bcc)}`, '_blank');
 }
 
 function mailCSV() {
-  const selected = _mailGetSelectedMembers();
-  if (!selected.length) return;
+  const alle = _mailGetAllSelected();
+  if (!alle.length) return;
 
-  const header = 'Name;E-Mail;Gruppe\n';
-  const rows = selected.map(m => {
-    const name   = [m.FirstName, m.LastName].filter(Boolean).join(' ');
-    const email  = m.PrimaryEmail || '';
-    const gruppe = _mailGetGruppenFuerPerson(m);
-    return `"${name}";"${email}";"${gruppe}"`;
+  const header = 'Name;E-Mail;Kategorie\n';
+  const rows = alle.map(m => {
+    const name  = _getName(m);
+    const email = _getEmail(m);
+    const kat   = String(m._kategorie || (m.IsPassive == 1 ? 'Passiv' : '')).trim();
+    return `"${name}";"${email}";"${kat}"`;
   }).join('\n');
 
-  const blob = new Blob(['\uFEFF' + header + rows], // BOM für Excel
+  const blob = new Blob(['\uFEFF' + header + rows],
                         { type: 'text/csv;charset=utf-8;' });
   const url  = URL.createObjectURL(blob);
   const a    = document.createElement('a');
