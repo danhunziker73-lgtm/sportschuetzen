@@ -296,11 +296,23 @@ function _mailRenderSummary() {
 
 function _mailRenderPreview() {
   const alle = _mailGetAllSelected();
+  const kat = _getKatLabel(m);
+
   if (alle.length === 0) {
     document.getElementById('mail-preview').innerHTML = '';
     return;
   }
 
+// Kategorie kontextbezogen anzeigen
+function _getKatLabel(m) {
+  // Wenn LG gewählt UND Mitglied hat LG → "LG" zeigen
+  const lgGewählt = document.getElementById('mg-lg')?.checked;
+  if (lgGewählt && m._istLG) return 'LG';
+  if (m._istVorstand) return 'Vorstand';
+  return m._kategorie || '–';
+}
+
+  
   // Sortierbar: aktueller Zustand
   if (!window._mailSortCol) window._mailSortCol = 'ln';
   if (!window._mailSortDir) window._mailSortDir = 1;
@@ -409,41 +421,21 @@ function mailCSV() {
   const alle = _mailGetAllSelected();
   if (!alle.length) return;
 
-  const header = 'Nachname;Vorname;E-Mail;Kategorie\n';   // ← kein doppeltes \\
-  const rows = alle.map(m => {
-    const kat = m._kategorie || (m.IsPassive == 1 ? 'Passiv' : '') || '';
-    return `"${m.LastName || ''}";"${m.FirstName || ''}";"${_getEmail(m)}";"${kat}"`;
-  }).join('\n');                                           // ← kein doppeltes \\
+  const lines = ['"Nachname";"Vorname";"E-Mail";"Kategorie"'];
+  alle.forEach(m => {
+    const kat = m._istVorstand ? 'Vorstand' :
+                (m._kategorie || (m.IsPassive == 1 ? 'Passiv' : '') || '');
+    lines.push(`"${m.LastName||''}";"${m.FirstName||''}";"${_getEmail(m)}";"${kat}"`);
+  });
 
-  const blob = new Blob(['\uFEFF' + header + rows],      // ← kein doppeltes \\
+  const blob = new Blob(['\uFEFF' + lines.join('\n')],
                         { type: 'text/csv;charset=utf-8;' });
-  const url  = URL.createObjectURL(blob);
-  const a    = document.createElement('a');
-  a.href     = url;
+  const url = URL.createObjectURL(blob);
+  const a   = document.createElement('a');
+  a.href    = url;
   a.download = `muhen_mail_${new Date().toISOString().slice(0,10)}.csv`;
+  document.body.appendChild(a);
   a.click();
-  URL.revokeObjectURL(url);
-}
-
-
-function mailCSV() {
-  const alle = _mailGetAllSelected();
-  if (!alle.length) return;
-
-  const header = 'Name;E-Mail;Kategorie\n';
-  const rows = alle.map(m => {
-    const name  = _getName(m);
-    const email = _getEmail(m);
-    const kat   = String(m._kategorie || (m.IsPassive == 1 ? 'Passiv' : '')).trim();
-    return `"${name}";"${email}";"${kat}"`;
-  }).join('\n');
-
-  const blob = new Blob(['\uFEFF' + header + rows],
-                        { type: 'text/csv;charset=utf-8;' });
-  const url  = URL.createObjectURL(blob);
-  const a    = document.createElement('a');
-  a.href     = url;
-  a.download = `muhen_mail_${new Date().toISOString().slice(0,10)}.csv`;
-  a.click();
+  document.body.removeChild(a);
   URL.revokeObjectURL(url);
 }
