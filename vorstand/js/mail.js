@@ -293,6 +293,7 @@ function _mailRenderSummary() {
   mailtoHint.classList.toggle('d-none', !zuViele);
 }
 
+
 function _mailRenderPreview() {
   const alle = _mailGetAllSelected();
   if (alle.length === 0) {
@@ -300,26 +301,60 @@ function _mailRenderPreview() {
     return;
   }
 
-  const rows = alle.map(m => {
-    const name  = _getName(m);
+  // Sortierbar: aktueller Zustand
+  if (!window._mailSortCol) window._mailSortCol = 'ln';
+  if (!window._mailSortDir) window._mailSortDir = 1;
+
+  function sortBy(col) {
+    if (window._mailSortCol === col) window._mailSortDir *= -1;
+    else { window._mailSortCol = col; window._mailSortDir = 1; }
+    _mailRenderPreview();
+  }
+
+  const sorted = [...alle].sort((a, b) => {
+    const col = window._mailSortCol;
+    let va = col === 'fn' ? (a.FirstName || '') :
+             col === 'ln' ? (a.LastName  || '') :
+             col === 'email' ? _getEmail(a) : (a._kategorie || '');
+    let vb = col === 'fn' ? (b.FirstName || '') :
+             col === 'ln' ? (b.LastName  || '') :
+             col === 'email' ? _getEmail(b) : (b._kategorie || '');
+    return window._mailSortDir * va.localeCompare(vb, 'de');
+  });
+
+  function sortArrow(col) {
+    if (window._mailSortCol !== col) return ' <span class="text-muted">⇅</span>';
+    return window._mailSortDir === 1 ? ' ↑' : ' ↓';
+  }
+
+  const rows = sorted.map(m => {
     const email = _getEmail(m)
-      ? `<span class="text-success">${_getEmail(m)}</span>`
-      : `<span class="text-warning"><i class="fas fa-exclamation-triangle"></i> keine E-Mail</span>`;
-    const kat = String(m._kategorie || (m.IsPassive == 1 ? 'Passiv' : '')).trim() || '–';
+      ? `<span class="text-success small">${_getEmail(m)}</span>`
+      : `<span class="text-warning small"><i class="fas fa-exclamation-triangle"></i> –</span>`;
+    const kat = (m._kategorie || (m.IsPassive == 1 ? 'Passiv' : '') || '–');
     return `<tr>
-      <td class="small">${name}</td>
-      <td class="small">${email}</td>
+      <td class="small">${m.LastName  || '–'}</td>
+      <td class="small">${m.FirstName || '–'}</td>
+      <td>${email}</td>
       <td class="small text-muted">${kat}</td>
     </tr>`;
   }).join('');
 
   document.getElementById('mail-preview').innerHTML = `
     <table class="table table-sm table-hover mb-0">
-      <thead class="table-light">
-        <tr><th>Name</th><th>E-Mail</th><th>Kategorie</th></tr>
+      <thead class="table-light" style="position:sticky;top:0;cursor:pointer">
+        <tr>
+          <th onclick="sortBy('ln')">Nachname${sortArrow('ln')}</th>
+          <th onclick="sortBy('fn')">Vorname${sortArrow('fn')}</th>
+          <th onclick="sortBy('email')">E-Mail${sortArrow('email')}</th>
+          <th onclick="sortBy('kat')">Kategorie${sortArrow('kat')}</th>
+        </tr>
       </thead>
       <tbody>${rows}</tbody>
     </table>`;
+
+  // sortBy global verfügbar machen
+  window.sortBy = sortBy;
 }
 
 // ============================================================
@@ -370,13 +405,26 @@ function mailKopieren() {
   });
 }
 
-function mailOpenMailto() {
-  const liste = _mailGetEmailList();
-  if (!liste) return;
-  // Semikolon → Komma für mailto-Standard
-  const bcc = liste.split('; ').join(',');
-  window.open(`mailto:?bcc=${encodeURIComponent(bcc)}`, '_blank');
+function mailCSV() {
+  const alle = _mailGetAllSelected();
+  if (!alle.length) return;
+
+  const header = 'Nachname;Vorname;E-Mail;Kategorie\n';   // ← kein doppeltes \\
+  const rows = alle.map(m => {
+    const kat = m._kategorie || (m.IsPassive == 1 ? 'Passiv' : '') || '';
+    return `"${m.LastName || ''}";"${m.FirstName || ''}";"${_getEmail(m)}";"${kat}"`;
+  }).join('\n');                                           // ← kein doppeltes \\
+
+  const blob = new Blob(['\uFEFF' + header + rows],      // ← kein doppeltes \\
+                        { type: 'text/csv;charset=utf-8;' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = `muhen_mail_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
 }
+
 
 function mailCSV() {
   const alle = _mailGetAllSelected();
