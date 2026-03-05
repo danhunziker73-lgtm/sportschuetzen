@@ -7,45 +7,46 @@ const MAIL_GRUPPEN_CONFIG = [
     key:   'vorstand',
     label: '⭐ Vorstand',
     haupt: true,
-    filter: m => String(m.rabatt_kategorie || '').trim() === 'RA_001'
+    filter: m => m._istVorstand === true
   },
   {
     key:   'alle',
     label: '⭐ Alle Vereinsmitglieder',
     haupt: true,
-    filter: m => true  // Basisfilter bereits in _mailAllMembers
+    filter: m => true
   },
   {
     key:   'kk50a',
     label: 'KK 50m Aktiv-A',
     haupt: false,
-    filter: m => /aktiv-?a.*g50/i.test(m._kategorie || '')
+    filter: m => m._istKK50A === true
   },
   {
     key:   'kk50b',
     label: 'KK 50m Aktiv-B',
     haupt: false,
-    filter: m => /aktiv-?b.*g50/i.test(m._kategorie || '')
+    filter: m => m._istKK50B === true
   },
   {
     key:   'lg',
     label: 'Luftgewehr (LG)',
     haupt: false,
-    filter: m => /g10/i.test(m._kategorie || '')
+    filter: m => m._istLG === true
   },
   {
     key:   'ehren',
     label: 'Ehrenmitglieder',
     haupt: false,
-    filter: m => /ehren/i.test(m._kategorie || '')
+    filter: m => m._istEhren === true
   },
   {
     key:   'passiv',
     label: 'Passivmitglieder',
     haupt: false,
-    filter: m => m.IsPassive == 1 || m.IsPassive === true
+    filter: m => m._istPassiv === true
   },
 ];
+
 
 let _mailAllMembers = [];
 let _mailSelected   = new Set();
