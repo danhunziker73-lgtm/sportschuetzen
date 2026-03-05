@@ -50,13 +50,25 @@ async function loadMailData(force = false) {
       return;
     }
 
-    const seen = new Set();
-    _mailAllMembers = data.data.filter(m => {
-      const pn = String(m.PersonNumber || '');
-      if (!pn || seen.has(pn)) return false;
-      seen.add(pn);
-      return m.IsActive == 1 && m.Deceased != 1 && !m.Vereins_austritt;
-    });
+ const seen = new Set();
+_mailAllMembers = data.data.filter(m => {
+  const pn = String(m.PersonNumber || '');
+  if (!pn || seen.has(pn)) return false;
+  seen.add(pn);
+
+  // Verstorbene + Ausgetretene immer raus
+  if (m.Deceased == 1 || m.Deceased === true ||
+      String(m.Deceased).toLowerCase() === 'true') return false;
+  if (m.Vereins_austritt) return false;
+
+  // Aktiv ODER Passiv einschliessen
+  const istAktiv  = m.IsActive  == 1 || m.IsActive  === true ||
+                    String(m.IsActive).toLowerCase()  === 'true';
+  const istPassiv = m.IsPassive == 1 || m.IsPassive === true ||
+                    String(m.IsPassive).toLowerCase() === 'true';
+  return istAktiv || istPassiv;
+});
+
 
     _mailLoaded = true;
     renderMailUI();
@@ -182,12 +194,25 @@ function _mailUpdateSelection() {
 // KATEGORIE-LABEL (kontextabhängig)
 // ============================================================
 function _getKatLabel(m) {
-  if (m._istVorstand && document.getElementById('mg-vorstand')?.checked) return 'Vorstand';
-  if (m._istLG       && document.getElementById('mg-lg')?.checked)       return 'LG';
-  if (m._istEhren    && document.getElementById('mg-ehren')?.checked)     return 'Ehrenmitglied';
-  if (m._istPassiv   && document.getElementById('mg-passiv')?.checked)    return 'Passiv';
+  const gewählt = key => document.getElementById(`mg-${key}`)?.checked;
+
+  if (gewählt('vorstand') && m._istVorstand) return 'Vorstand';
+  if (gewählt('ehren')    && m._istEhren)    return 'Ehrenmitglied';
+  if (gewählt('passiv')   && m._istPassiv)   return 'Passiv';
+  if (gewählt('lg')       && m._istLG)       return m._lgKategorie || 'LG';
+  if (gewählt('kk50a')    && m._istKK50A)    return 'KK 50m Aktiv-A';
+  if (gewählt('kk50b')    && m._istKK50B)    return 'KK 50m Aktiv-B';
+
+  // Fallback ohne aktive Gruppe
+  if (m._istVorstand) return 'Vorstand';
+  if (m._istEhren)    return 'Ehrenmitglied';
+  if (m._istPassiv)   return 'Passiv';
+  if (m._istKK50A)    return 'KK 50m Aktiv-A';
+  if (m._istKK50B)    return 'KK 50m Aktiv-B';
+  if (m._istLG)       return m._lgKategorie || 'LG';
   return m._kategorie || '–';
 }
+
 
 // ============================================================
 // SUMMARY
