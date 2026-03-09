@@ -342,16 +342,48 @@ async function mglOpenDetail(pn) {
       </tr>`;
     }).join('') || '<tr><td colspan="5" class="text-muted text-center">Keine Funktionen</td></tr>';
 
-    const timeline = his.map(h => `
-      <div style="border-left:2px solid #dee2e6; padding-left:14px; margin-bottom:14px; position:relative">
-        <div style="width:10px;height:10px;background:#0f3a5d;border-radius:50%;position:absolute;left:-6px;top:4px"></div>
-        <div class="fw-semibold small">${h.ereignis_typ}
-          <span class="text-muted fw-normal ms-2">${mglFmtDate(h.datum)}</span>
-        </div>
-        ${h.alter_wert ? `<div class="small text-danger">${h.alter_wert} →</div>` : ''}
-        <div class="small">${h.neuer_wert || ''}</div>
-        <div class="text-muted" style="font-size:0.75rem">${h.erfasst_von || ''}</div>
-      </div>`).join('') || '<p class="text-muted small">Keine Einträge</p>';
+       // Mapping: interne Typen → lesbare Labels + Farben
+    const HIS_CONFIG = {
+      'EINTRITT':           { label: 'Vereinseintritt',          color: '#198754', icon: '👤' },
+      'AUSTRITT':           { label: 'Vereinsaustritt',          color: '#dc3545', icon: '🚪' },
+      'VEREINSAUSTRITT_DATUM': { label: 'Austrittsdatum gesetzt', color: '#dc3545', icon: '📅' },
+      'STATUS_WECHSEL':     { label: 'Statuswechsel',            color: '#fd7e14', icon: '🔄' },
+      'LIZENZ_EINTRITT':    { label: 'Lizenz aktiviert',         color: '#198754', icon: '🏅' },
+      'LIZENZ_AUSTRITT':    { label: 'Lizenz beendet',           color: '#dc3545', icon: '🏅' },
+      'LIZENZ_HISTORISCH':  { label: 'Lizenz beendet (historisch)', color: '#adb5bd', icon: '📋' },
+      'FUNKTION_EINTRITT':  { label: 'Funktion übernommen',      color: '#0d6efd', icon: '⭐' },
+      'FUNKTION_AUSTRITT':  { label: 'Funktion beendet',         color: '#6c757d', icon: '⭐' },
+      'EHRENMITGLIED':      { label: 'Ehrenmitglied',            color: '#ffc107', icon: '🏆' },
+    };
+
+    // Sortierung: neuestes zuerst
+    const hisSorted = [...his].sort((a, b) => {
+      const da = a.datum ? new Date(a.datum) : new Date(0);
+      const db = b.datum ? new Date(b.datum) : new Date(0);
+      return db - da;
+    });
+
+    const timeline = hisSorted.length === 0
+      ? '<p class="text-muted small">Keine Einträge</p>'
+      : hisSorted.map(h => {
+          const cfg   = HIS_CONFIG[h.ereignis_typ] || { label: h.ereignis_typ, color: '#6c757d', icon: '•' };
+          const wert  = h.neuer_wert || h.alter_wert || '';
+          const datum = mglFmtDate(h.datum);
+          return `
+            <div style="border-left:2px solid ${cfg.color}22; padding-left:14px; margin-bottom:14px; position:relative">
+              <div style="width:10px;height:10px;background:${cfg.color};border-radius:50%;
+                          position:absolute;left:-6px;top:4px"></div>
+              <div class="d-flex align-items-center gap-2">
+                <span style="font-size:0.8rem;background:${cfg.color}22;color:${cfg.color};
+                             border-radius:4px;padding:1px 7px;font-weight:600">
+                  ${cfg.icon} ${cfg.label}
+                </span>
+                <span class="text-muted" style="font-size:0.78rem">${datum}</span>
+              </div>
+              ${wert ? `<div class="small mt-1">${wert}</div>` : ''}
+              <div class="text-muted" style="font-size:0.72rem">${h.erfasst_von || ''}</div>
+            </div>`;
+        }).join('');
 
     const canEditVerein = ['admin','kassier','vorstand','schuetzenmeister'].includes(userRole);
 
