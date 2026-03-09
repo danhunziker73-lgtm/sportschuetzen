@@ -354,6 +354,11 @@ async function mglOpenDetail(pn) {
       'FUNKTION_EINTRITT':  { label: 'Funktion übernommen',      color: '#0d6efd', icon: '⭐' },
       'FUNKTION_AUSTRITT':  { label: 'Funktion beendet',         color: '#6c757d', icon: '⭐' },
       'EHRENMITGLIED':      { label: 'Ehrenmitglied',            color: '#ffc107', icon: '🏆' },
+      // NEU hinzufügen in HIS_CONFIG:
+'STATUS_PASSIV':       { label: 'Statuswechsel → Passiv',    color: '#6c757d', icon: '💤' },
+'STATUS_REAKTIVIERUNG':{ label: 'Reaktivierung',             color: '#198754', icon: '🔄' },
+'EHRENMITGLIED':       { label: 'Ehrenmitglied ernannt',     color: '#ffc107', icon: '🏆' },
+
     };
 
     // Sortierung: neuestes zuerst
