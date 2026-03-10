@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Einladungs-Mails senden</title>
+
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
+<style>
+body{
+    background:#f3f4f6;
+    font-family:Segoe UI, Arial, sans-serif;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    height:100vh;
+}
+
+.card{
+    width:420px;
+}
+
+</style>
+</head>
+<body>
+
+<div class="card shadow border-0 p-4">
+
+    <h4 class="mb-3 text-center">
+        📬 Einladung versenden
+    </h4>
+
+    <button id="inviteSendBtn"
+            class="btn btn-danger w-100"
+            onclick="confirmInviteSend()">
+
+        Einladungs-Mails senden
+    </button>
+
+    <div id="inviteProgressBox" class="mt-4 d-none">
+
+        <div class="d-flex align-items-center mb-2">
+
+            <div class="spinner-border spinner-border-sm text-primary me-2"></div>
+
+            <strong id="inviteStatusText">
+                Versand wird gestartet...
+            </strong>
+
+        </div>
+
+        <div class="progress">
+            <div id="inviteProgressBar"
+                 class="progress-bar progress-bar-striped progress-bar-animated"
+                 style="width:0%">
+            </div>
+        </div>
+
+    </div>
+
+</div>
+
+
+<script>
+
+// ==========================
+// Sicherheitsabfrage
+// ==========================
+
+function confirmInviteSend(){
+
+    const confirmSend = confirm(
+        "⚠️ Achtung!\n\n" +
+        "Es werden Einladungs-Mails an ALLE Mitglieder gesendet.\n\n" +
+        "Möchtest du wirklich starten?"
+    );
+
+    if(!confirmSend) return;
+
+    triggerInviteEmails();
+}
+
+
+// ==========================
+// Mailversand starten
+// ==========================
+
+async function triggerInviteEmails(){
+
+    const btn  = document.getElementById("inviteSendBtn");
+    const box  = document.getElementById("inviteProgressBox");
+    const text = document.getElementById("inviteStatusText");
+    const bar  = document.getElementById("inviteProgressBar");
+
+    btn.disabled = true;
+    box.classList.remove("d-none");
+
+    text.innerText = "Versand wird gestartet...";
+    bar.style.width = "15%";
+
+    try{
+
+        const url = "https://script.google.com/macros/s/AKfycbxoItTn9_HUJ0frtfN-bsXYV0nUqLx5qlZggIcnQmKDrZes8NCGgWxJhTvIJ-E7M926/exec?action=sendInvites";
+
+        const response = await fetch(url);
+
+        if(!response.ok){
+            throw new Error("Server Fehler");
+        }
+
+        const result = await response.text();
+
+        console.log("Antwort GAS:", result);
+
+        text.innerText = "Mails werden versendet...";
+        bar.style.width = "70%";
+
+        setTimeout(()=>{
+
+            text.innerText = "✅ Versand abgeschlossen";
+            bar.style.width = "100%";
+
+            btn.disabled = false;
+
+        },2000);
+
+    }
+    catch(err){
+
+        console.error(err);
+
+        text.innerText = "❌ Fehler beim Versand";
+        btn.disabled = false;
+
+    }
+
+}
+
+</script>
+
+</body>
+</html>
