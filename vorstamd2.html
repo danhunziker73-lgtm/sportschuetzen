@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<title>Mitgliederprofil – Vereinssoftware</title>
+
+<style>
+
+body{
+font-family:system-ui,-apple-system;
+background:#f4f6fb;
+margin:0;
+padding:40px;
+color:#1f2937;
+}
+
+.container{
+max-width:1200px;
+margin:auto;
+}
+
+/* PROFILE HEADER */
+
+.profile-header{
+display:flex;
+align-items:center;
+gap:20px;
+background:white;
+padding:25px;
+border-radius:12px;
+box-shadow:0 8px 25px rgba(0,0,0,0.07);
+margin-bottom:30px;
+}
+
+.avatar{
+width:70px;
+height:70px;
+border-radius:50%;
+background:#2563eb;
+color:white;
+display:flex;
+align-items:center;
+justify-content:center;
+font-size:28px;
+font-weight:bold;
+}
+
+.profile-name{
+font-size:24px;
+font-weight:600;
+}
+
+.profile-meta{
+color:#6b7280;
+font-size:14px;
+margin-top:4px;
+}
+
+.badges{
+margin-left:auto;
+display:flex;
+gap:10px;
+}
+
+.badge{
+padding:6px 12px;
+border-radius:20px;
+font-size:13px;
+font-weight:500;
+}
+
+.badge.green{
+background:#22c55e;
+color:white;
+}
+
+.badge.blue{
+background:#2563eb;
+color:white;
+}
+
+.badge.gold{
+background:#f59e0b;
+color:white;
+}
+
+/* STATS */
+
+.stats{
+display:grid;
+grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
+gap:20px;
+margin-bottom:30px;
+}
+
+.stat-card{
+background:white;
+padding:20px;
+border-radius:10px;
+box-shadow:0 4px 12px rgba(0,0,0,0.05);
+}
+
+.stat-title{
+font-size:13px;
+color:#6b7280;
+}
+
+.stat-value{
+font-size:24px;
+font-weight:600;
+margin-top:6px;
+}
+
+/* TABS */
+
+.tabs{
+display:flex;
+gap:10px;
+margin-bottom:25px;
+flex-wrap:wrap;
+}
+
+.tab{
+padding:10px 16px;
+border-radius:8px;
+background:#e5e7eb;
+cursor:pointer;
+font-size:14px;
+}
+
+.tab.active{
+background:#2563eb;
+color:white;
+}
+
+.tab-content{
+display:none;
+}
+
+.tab-content.active{
+display:block;
+}
+
+
+/* TIMELINE */
+
+.timeline{
+position:relative;
+padding-left:40px;
+}
+
+.timeline::before{
+content:"";
+position:absolute;
+left:14px;
+top:0;
+bottom:0;
+width:2px;
+background:#e5e7eb;
+}
+
+.timeline-item{
+position:relative;
+margin-bottom:22px;
+}
+
+.timeline-dot{
+position:absolute;
+left:-26px;
+top:6px;
+width:12px;
+height:12px;
+background:#2563eb;
+border-radius:50%;
+}
+
+.timeline-card{
+background:white;
+padding:14px 16px;
+border-radius:8px;
+box-shadow:0 3px 10px rgba(0,0,0,0.06);
+transition:0.2s;
+}
+
+.timeline-card:hover{
+transform:translateY(-2px);
+}
+
+.timeline-title{
+font-weight:600;
+margin-bottom:4px;
+}
+
+.timeline-date{
+font-size:13px;
+color:#6b7280;
+}
+
+
+/* LICENSE STEPS */
+
+.steps{
+display:flex;
+flex-direction:column;
+gap:18px;
+}
+
+.step{
+display:flex;
+align-items:center;
+gap:14px;
+}
+
+.step-dot{
+width:14px;
+height:14px;
+background:#2563eb;
+border-radius:50%;
+}
+
+.step-line{
+width:40px;
+height:2px;
+background:#2563eb;
+}
+
+/* BOARD */
+
+.role-grid{
+display:grid;
+grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+gap:20px;
+}
+
+.role-card{
+background:white;
+padding:18px;
+border-radius:10px;
+box-shadow:0 4px 14px rgba(0,0,0,0.05);
+transition:0.2s;
+}
+
+.role-card:hover{
+transform:translateY(-3px);
+}
+
+.role-title{
+font-weight:600;
+margin-bottom:6px;
+}
+
+.role-meta{
+font-size:13px;
+color:#6b7280;
+margin-bottom:10px;
+}
+
+/* TABLE */
+
+table{
+width:100%;
+border-collapse:collapse;
+background:white;
+border-radius:10px;
+overflow:hidden;
+}
+
+th,td{
+padding:12px;
+border-bottom:1px solid #eee;
+text-align:left;
+font-size:14px;
+}
+
+th{
+background:#f9fafb;
+}
+
+</style>
+</head>
+
+
+<body>
+
+<div class="container">
+
+<!-- PROFILE HEADER -->
+
+<div class="profile-header">
+
+<div class="avatar">
+DH
+</div>
+
+<div>
+
+<div class="profile-name">
+Daniel Hunziker
+</div>
+
+<div class="profile-meta">
+Mitglied seit 1990 • Mitgliedsnummer 1073722
+</div>
+
+</div>
+
+<div class="badges">
+<span class="badge green">Aktiv</span>
+<span class="badge blue">Lizenz A</span>
+<span class="badge gold">Ehrenmitglied</span>
+</div>
+
+</div>
+
+
+<!-- STATS -->
+
+<div class="stats">
+
+<div class="stat-card">
+<div class="stat-title">Mitgliedsjahre</div>
+<div class="stat-value">35</div>
+</div>
+
+<div class="stat-card">
+<div class="stat-title">Aktive Lizenzen</div>
+<div class="stat-value">1</div>
+</div>
+
+<div class="stat-card">
+<div class="stat-title">Vorstand Funktionen</div>
+<div class="stat-value">2</div>
+</div>
+
+<div class="stat-card">
+<div class="stat-title">Events Historie</div>
+<div class="stat-value">5</div>
+</div>
+
+</div>
+
+
+<!-- TABS -->
+
+<div class="tabs">
+
+<div class="tab active" data-tab="timeline">Timeline</div>
+<div class="tab" data-tab="licenses">Lizenzen</div>
+<div class="tab" data-tab="roles">Funktionen</div>
+<div class="tab" data-tab="data">Stammdaten</div>
+
+</div>
+
+
+
+<!-- TIMELINE -->
+
+<div class="tab-content active" id="timeline">
+
+<div class="timeline">
+
+<div class="timeline-item">
+<div class="timeline-dot"></div>
+<div class="timeline-card">
+<div class="timeline-title">🏆 Ehrenmitglied ernannt</div>
+<div class="timeline-date">03.01.2026</div>
+</div>
+</div>
+
+<div class="timeline-item">
+<div class="timeline-dot"></div>
+<div class="timeline-card">
+<div class="timeline-title">🎖 Lizenz aktiviert – Aktiv A G50m</div>
+<div class="timeline-date">03.01.2026</div>
+</div>
+</div>
+
+<div class="timeline-item">
+<div class="timeline-dot"></div>
+<div class="timeline-card">
+<div class="timeline-title">🎖 Lizenz aktiviert – Aktiv A G50m</div>
+<div class="timeline-date">01.01.2023</div>
+</div>
+</div>
+
+<div class="timeline-item">
+<div class="timeline-dot"></div>
+<div class="timeline-card">
+<div class="timeline-title">👤 Vereinseintritt</div>
+<div class="timeline-date">06.04.1990</div>
+</div>
+</div>
+
+</div>
+
+</div>
+
+
+
+<!-- LICENSES -->
+
+<div class="tab-content" id="licenses">
+
+<div class="steps">
+
+<div class="step">
+<div class="step-dot"></div>
+<div>2017 – Aktiv B G50m</div>
+</div>
+
+<div class="step">
+<div class="step-dot"></div>
+<div>2019 – Aktiv A G10m Auflage</div>
+</div>
+
+<div class="step">
+<div class="step-dot"></div>
+<div>2020 – Aktiv A G10m</div>
+</div>
+
+<div class="step">
+<div class="step-dot"></div>
+<div>2024 – Lizenz beendet</div>
+</div>
+
+</div>
+
+</div>
+
+
+
+<!-- ROLES -->
+
+<div class="tab-content" id="roles">
+
+<div class="role-grid">
+
+<div class="role-card">
+<div class="role-title">👔 Vizepräsident</div>
+<div class="role-meta">Eintritt: 01.01.2017</div>
+<span class="badge green">Aktiv</span>
+</div>
+
+<div class="role-card">
+<div class="role-title">💰 Kassier</div>
+<div class="role-meta">Eintritt: 01.01.2023</div>
+<span class="badge green">Aktiv</span>
+</div>
+
+</div>
+
+</div>
+
+
+
+<!-- DATA -->
+
+<div class="tab-content" id="data">
+
+<table>
+
+<tr>
+<th>Feld</th>
+<th>Wert</th>
+</tr>
+
+<tr>
+<td>Email</td>
+<td>dan.hunziker@me.com</td>
+</tr>
+
+<tr>
+<td>Telefon</td>
+<td>+41 79 555 11 22</td>
+</tr>
+
+<tr>
+<td>Status</td>
+<td>Aktiv</td>
+</tr>
+
+<tr>
+<td>Adresse</td>
+<td>Muhen AG</td>
+</tr>
+
+</table>
+
+</div>
+
+</div>
+
+
+<script>
+
+const tabs=document.querySelectorAll(".tab");
+const contents=document.querySelectorAll(".tab-content");
+
+tabs.forEach(tab=>{
+
+tab.onclick=()=>{
+
+tabs.forEach(t=>t.classList.remove("active"));
+contents.forEach(c=>c.classList.remove("active"));
+
+tab.classList.add("active");
+
+document
+.getElementById(tab.dataset.tab)
+.classList.add("active");
+
+};
+
+});
+
+</script>
+
+</body>
+</html>
