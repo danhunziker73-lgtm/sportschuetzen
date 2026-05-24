@@ -156,29 +156,32 @@ async function loadTermine() {
             };
             return parse(a) - parse(b);
         });
-// Vergangene Termine entfernen (heute wird noch angezeigt)
-const today = new Date();
-today.setHours(0,0,0,0);
 
-allTermine = allTermine.filter(t => {
-    const parse = (obj) => {
-        if (obj.datum_iso) return new Date(obj.datum_iso);
-        if (obj.datum && obj.datum.includes('.')) {
-            const [d, m, y] = obj.datum.split('.');
-            return new Date(y, m - 1, d);
-        }
-        return null;
-    };
+        // Rundenzähler berechnen, bevor alte Termine entfernt werden.
+        allTermine = applyRundenPrefix(allTermine);
 
-    const dateObj = parse(t);
-    if (!dateObj) return false;
+        // Vergangene Termine entfernen (heute wird noch angezeigt)
+        const today = new Date();
+        today.setHours(0,0,0,0);
 
-    dateObj.setHours(0,0,0,0);
-    return dateObj >= today;
-});
+        allTermine = allTermine.filter(t => {
+            const parse = (obj) => {
+                if (obj.datum_iso) return new Date(obj.datum_iso);
+                if (obj.datum && obj.datum.includes('.')) {
+                    const [d, m, y] = obj.datum.split('.');
+                    return new Date(y, m - 1, d);
+                }
+                return null;
+            };
 
-allTermine = applyRundenPrefix(allTermine);
-renderTermine(allTermine);
+            const dateObj = parse(t);
+            if (!dateObj) return false;
+
+            dateObj.setHours(0,0,0,0);
+            return dateObj >= today;
+        });
+
+        renderTermine(allTermine);
 
     } catch (e) { 
         wrap.innerHTML = "Fehler beim Laden."; 
